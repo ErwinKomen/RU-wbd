@@ -38,7 +38,7 @@ class EntrySearchForm(forms.ModelForm):
         ATTRS_FOR_FORMS = {'class': 'form-control'};
 
         model = Entry
-        fields = ('lemma', 'dialect', 'trefwoord', 'woord')
+        fields = ('lemma', 'dialect', 'trefwoord', 'toelichting', 'kloeketoelichting', 'woord')
 
 
 class CsvImportForm(forms.Form):
@@ -104,7 +104,7 @@ class DialectSearchForm(forms.ModelForm):
         ATTRS_FOR_FORMS = {'class': 'form-control'};
 
         model = Dialect
-        fields = ('stad', 'toelichting', 'code', 'nieuw')
+        fields = ('stad', 'code', 'nieuw')
 
 
 class MijnSearchForm(forms.ModelForm):

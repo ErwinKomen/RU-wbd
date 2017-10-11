@@ -146,7 +146,7 @@
               <span class="kloeke-code"><a href="/{{app_prefix}}admin/dictionary/dialect/{{ent.dialect.pk}}">{{ent.dialect.code}}</a></span>
               (<span class="kloeke-code">{{ent.dialect.nieuw}}</span>)
               <span class="kloeke-stad">{{ent.dialect.stad}}</span>
-              {% if ent.dialect.toelichting %}<span>({{ent.dialect.toelichting}})</span>{% endif %}
+              {% if ent.kloeketoelichting %}<span class="kloeketoelichting">(kt: {{ent.kloeketoelichting}})</span>{% endif %}
             </td>
           </tr>
         {% endfor %}

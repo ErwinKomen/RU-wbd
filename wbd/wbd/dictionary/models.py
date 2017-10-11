@@ -5,10 +5,11 @@ Each wbd entry has a gloss, a definition and a number of variants in different d
 The dialects are identified by locations, and the locations are indicated by a 'Kloekecode'.
 
 """
-from django.db import models
 from django.contrib.auth.models import User
-from django.db import transaction
 from django.core.exceptions import ObjectDoesNotExist
+from django.db import transaction
+from django.db import models
+from django.db.models import Q
 from datetime import datetime
 from wbd.settings import APP_PREFIX, MEDIA_ROOT
 import os
@@ -150,254 +151,6 @@ def int_to_roman(input):
       input -= ints[i] * count
    return result
 
-def handle_uploaded_csv(fPath, iDeel, iSectie, iAflevering):
-    """Process a CSV with entry definitions"""
-
-    # Open it with the appropriate codec
-    f = codecs.open(fPath, "r", encoding='utf-8-sig')
-    bEnd = False
-    bFirst = True
-    while (not bEnd):
-        # Read one line
-        strLine = f.readline()
-        if (strLine == ""):
-            break
-        strLine = str(strLine)
-        strLine = strLine.strip(" \n\r")
-        # Only process substantial lines
-        if (strLine != ""):
-            # Split the line into parts
-            arPart = strLine.split('\t')
-            # IF this is the first line or an empty line, then skip
-            if bFirst:
-                # Check if the line starts correctly
-                if arPart[0] != 'Lemmanummer':
-                    # The first line does not start correctly -- return false
-                    return False
-                # Indicate that the first item has been had
-                bFirst = False
-            else:
-                # Assuming this is entering an ENTRY
-                # Fields overview:
-                #  0 Lemmanummer        -   
-                #  1 Lemmatitel         - lemma.gloss
-                #  2 Vraag(tekst)       -
-                #  3 Trefwoord          - trefwoord.woord
-                #  4 Lexicale variant   - 
-                #  5 Fonetische variant - entry.woord
-                #  6 Vragenlijst        - lemma.bronnenlijst
-                #  7 Vraagnummer        - 
-                #  8 Boek               - lemma.bronnenlijst
-                #  9 Boekpagina         -
-                # 10 Plaatsnaam         - dialect.stad
-                # 11 Regio              -
-                # 12 Subregio           -
-                # 13 Informantencode    -
-                # 14 Commentaar         - entry.toelichting
-                # 15 Plaatscode (Kloeke)- dialect.nieuw
-
-                # Find out which lemma this is
-                iPkLemma = Lemma.get_item({'gloss': arPart[1], 
-                                           'bronnenlijst': arPart[6], 
-                                           'boek': arPart[7]})
-
-                # Find out which dialect this is
-                iPkDialect = Dialect.get_item({'stad': arPart[10], 
-                                               'nieuw': arPart[15]})
-
-                # Find out which trefwoord this is
-                iPkTrefwoord = Trefwoord.get_item({'woord': arPart[3]})
-
-                # Get an entry to aflevering
-                iPkAflevering = Aflevering.get_item({'deel': iDeel, 
-                                                     'sectie': iSectie, 
-                                                     'aflnum': iAflevering})
-
-                # Process this entry
-                sDialectWoord = arPart[5]
-                sDialectWoord = html.unescape(sDialectWoord).strip('"')
-                iPkEntry = Entry.get_item({'woord': sDialectWoord, 
-                                           'toelichting': arPart[14], 
-                                           'lemma': iPkLemma, 
-                                           'dialect': iPkDialect, 
-                                           'trefwoord': iPkTrefwoord,
-                                           'aflevering': iPkAflevering})
-
-    # CLose the input file
-    f.close()
-
-    # return correctly
-    return True
-  
-def bulk_uploaded_csv(fPath, iDeel, iSectie, iAflevering):
-    """Process a CSV with entry definitions in a two-pass method"""
-
-    # Pass 1: read and prepare all the [lemma], [dialect], [trefwoord] and [aflevering] details
-    lstLemma = []
-    lstDialect = []
-    lstTrefwoord = []
-    lstAflevering = []
-
-    # Open it with the appropriate codec
-    f = codecs.open(fPath, "r", encoding='utf-8-sig')
-    bEnd = False
-    bFirst = True
-    iCounter = 0
-    with transaction.atomic():
-        while (not bEnd):
-            # Read one line
-            strLine = f.readline()
-            if (strLine == ""):
-                break
-            strLine = str(strLine)
-            strLine = strLine.strip(" \n\r")
-            # Only process substantial lines
-            if (strLine != ""):
-                # Split the line into parts
-                arPart = strLine.split('\t')
-                # Print a counter
-                msg = "bulk pass1: " + str(iCounter)
-                print(msg, file=sys.stderr)
-                iCounter += 1
-                # IF this is the first line or an empty line, then skip
-                if bFirst:
-                    # Check if the line starts correctly
-                    if arPart[0] != 'Lemmanummer':
-                        # The first line does not start correctly -- return false
-                        return False
-                    # Indicate that the first item has been had
-                    bFirst = False
-                else:
-                    # Assuming this is entering an ENTRY
-                    # Fields overview:
-                    #  0 Lemmanummer        -   
-                    #  1 Lemmatitel         - lemma.gloss
-                    #  2 Vraag(tekst)       -
-                    #  3 Trefwoord          - trefwoord.woord
-                    #  4 Lexicale variant   - 
-                    #  5 Fonetische variant - entry.woord
-                    #  6 Vragenlijst        - lemma.bronnenlijst
-                    #  7 Vraagnummer        - 
-                    #  8 Boek               - lemma.bronnenlijst
-                    #  9 Boekpagina         -
-                    # 10 Plaatsnaam         - dialect.stad
-                    # 11 Regio              -
-                    # 12 Subregio           -
-                    # 13 Informantencode    -
-                    # 14 Commentaar         - entry.toelichting
-                    # 15 Plaatscode (Kloeke)- dialect.nieuw
-
-                    # Find out which lemma this is
-                    iPkLemma = Lemma.get_item({'gloss': arPart[1], 
-                                               'bronnenlijst': arPart[6], 
-                                               'boek': arPart[7]})
-                    #if iPkLemma < 0:
-                    #    print("Add lemma {}, {}, {}".format(arPart[1], arPart[6], arPart[7]), file=sys.stderr)
-                    #    lstLemma.append(Lemma(gloss=arPart[1], bronnenlijst=arPart[6], boek=arPart[7]))
-
-                    # Find out which dialect this is
-                    iPkDialect = Dialect.get_item({'stad': arPart[10], 
-                                                   'nieuw': arPart[15]})
-                    #if iPkDialect < 0:
-                    #    lstDialect.append(Dialect(stad=arPart[10], nieuw=arPart[15]))
-
-                    # Find out which trefwoord this is
-                    iPkTrefwoord = Trefwoord.get_item({'woord': arPart[3]})
-                    #if iPkTrefwoord < 0:
-                    #    lstTrefwoord.append(Trefwoord(woord=arPart[3]))
-
-                    # Get an entry to aflevering
-                    iPkAflevering = Aflevering.get_item({'deel': iDeel, 
-                                                         'sectie': iSectie, 
-                                                         'aflnum': iAflevering})
-                    #if iPkAflevering < 0:
-                    #    if iSectie == None:
-                    #        lstAflevering.append(Aflevering(deel=iDeel, aflnum=iAflevering))
-                    #    else:
-                    #        lstAflevering.append(Aflevering(deel=iDeel, sectie=iSectie, aflnum=iAflevering))
-
-    # CLose the input file
-    f.close()
-
-    # Perform bulk-processing of Lemma, Dialect, Trefwoord and Aflevering
-    Lemma.objects.bulk_create(lstLemma)
-    Dialect.objects.bulk_create(lstDialect)
-    Trefwoord.objects.bulk_create(lstTrefwoord)
-    if lstAflevering.count > 0:
-        iStop = 1
-        Aflevering.objects.bulk_create(lstAflevering)
-
-
-    # Open it with the appropriate codec
-    f = codecs.open(fPath, "r", encoding='utf-8-sig')
-    bEnd = False
-    bFirst = True
-    iCounter = 0
-    while (not bEnd):
-        # Read one line
-        strLine = f.readline()
-        if (strLine == ""):
-            break
-        strLine = str(strLine)
-        strLine = strLine.strip(" \n\r")
-        # Only process substantial lines
-        if (strLine != ""):
-            # Print a counter
-            msg = "bulk pass2: " + str(iCounter)
-            print(msg, file=sys.stderr)
-            iCounter += 1
-            # Split the line into parts
-            arPart = strLine.split('\t')
-            # IF this is the first line or an empty line, then skip
-            if bFirst:
-                # Check if the line starts correctly
-                if arPart[0] != 'Lemmanummer':
-                    # The first line does not start correctly -- return false
-                    return False
-                # Indicate that the first item has been had
-                bFirst = False
-            else:
-                # Find out which lemma this is
-                iPkLemma = Lemma.get_pk({'gloss': arPart[1], 
-                                           'bronnenlijst': arPart[6], 
-                                           'boek': arPart[7]})
-                # Find out which dialect this is
-                iPkDialect = Dialect.get_pk({'stad': arPart[10], 
-                                               'nieuw': arPart[15]})
-                # Find out which trefwoord this is
-                iPkTrefwoord = Trefwoord.get_pk({'woord': arPart[3]})
-                # Get an entry to aflevering
-                iPkAflevering = Aflevering.get_pk({'deel': iDeel, 
-                                                     'sectie': iSectie, 
-                                                     'aflnum': iAflevering})
-
-
-                # Process this entry
-                sDialectWoord = arPart[5]
-                sDialectWoord = html.unescape(sDialectWoord).strip('"')
-                iPkEntry = Entry.get_pk({'woord': sDialectWoord, 
-                                           'toelichting': arPart[14], 
-                                           'lemma': iPkLemma, 
-                                           'dialect': iPkDialect, 
-                                           'trefwoord': iPkTrefwoord,
-                                           'aflevering': iPkAflevering})
-                if iPkEntry < 0:
-                    lstEntry.append(Entry(woord=sDialectWoord, 
-                                          toelichting= arPart[14], 
-                                          lemma= iPkLemma, 
-                                          dialect= iPkDialect, 
-                                          trefwoord= iPkTrefwoord,
-                                          aflevering= iPkAflevering))
-
-    # CLose the input file
-    f.close()
-
-    # Save all the new entries
-    Entry.objects.bulk_create(lstEntry)
-
-    # return correctly
-    return True
-  
 def isNullOrEmptyOrInt(arPart, lstColumn):
     for iIdx in lstColumn:
         sItem = arPart[iIdx]
@@ -450,12 +203,12 @@ def partToLine(sVersie, arPart, bDoMijnen):
             oBack['lemma_boek'] = arPart[7]
             oBack['dialect_stad'] = arPart[10]
             oBack['dialect_nieuw'] = arPart[15]
-            oBack['dialect_toelichting'] = None
             oBack['dialect_kloeke'] = None
             oBack['trefwoord_name'] = arPart[3]
             oBack['trefwoord_toelichting'] = ""
             oBack['dialectopgave_name'] = arPart[5]
             oBack['dialectopgave_toelichting'] = arPart[14]
+            oBack['dialectopgave_kloeketoelichting'] = None         # See WLD issue #22
         elif sVersie == "lemma.name":
             oBack['lemma_name'] = arPart[0]
             oBack['lemma_bronnenlijst'] = arPart[2]
@@ -463,12 +216,12 @@ def partToLine(sVersie, arPart, bDoMijnen):
             oBack['lemma_boek'] = ""
             oBack['dialect_stad'] = arPart[9]
             oBack['dialect_nieuw'] = arPart[8]
-            oBack['dialect_toelichting'] = arPart[10]
             oBack['dialect_kloeke'] = arPart[7]         # OLD KloekeCode
             oBack['trefwoord_name'] = arPart[3]
             oBack['trefwoord_toelichting'] = arPart[4]
             oBack['dialectopgave_name'] = arPart[5]
             oBack['dialectopgave_toelichting'] = arPart[6]
+            oBack['dialectopgave_kloeketoelichting'] = arPart[10]   # See WLD issue #22
 
         if sVersie != "":
             # Unescape two items
@@ -699,7 +452,8 @@ class Dialect(models.Model):
     stad = models.CharField("Dialectlocatie", db_index=True, blank=False, max_length=MAX_LEMMA_LEN, default="(unknown)")
     code = models.CharField("Plaatscode (Kloeke)", blank=False, max_length=6, default="xxxxxx")
     nieuw = models.CharField("Plaatscode (Nieuwe Kloeke)", db_index=True, blank=False, max_length=6, default="xxxxxx")
-    toelichting = models.TextField("Toelichting bij dialect", blank=True)
+    # Note: removed 'dialect_toelichting' in accordance with issue #22 of WLD
+    # toelichting = models.TextField("Toelichting bij dialect", blank=True)
 
     def __str__(self):
         return self.nieuw
@@ -992,6 +746,8 @@ class Entry(models.Model):
     woord = models.CharField("Dialectopgave", db_index=True, blank=False, max_length=MAX_LEMMA_LEN, default="(unknown)")
     # Notes to this entry: optional
     toelichting = models.TextField("Toelichting", db_index=True, blank=True)
+    # See WLD issue #22
+    kloeketoelichting = models.TextField("Toelichting bij dialectopgave voor een bepaalde kloekelocatie", blank=True)
 
     def get_trefwoord_woord(self):
         return self.trefwoord.woord + '_' + self.woord
@@ -1033,6 +789,7 @@ class Entry(models.Model):
         """Check if this [entry] exists and return a PK"""
         qs = Entry.objects.filter(woord__iexact=self['woord'], 
                                   toelichting__iexact=self['toelichting'],
+                                  kloeketoelichting__iexact=self['kloeketoelichting'],
                                   lemma__pk=self['lemma'],
                                   dialect__pk = self['dialect'],
                                   trefwoord__pk = self['trefwoord'],
@@ -1049,6 +806,7 @@ class Entry(models.Model):
 
     def get_item(self):
         mijnPk = None
+        kloeketoelichting=""
 
         # Get the parameters out of [self]
         woord = self['woord']
@@ -1057,17 +815,23 @@ class Entry(models.Model):
         dialectPk = self['dialect']
         trefwoordPk = self['trefwoord']
         afleveringPk = self['aflevering']
+        if 'kloeketoelichting' in self:
+            kloeketoelichting = self['kloeketoelichting']
         if 'mijn' in self:
             mijnPk = self['mijn']
 
         # Try find an existing item
-        qs = Entry.objects.filter(woord__iexact=woord, 
-                                  toelichting__iexact=toelichting,
-                                  lemma__pk=lemmaPk,
-                                  dialect__pk = dialectPk,
-                                  trefwoord__pk = trefwoordPk,
-                                  aflevering__pk = afleveringPk,
-                                  mijn__pk = mijnPk)
+        lstQ = []
+        lstQ.append(Q(woord__iexact=woord))
+        lstQ.append(Q(toelichting__iexact=toelichting))
+        lstQ.append(Q(lemma__pk=lemmaPk))
+        lstQ.append(Q(dialect__pk = dialectPk))
+        lstQ.append(Q(trefwoord__pk = trefwoordPk))
+        lstQ.append(Q(aflevering__pk = afleveringPk))
+        lstQ.append(Q(mijn__pk = mijnPk))
+        lstQ.append(Q(kloeketoelichting = kloeketoelichting))
+
+        qs = Entry.objects.filter(*lstQ)
         # see if we get one unique value back
         iLen = len(qs)
         if iLen == 0:
@@ -1081,11 +845,13 @@ class Entry(models.Model):
                 # add a new Dialect object
                 entry = Entry(woord=woord, toelichting = toelichting, lemma=lemma,
                               dialect = dialect, trefwoord = trefwoord,
+                              kloeketoelichting = kloeketoelichting,
                               aflevering = aflevering, mijn = mijn)
             else:
                 # add a new Dialect object
                 entry = Entry(woord=woord, toelichting = toelichting, lemma=lemma,
                               dialect = dialect, trefwoord = trefwoord,
+                              kloeketoelichting = kloeketoelichting,
                               aflevering = aflevering)
             entry.save()
             iPk = entry.pk
@@ -1397,6 +1163,7 @@ class fEntry:
                 # Add this item to the list we have
                 self.lstItem.append(fElement(item.pk, woord=item.woord, 
                                       toelichting=item.toelichting, 
+                                      kloeketoelichting=item.kloeketoelichting, 
                                       lemma=item.lemma, 
                                       dialect=item.dialect, 
                                       trefwoord=item.trefwoord, 
@@ -1612,8 +1379,8 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
                                 if oLine['dialect_toelichting'] != None and oLine['dialect_kloeke'] != None:
                                     iPkDialect = Dialect.get_item({'stad': oLine['dialect_stad'], 
                                                                     'nieuw': oLine['dialect_nieuw'],
-                                                                    'code': oLine['dialect_kloeke'],
-                                                                    'toelichting': oLine['dialect_toelichting']})
+                                                                    'code': oLine['dialect_kloeke']})
+                                    # Note: removed 'dialect_toelichting' in accordance with issue #22 of WLD
                                 else:
                                     iPkDialect = Dialect.get_item({'stad': oLine['dialect_stad'], 
                                                                     'nieuw': oLine['dialect_nieuw']})
@@ -1649,8 +1416,8 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
                                     iPkDialect = oFix.get_pk(oDialect, "dictionary.dialect", True,
                                                              stad=oLine['dialect_stad'], 
                                                              nieuw=oLine['dialect_nieuw'],
-                                                             code=oLine['dialect_kloeke'],
-                                                             toelichting=oLine['dialect_toelichting'])
+                                                             code=oLine['dialect_kloeke'])
+                                    # Note: removed 'dialect_toelichting' in accordance with issue #22 of WLD
                                 else:
                                     iPkDialect = oFix.get_pk(oDialect, "dictionary.dialect", True,
                                                              stad=oLine['dialect_stad'], 
@@ -1675,6 +1442,7 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
                                                    pk=iPkEntry,
                                                    woord=sDialectWoord,
                                                    toelichting=oLine['dialectopgave_toelichting'],
+                                                   kloeketoelichting=oLine['dialectopgave_kloeketoelichting'],
                                                    lemma=iPkLemma,
                                                    dialect=iPkDialect,
                                                    trefwoord=iPkTrefwoord,

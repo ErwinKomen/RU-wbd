@@ -95,7 +95,7 @@
           </div>
       </div>
       <table class="table table-hover">
-        <thead><tr><th class="hidden">id</th><th>Plaats</th><th>Nieuwe Kloekecode</th><th>Toelichting</th></tr></thead>
+        <thead><tr><th class="hidden">id</th><th>Plaats</th><th>Nieuwe Kloekecode</th><th class="hidden">Toelichting</th></tr></thead>
         <tbody>
         {% for dialect in object_list %}
           <tr class="dict-entry">
@@ -106,8 +106,8 @@
             <td>
               <span class="dialect-nieuw">{{dialect.nieuw}}</span>
             </td>
-            <td>
-              <span class="toelichting">{{dialect.toelichting}}</span>
+            <td class="hidden">
+              <span class="toelichting"></span>
             </td>
           </tr>
         {% endfor %}

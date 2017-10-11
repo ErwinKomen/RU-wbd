@@ -40,7 +40,7 @@ class DescriptionAdmin(admin.ModelAdmin):
 class DialectAdmin(admin.ModelAdmin):
     fieldsets = ( ('Editable', {'fields': ('stad', 'code', 'nieuw', 'toelichting',)}),
                 )
-    list_display = ['nieuw', 'stad', 'toelichting']
+    list_display = ['nieuw', 'stad']
 
 
 class TrefwoordAdmin(admin.ModelAdmin):
@@ -50,9 +50,9 @@ class TrefwoordAdmin(admin.ModelAdmin):
 
 
 class EntryAdmin(admin.ModelAdmin):
-    fieldsets = ( ('Editable', {'fields': ('woord', 'lemma', 'dialect', 'trefwoord', 'toelichting', 'aflevering')}),
+    fieldsets = ( ('Editable', {'fields': ('woord', 'lemma', 'dialect', 'trefwoord', 'toelichting', 'kloeketoelichting', 'aflevering')}),
                 )
-    list_display = ['woord', 'lemma', 'dialect', 'trefwoord', 'toelichting']
+    list_display = ['woord', 'lemma', 'dialect', 'trefwoord', 'toelichting', 'kloeketoelichting']
     list_filter = ['lemma', 'dialect']
     search_fields = ['woord', 'trefwoord__woord', 'lemma__gloss']
 
