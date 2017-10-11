@@ -246,3 +246,4 @@ ModelManifest.xml
 
 # Python
 *.pyc
+/wbd/wbd/dictionary/migrations

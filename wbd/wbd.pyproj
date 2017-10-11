@@ -80,7 +80,6 @@
     <Folder Include="wbd\templates\admin\dictionary\Info\" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="wbd\dictionary\fixtures\initial_data.json" />
     <Content Include="wbd\dictionary\static\dictionary\content\boeken-wbd.jpg" />
     <Content Include="wbd\dictionary\static\dictionary\content\bootstrap.css" />
     <Content Include="wbd\dictionary\static\dictionary\content\bootstrap.min.css" />
@@ -95,12 +94,9 @@
     <Content Include="wbd\dictionary\static\dictionary\fonts\glyphicons-halflings-regular.woff" />
     <Content Include="wbd\dictionary\static\dictionary\scripts\diadict.js" />
     <Content Include="wbd\dictionary\static\dictionary\scripts\gtrack.js" />
-    <Content Include="wbd\dictionary\templates\dictionary\about-OUD.html" />
     <Content Include="wbd\dictionary\templates\dictionary\lemma_list_short.html" />
     <Content Include="wbd\dictionary\templates\dictionary\repair.html" />
     <Content Include="wbd\dictionary\templates\dictionary\aflevering_list.html" />
-    <Content Include="wbd\dictionary\templates\dictionary\afleveringen.html" />
-    <Content Include="wbd\dictionary\templates\dictionary\contact-OUD.html" />
     <Content Include="wbd\dictionary\templates\dictionary\dialectviewing.html" />
     <Content Include="wbd\dictionary\templates\dictionary\import_csv.html" />
     <Content Include="wbd\dictionary\templates\dictionary\lemma_list_full.html" />

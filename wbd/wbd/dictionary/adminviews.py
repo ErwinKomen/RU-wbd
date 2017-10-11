@@ -7,10 +7,10 @@ from django.core.exceptions import PermissionDenied
 import operator
 import re
 
-from wld.dictionary.models import *
-from wld.dictionary.forms import *
-from wld.settings import APP_PREFIX, MEDIA_ROOT
-from wld.dictionary.views import paginateSize, paginateValues
+from wbd.dictionary.models import *
+from wbd.dictionary.forms import *
+from wbd.settings import APP_PREFIX, MEDIA_ROOT
+from wbd.dictionary.views import paginateSize, paginateValues
 
 def order_queryset_by_sort_order(get, qs):
     """Change the sort-order of the query set, depending on the form field [sortOrder]

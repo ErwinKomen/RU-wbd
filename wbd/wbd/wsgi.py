@@ -1,5 +1,5 @@
 """
-WSGI config for wld project.
+WSGI config for wbd project.
 
 This module contains the WSGI application used by Django's development server
 and any production WSGI deployments. It should expose a module-level variable
@@ -16,12 +16,12 @@ framework.
 import os
 # import sys
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "wld.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "wbd.settings")
 # os.environ['SCRIPT_NAME'] = 'ru'
 
 # Append the django project root directory to the python path
-# sys.path.append('/var/www/wld/live/repo/wld')
-# sys.path.append('/var/www/wld/live/repo/wld/wld')
+# sys.path.append('/var/www/wbd/live/repo/wbd')
+# sys.path.append('/var/www/wbd/live/repo/wbd/wbd')
 
 # This application object is used by any WSGI server configured to use this
 # file. This includes Django's development server, if the WSGI_APPLICATION

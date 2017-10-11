@@ -21,10 +21,10 @@ import re
 import fnmatch
 import csv
 import codecs
-from wld.dictionary.models import *
-from wld.dictionary.forms import *
-#from wld.dictionary.adminviews import order_queryset_by_sort_order
-from wld.settings import APP_PREFIX, WSGI_FILE
+from wbd.dictionary.models import *
+from wbd.dictionary.forms import *
+#from wbd.dictionary.adminviews import order_queryset_by_sort_order
+from wbd.settings import APP_PREFIX, WSGI_FILE
 
 # Global variables
 paginateSize = 10
@@ -144,7 +144,7 @@ def home(request):
         request,
         'dictionary/index.html',
         {
-            'title':'e-WLD',
+            'title':'e-WBD',
             'year':datetime.now().year,
         }
     )
@@ -156,7 +156,7 @@ def contact(request):
         request,
         'dictionary/contact.html',
         {
-            'title':'e-WLD contact',
+            'title':'e-WBD contact',
             'message':'Henk van den Heuvel (H.vandenHeuvel@Let.ru.nl)',
             'year':datetime.now().year,
         }
@@ -169,20 +169,7 @@ def about(request):
         request,
         'dictionary/about.html',
         {
-            'title':'e-WLD informatie',
-            'message':'Radboud Universiteit Nijmegen - Dialectenwoordenboek.',
-            'year':datetime.now().year,
-        }
-    )
-
-def afleveringen(request):
-    """Renders the AFLEVERINGEN page."""
-    assert isinstance(request, HttpRequest)
-    return render(
-        request,
-        'dictionary/afleveringen.html',
-        {
-            'title':'e-WLD afleveringen',
+            'title':'e-WBD informatie',
             'message':'Radboud Universiteit Nijmegen - Dialectenwoordenboek.',
             'year':datetime.now().year,
         }
@@ -195,7 +182,7 @@ def do_repair(request):
         request,
         'dictionary/repair.html',
         {
-            'title':'e-WLD reparatie',
+            'title':'e-WBD reparatie',
             'message':'Radboud Universiteit Nijmegen - Dialectenwoordenboek.',
             'year':datetime.now().year,
         }
@@ -420,7 +407,7 @@ class DictionaryDetailView(DetailView):
         context['app_prefix'] = APP_PREFIX
 
         # Set the title of the application
-        context['title'] = "e-WLD detail"
+        context['title'] = "e-WBD detail"
 
         # Return the calculated context
         return context
@@ -513,7 +500,7 @@ class TrefwoordListView(ListView):
         context['mijnen'] = [mijn for mijn in Mijn.objects.all().order_by('naam')]
 
         # Set the title of the application
-        context['title'] = "e-WLD trefwoorden"
+        context['title'] = "e-WBD trefwoorden"
 
         # If we are in 'strict' mode, we need to deliver the [qlist]
         if self.strict:
@@ -803,7 +790,7 @@ class LemmaListView(ListView):
         context['app_prefix'] = APP_PREFIX
 
         # Set the title of the application
-        context['title'] = "e-WLD begrippen"
+        context['title'] = "e-WBD begrippen"
 
         # Set the afleveringen that are available
         context['afleveringen'] = [afl for afl in Aflevering.objects.all()]
@@ -1092,7 +1079,7 @@ class LocationListView(ListView):
             context['aflkeuze'] = 0
 
         # Set the title of the application
-        context['title'] = "e-WLD plaatsen"
+        context['title'] = "e-WBD plaatsen"
 
         # Get possible user choice of 'strict'
         if 'strict' in initial:
@@ -1309,7 +1296,7 @@ class DialectListView(ListView):
             context['paginateSize'] = paginateSize
 
         # Set the title of the application
-        context['title'] = "e-WLD dialecten"
+        context['title'] = "e-WBD dialecten"
 
         # Return the calculated context
         return context
@@ -1392,7 +1379,7 @@ class MijnListView(ListView):
         context['app_prefix'] = APP_PREFIX
 
         # Set the title of the application
-        context['title'] = "e-WLD mijnen"
+        context['title'] = "e-WBD mijnen"
 
         # Return the calculated context
         return context
@@ -1463,7 +1450,7 @@ class DeelListView(ListView):
         context['app_prefix'] = APP_PREFIX
 
         # Set the title of the application
-        context['title'] = "e-WLD afleveringen"
+        context['title'] = "e-WBD afleveringen"
 
         # Return the calculated context
         return context

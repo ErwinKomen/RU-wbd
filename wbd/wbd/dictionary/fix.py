@@ -10,8 +10,8 @@ import os.path
 import io
 import codecs
 import json
-from wld.dictionary.models import *
-from wld import settings
+from wbd.dictionary.models import *
+from wbd import settings
 
 # ============================= LOCAL CLASSES ======================================
 class ErrHandle:

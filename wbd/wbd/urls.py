@@ -1,5 +1,5 @@
 """
-Definition of urls for wld.
+Definition of urls for wbd.
 """
 
 from datetime import datetime
@@ -13,26 +13,26 @@ from django.shortcuts import redirect
 from django.core.urlresolvers import reverse, reverse_lazy
 from django.views.generic.base import RedirectView
 from django.contrib import admin
-from wld.settings import APP_PREFIX
+from wbd.settings import APP_PREFIX
 admin.autodiscover()
 
 # Imports for my own project
-import wld.dictionary.forms
-from wld.dictionary.views import *
-from wld.dictionary.adminviews import EntryListView, InfoListView
+import wbd.dictionary.forms
+from wbd.dictionary.views import *
+from wbd.dictionary.adminviews import EntryListView, InfoListView
 
 
 # set admin site names
-admin.site.site_header = 'e-WLD Admin'
-admin.site.site_title = 'e-WLD Site Admin'
+admin.site.site_header = 'e-WBD Admin'
+admin.site.site_title = 'e-WBD Site Admin'
 
 pfx = APP_PREFIX
 
 urlpatterns = [
     # Examples:
-    url(r'^$', wld.dictionary.views.home, name='home'),
-    url(r'^contact$', wld.dictionary.views.contact, name='contact'),
-    url(r'^about', wld.dictionary.views.about, name='about'),
+    url(r'^$', wbd.dictionary.views.home, name='home'),
+    url(r'^contact$', wbd.dictionary.views.contact, name='contact'),
+    url(r'^about', wbd.dictionary.views.about, name='about'),
     url(r'^delen', DeelListView.as_view(), name='delen'),
     url(r'^definitions$', RedirectView.as_view(url='/'+pfx+'admin/'), name='definitions'),
     url(r'^entries$', RedirectView.as_view(url='/'+pfx+'admin/dictionary/entry/'), name='entries'),
@@ -49,17 +49,17 @@ urlpatterns = [
     url(r'^list/$', permission_required('dictionary.search_gloss')(EntryListView.as_view()), name='admin_entry_list'), 
     url(r'^dictionary/search/$', permission_required('dictionary.search_gloss')(EntryListView.as_view())),
     url(r'^entry/(?P<pk>\d+)', DictionaryDetailView.as_view(), name='output'),
-    url(r'^import/start/$', wld.dictionary.views.import_csv_start, name='import_start'),
-    url(r'^import/progress/$', wld.dictionary.views.import_csv_progress, name='import_progress'),
-    url(r'^repair/$', permission_required('dictionary.search_gloss')(wld.dictionary.views.do_repair), name='repair'),
-    url(r'^repair/start/$', wld.dictionary.views.do_repair_start, name='repair_start'),
-    url(r'^repair/progress/$', wld.dictionary.views.do_repair_progress, name='repair_progress'),
+    url(r'^import/start/$', wbd.dictionary.views.import_csv_start, name='import_start'),
+    url(r'^import/progress/$', wbd.dictionary.views.import_csv_progress, name='import_progress'),
+    url(r'^repair/$', permission_required('dictionary.search_gloss')(wbd.dictionary.views.do_repair), name='repair'),
+    url(r'^repair/start/$', wbd.dictionary.views.do_repair_start, name='repair_start'),
+    url(r'^repair/progress/$', wbd.dictionary.views.do_repair_progress, name='repair_progress'),
 
     url(r'^login/$',
         django.contrib.auth.views.login,
         {
             'template_name': 'dictionary/login.html',
-            'authentication_form': wld.dictionary.forms.BootstrapAuthenticationForm,
+            'authentication_form': wbd.dictionary.forms.BootstrapAuthenticationForm,
             'extra_context':
             {
                 'title': 'Log in',

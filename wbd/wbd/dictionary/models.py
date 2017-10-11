@@ -1,7 +1,7 @@
-"""Models for the wld records.
+"""Models for the wbd records.
 
-The wld is the "Dictionary of Limburg Dialects".
-Each wld entry has a gloss, a definition and a number of variants in different dialects.
+The wbd is the "Dictionary of Limburg Dialects".
+Each wbd entry has a gloss, a definition and a number of variants in different dialects.
 The dialects are identified by locations, and the locations are indicated by a 'Kloekecode'.
 
 """
@@ -10,7 +10,7 @@ from django.contrib.auth.models import User
 from django.db import transaction
 from django.core.exceptions import ObjectDoesNotExist
 from datetime import datetime
-from wld.settings import APP_PREFIX, MEDIA_ROOT
+from wbd.settings import APP_PREFIX, MEDIA_ROOT
 import os
 import sys
 import io
@@ -895,7 +895,7 @@ class Aflevering(models.Model):
 
     def get_pdf(self):
         # sPdf =  "{}/static/dictionary/content/pdf{}/{}".format(APP_PREFIX, self.deel.nummer,self.naam)
-        sPdf =  "wld-{}/{}".format(self.deel.nummer,self.naam)
+        sPdf =  "wbd-{}/{}".format(self.deel.nummer,self.naam)
         return sPdf
 
     def get_pk(self):
@@ -1553,7 +1553,7 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
                 bEnd = False
                 bFirst = True
                 bFirstOut = False
-                bDoMijnen = (iDeel == 2 and iAflevering == 5)   # Treat 'Mijn' for WLD-II-5
+                bDoMijnen = (iDeel == 2 and iAflevering == 5)   # Treat 'Mijn' for wbd-II-5
                 lMijnen = []
                 while (not bEnd):
                     # Show where we are

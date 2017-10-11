@@ -2,7 +2,7 @@
 
 from django.core.management.base import BaseCommand, CommandError  
 from django.contrib.auth.models import User, Group, Permission
-from wld.dictionary.models import Entry
+from wbd.dictionary.models import Entry
 
 advanced_search = Permission.objects.get(codename='search_gloss', content_type__model__exact='gloss')
 
