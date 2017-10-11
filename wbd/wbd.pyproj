@@ -6,6 +6,9 @@
     <RootNamespace>wbd</RootNamespace>
     <InterpreterId>{6c713d71-6be7-4b28-b6ee-cf405b42bea2}</InterpreterId>
     <InterpreterVersion>3.5</InterpreterVersion>
+    <PythonRunWebServerCommandArguments>runserver --settings $(DjangoSettingsModule) %SERVER_PORT% $(CommandLineArguments)</PythonRunWebServerCommandArguments>
+    <WebBrowserPort>6501</WebBrowserPort>
+    <DebugStdLib>False</DebugStdLib>
   </PropertyGroup>
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -17,7 +20,7 @@
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
-    <LaunchProvider>Django launcher</LaunchProvider>
+    <LaunchProvider>Web launcher</LaunchProvider>
     <OutputPath>.</OutputPath>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
@@ -32,9 +35,6 @@
     <Compile Include="wbd\dictionary\admin.py" />
     <Compile Include="wbd\dictionary\apps.py" />
     <Compile Include="wbd\dictionary\forms.py">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="wbd\dictionary\fix.py">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="wbd\dictionary\fixtures\management\commands\permissions.py">

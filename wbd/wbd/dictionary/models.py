@@ -222,6 +222,7 @@ def partToLine(sVersie, arPart, bDoMijnen):
             oBack['dialectopgave_name'] = arPart[5]
             oBack['dialectopgave_toelichting'] = arPart[6]
             oBack['dialectopgave_kloeketoelichting'] = arPart[10]   # See WLD issue #22
+            # NOTE: part II-5 also contains the names of the mines in [10]
 
         if sVersie != "":
             # Unescape two items
@@ -242,7 +243,7 @@ def partToLine(sVersie, arPart, bDoMijnen):
                 if oBack['dialect_stad'].lower() == "onbekend":
                     oBack['dialect_stad'] = "Zie mijnen"
                 # Get the list of mines
-                sMijnen = oBack['dialect_toelichting'].replace('(', '').replace(')', '').strip()
+                sMijnen = oBack['dialectopgave_kloeketoelichting'].replace('(', '').replace(')', '').strip()
                 # Sanity check
                 if sMijnen == "":
                     lMijnen = []
@@ -1219,9 +1220,9 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
 
             # Get the [Info] object
             if iSectie == None:
-                oInfo = Info.objects.filter(deel=iDeel, aflevering=iAflevering).first()
+                oInfo = Info.objects.filter(deel=iDeel, aflnum=iAflevering).first()
             else:
-                oInfo = Info.objects.filter(deel=iDeel, sectie=iSectie, aflevering=iAflevering).first()
+                oInfo = Info.objects.filter(deel=iDeel, sectie=iSectie, aflnum=iAflevering).first()
             lstInfo.append(oInfo)
 
         # Start creating an array that will hold the fixture elements
@@ -1376,7 +1377,7 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
                                                                      'description': iPkDescr})
 
                                 # Find out which dialect this is
-                                if oLine['dialect_toelichting'] != None and oLine['dialect_kloeke'] != None:
+                                if oLine['dialect_kloeke'] != None:
                                     iPkDialect = Dialect.get_item({'stad': oLine['dialect_stad'], 
                                                                     'nieuw': oLine['dialect_nieuw'],
                                                                     'code': oLine['dialect_kloeke']})
@@ -1412,7 +1413,7 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
 
 
                                 # get a dialect number
-                                if oLine['dialect_toelichting'] != None and oLine['dialect_kloeke'] != None:
+                                if oLine['dialect_kloeke'] != None:
                                     iPkDialect = oFix.get_pk(oDialect, "dictionary.dialect", True,
                                                              stad=oLine['dialect_stad'], 
                                                              nieuw=oLine['dialect_nieuw'],
