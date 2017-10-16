@@ -32,7 +32,8 @@ elif "/scratch" in WRITABLE_DIR:
     APP_PREFIX = ""
     admin.site.site_url = '/'
 else:
-    admin.site.site_url = '/dd'
+    APP_PREFIX = "ewbd/"
+    admin.site.site_url = '/ewbd'
 
 # Not the location of the wsgi.py file for "reload_wbd"
 WSGI_FILE = os.path.abspath(os.path.join(BASE_DIR,"wbd/wsgi.py"))
@@ -51,7 +52,7 @@ SECRET_KEY = '485c409a-daf7-47d3-81af-257049728c58'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'e-wbd.nl', 'www.e-wbd.nl', 'ewbd.science.ru.nl']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'e-wbd.nl', 'www.e-wbd.nl', 'ewbd.science.ru.nl', 'corpus-studio-web.cttnww-meertens.surf-hosted.nl']
 
 
 # Application definition
@@ -148,7 +149,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.9/howto/static-files/
 
 STATIC_URL = '/static/'
-if ("/scratch" in WRITABLE_DIR):
+if ("/scratch" in WRITABLE_DIR or "ewbd" in APP_PREFIX):
     STATIC_URL = '/'+APP_PREFIX+'static/'
 
 STATIC_ROOT = posixpath.join(*(BASE_DIR.split(os.path.sep) + ['static']))
