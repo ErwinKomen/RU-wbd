@@ -4,23 +4,26 @@ Definition of urls for wbd.
 
 from datetime import datetime
 from django.contrib.auth.decorators import login_required, permission_required
-from django.conf.urls import url
-from django.core import urlresolvers
-import django.contrib.auth.views
-# Enable the admin:
-from django.conf.urls import include
-from django.shortcuts import redirect
-from django.core.urlresolvers import reverse, reverse_lazy
-from django.views.generic.base import RedirectView
+from django.conf.urls import url, include
+from django.conf.urls.static import static
 from django.contrib import admin
-from wbd.settings import APP_PREFIX
-admin.autodiscover()
+import django.contrib.auth.views
 
-# Imports for my own project
+# Enable the admin:
+from wbd.settings import APP_PREFIX, STATIC_ROOT
+
+# Imports for the app 'dictionary'
 import wbd.dictionary.forms
 from wbd.dictionary.views import *
 from wbd.dictionary.adminviews import EntryListView, InfoListView
 
+# Other Django stuff
+from django.core import urlresolvers
+from django.shortcuts import redirect
+from django.core.urlresolvers import reverse, reverse_lazy
+from django.views.generic.base import RedirectView
+
+admin.autodiscover()
 
 # set admin site names
 admin.site.site_header = 'e-WBD Admin'
@@ -54,6 +57,7 @@ urlpatterns = [
     url(r'^repair/$', permission_required('dictionary.search_gloss')(wbd.dictionary.views.do_repair), name='repair'),
     url(r'^repair/start/$', wbd.dictionary.views.do_repair_start, name='repair_start'),
     url(r'^repair/progress/$', wbd.dictionary.views.do_repair_progress, name='repair_progress'),
+    url(r'^static/(?P<path>.*)$',django.views.static.serve, {'document_root': STATIC_ROOT}),
 
     url(r'^login/$',
         django.contrib.auth.views.login,

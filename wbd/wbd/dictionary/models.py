@@ -208,7 +208,7 @@ def partToLine(sVersie, arPart, bDoMijnen):
             oBack['trefwoord_toelichting'] = ""
             oBack['dialectopgave_name'] = arPart[5]
             oBack['dialectopgave_toelichting'] = arPart[14]
-            oBack['dialectopgave_kloeketoelichting'] = None         # See WLD issue #22
+            oBack['dialectopgave_kloeketoelichting'] = ""         # See WLD issue #22
         elif sVersie == "lemma.name":
             oBack['lemma_name'] = arPart[0]
             oBack['lemma_bronnenlijst'] = arPart[2]
@@ -351,9 +351,11 @@ class Description(models.Model):
         if 'toelichting' in self:
             toelichting = self['toelichting']
         # Try find an existing item
-        qItem = Description.objects.filter(bronnenlijst__iexact=bronnenlijst, 
-                                           boek__iexact=boek,
-                                           toelichting__iexact=toelichting).first()
+        lstQ = []
+        lstQ.append(Q(bronnenlijst__iexact=bronnenlijst))
+        lstQ.append(Q(boek__iexact=boek))
+        lstQ.append(Q(toelichting__iexact=toelichting))
+        qItem = Description.objects.filter(*lstQ).first()
         # see if we get one value back
         if qItem == None:
             # add a new Description object
@@ -393,17 +395,6 @@ class Lemma(models.Model):
     def get_item(self):
         # Get the parameters
         gloss = self['gloss']
-        # Try find an existing item
-        # qItem = Lemma.objects.filter(gloss__iexact=gloss).first()
-        ## see if we get one value back
-        #if qItem == None:
-        #    # add a new Dialect object
-        #    lemma = Lemma(gloss=gloss)
-        #    lemma.save()
-        #    iPk = lemma.pk
-        #else:
-        #    # Get the pk of the first hit
-        #    iPk = qItem.pk
         try:
             qItem = Lemma.objects.get(gloss__iexact=gloss)
             # Get the pk of the first hit
@@ -428,12 +419,15 @@ class LemmaDescr(models.Model):
         lemma = self['lemma']
         description = self['description']
         # Try find an existing item
-        qItem = LemmaDescr.objects.filter(lemma=lemma, 
-                                          description=description).first()
+        lstQ = []
+        lstQ.append(Q(lemma=lemma))
+        lstQ.append(Q(description=description))
+        qItem = LemmaDescr.objects.filter(*lstQ).first()
         # see if we get one value back
         if qItem == None:
             # add a new Description object
-            lemdescr = LemmaDescr(lemma=Lemma.objects.get(id=lemma), description=Description.objects.get(id=description))
+            # lemdescr = LemmaDescr(lemma=Lemma.objects.get(id=lemma), description=Description.objects.get(id=description))
+            lemdescr = LemmaDescr(lemma=Lemma, description=description)
             lemdescr.save()
             iPk = lemdescr.pk
         else:
@@ -475,7 +469,10 @@ class Dialect(models.Model):
         stad = self['stad']
         nieuw = self['nieuw']
         # Try find an existing item
-        qItem = Dialect.objects.filter(stad__iexact=stad, nieuw__iexact=nieuw).first()
+        lstQ = []
+        lstQ.append(Q(stad__iexact=stad))
+        lstQ.append(Q(nieuw__iexact=nieuw))
+        qItem = Dialect.objects.filter(*lstQ).first()
         # see if we get one value back
         if qItem == None:
             # add a new Dialect object
@@ -519,12 +516,12 @@ class Trefwoord(models.Model):
         # Get the parameters
         woord = self['woord']
         # Try find an existing item
+        lstQ = []
+        lstQ.append(Q(woord__iexact=woord))
         if 'toelichting' in self:
             toelichting = self['toelichting']
-            # Try find an existing item
-            qItem = Trefwoord.objects.filter(woord__iexact=woord, toelichting__iexact = toelichting).first()
-        else:
-            qItem = Trefwoord.objects.filter(woord__iexact=woord).first()
+            lstQ.append(Q(toelichting__iexact = toelichting))
+        qItem = Trefwoord.objects.filter(*lstQ).first()
         # see if we get one value back
         if qItem == None:
             # add a new Dialect object
@@ -589,6 +586,10 @@ class Status(models.Model):
     method = models.CharField("Reading method", blank=False, max_length=MAX_LEMMA_LEN, default="(unknown)")
     # Link to the Info
     info = models.ForeignKey(Info, blank=False)
+
+    def set_status(self, sStatus, sMsg = None):
+        self.status = sStatus
+        self.save()
 
 
 class Repair(models.Model):
@@ -673,13 +674,12 @@ class Aflevering(models.Model):
         sectie = self['sectie']
         aflnum = self['aflnum']
         # Try find an existing item
-        if sectie == None:
-            qItem = Aflevering.objects.filter(deel__nummer__iexact=deel, 
-                                           aflnum__iexact=aflnum).first()
-        else:
-            qItem = Aflevering.objects.filter(deel__nummer__iexact=deel, 
-                                           aflnum__iexact=aflnum,
-                                           sectie__iexact = sectie).first()
+        lstQ = []
+        lstQ.append(Q(deel__nummer__iexact=deel))
+        lstQ.append(Q(aflnum__iexact=aflnum))
+        if sectie != None:
+            lstQ.append(Q(sectie__iexact = sectie))
+        qItem = Aflevering.objects.filter(*lstQ).first()
         # see if we get one value back
         if qItem == None:
             # We cannot add a new item
@@ -1183,6 +1183,7 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
 
     oBack = {}      # What we return
     sVersie = ""    # The version we are using--this depends on the column names
+    sDict = "wbd"   # The dictionary we are working for: wld, wbd, 
     bUsdDbaseMijnen = False
 
 
@@ -1213,10 +1214,12 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
         else:
             # Validate: input file exists
             if not "/" in csv_file and not "\\" in csv_file:
-                csv_file = os.path.join(MEDIA_ROOT, "csv_files", csv_file)
+                csv_file = os.path.abspath( os.path.join(MEDIA_ROOT, "csv_files", csv_file))
             elif csv_file.startswith("csv_files"):
-                csv_file = os.path.join(MEDIA_ROOT, csv_file)
-            if (not os.path.isfile(csv_file)): return oBack
+                csv_file = os.path.abspath( os.path.join(MEDIA_ROOT, csv_file))
+            if (not os.path.isfile(csv_file)): 
+                oStatus.set_status("error", "Cannot find file " + csv_file)
+                return oBack
 
             # Get the [Info] object
             if iSectie == None:
@@ -1255,13 +1258,24 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
         oAflevering.load(Aflevering.objects.all())
         oMijn.load(Mijn.objects.all())
         if bUseOld:
+            # Indicate we are loading existing stuff
+
+            # Start loading...
+            oStatus.set_status("loading lemma's")
             oLemma.load(Lemma.objects.all())
+
+            oStatus.set_status("loading keywords")
             oTrefwoord.load(Trefwoord.objects.all())
+
+            oStatus.set_status("loading lemma-descriptions")
             oLemmaDescr.load(LemmaDescr.objects.all())
+
+            oStatus.set_status("loading descriptions")
             oDescr.load(Description.objects.all())
             # It should *not* be necessary to load all existing ENTRY objects
             #    since we assume that any object to be added is UNIQUE
             # oEntry.load(Entry.objects.all())
+            oStatus.set_status("loading mines")
             oEntryMijn.load(EntryMijn.objects.all())
 
             # Determine what the maximum [pk] for [Entry] currently in use is
@@ -1293,6 +1307,7 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
                 iSkipped = 0        # Number skipped
 
                 sWorking = "working {}/{}/{}".format(iDeel, iSectie, iAflevering)
+                oStatus.set_status(sWorking)
 
                 # Create an output file writer
                 # Basename: derive from filename
@@ -1321,8 +1336,22 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
                 bEnd = False
                 bFirst = True
                 bFirstOut = False
-                bDoMijnen = (iDeel == 2 and iAflevering == 5)   # Treat 'Mijn' for wbd-II-5
+
+                sLastLemma = ""     # For speeding up processing
+                sLastLemmaDescr = ""
+                sLastTw = ""
+                sLastTwToel = ""
+
+                # The use of 'mijnen' depends on the dictionary we are working for (wld, wbd)
                 lMijnen = []
+                if sDict == "wld":
+                    # The WLD uses mijnen in 2/5
+                    bDoMijnen = (iDeel == 2 and iAflevering == 5)   # Treat 'Mijn' for wbd-II-5
+                else:
+                    # The WBD doesn't have any mijnen
+                    bDoMijnen = False
+
+                # Iterate through the lines of the CSV file
                 while (not bEnd):
                     # Show where we are
                     iCounter +=1
@@ -1365,7 +1394,10 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
 
                             if bUseDbase:
                                 # Find out which lemma this is
-                                iPkLemma = Lemma.get_item({'gloss': oLine['lemma_name']})
+                                sLemma = oLine['lemma_name']
+                                if sLemma != sLastLemma:
+                                    iPkLemma = Lemma.get_item({'gloss': sLemma})
+                                    sLastLemma = sLemma
 
                                 # Find out which lemma-description this is
                                 iPkDescr = Description.get_item({'bronnenlijst': oLine['lemma_bronnenlijst'],
@@ -1377,7 +1409,7 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
                                                                      'description': iPkDescr})
 
                                 # Find out which dialect this is
-                                if oLine['dialect_kloeke'] != None:
+                                if oLine['dialect_kloeke'] != None and oLine['dialect_kloeke'] != "":
                                     iPkDialect = Dialect.get_item({'stad': oLine['dialect_stad'], 
                                                                     'nieuw': oLine['dialect_nieuw'],
                                                                     'code': oLine['dialect_kloeke']})
@@ -1389,10 +1421,16 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
                                 # Find out which trefwoord this is
                                 sTwToel = oLine['trefwoord_toelichting']
                                 if sTwToel == None or sTwToel == "":
-                                    iPkTrefwoord = Trefwoord.get_item({'woord': sTrefWoord})
+                                    if sLastTwToel != "" or sLastTw != sTrefWoord:
+                                        iPkTrefwoord = Trefwoord.get_item({'woord': sTrefWoord})
+                                        sLastTw = sTrefWoord
+                                        sLastTwToel = ""
                                 else:
-                                    iPkTrefwoord = Trefwoord.get_item({'woord': sTrefWoord,
+                                    if sLastTw != sTrefWoord or sLastTwToel != sTwToel:
+                                        iPkTrefwoord = Trefwoord.get_item({'woord': sTrefWoord,
                                                                        'toelichting': sTwToel})
+                                        sLastTw = sTrefWoord
+                                        sLastTwToel = sTwToel
 
                             else:
                                 # Get a lemma number from this
@@ -1506,8 +1544,7 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
         oBack['skipped'] = iSkipped
         oBack['read'] = iRead
         # oCsvImport['status'] = 'done'
-        oStatus.status = "done"
-        oStatus.save()
+        oStatus.set_status("done")
         return oBack
     except:
         # oCsvImport['status'] = 'error'

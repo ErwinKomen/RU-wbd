@@ -347,8 +347,7 @@ def import_csv_start(request):
     oStatus = Status(info=info)
 
     # Note that we are starting
-    oStatus.status = "starting"
-    oStatus.save()
+    oStatus.set_status("starting")
     iStatus = oStatus.id
     # oCsvImport['status'] = "starting"
 
@@ -356,6 +355,9 @@ def import_csv_start(request):
     oResult = csv_to_fixture(sFile, iDeel, iSectie, iAflnum, iStatus, bUseDbase = bUseDbase, bUseOld = True)
     if oResult == None or oResult['result'] == False:
         data.status = 'error'
+
+    # WSince we are done: explicitly set the status so
+    oStatus.set_status("done")
 
     # Return this response
     return JsonResponse(data)

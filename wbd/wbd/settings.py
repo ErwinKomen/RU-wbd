@@ -35,12 +35,14 @@ else:
     APP_PREFIX = "ewbd/"
     admin.site.site_url = '/ewbd'
 
+
 # Not the location of the wsgi.py file for "reload_wbd"
 WSGI_FILE = os.path.abspath(os.path.join(BASE_DIR,"wbd/wsgi.py"))
 
 # publishing on a sub-url
 # NOTE: possibly remove this for the production environment...
 # FORCE_SCRIPT_NAME = "/ru"
+FORCE_SCRIPT_NAME = admin.site.site_url
 
 
 # Quick-start development settings - unsuitable for production
@@ -52,7 +54,9 @@ SECRET_KEY = '485c409a-daf7-47d3-81af-257049728c58'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'e-wbd.nl', 'www.e-wbd.nl', 'ewbd.science.ru.nl', 'corpus-studio-web.cttnww-meertens.surf-hosted.nl']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 
+                 'e-wbd.nl', 'www.e-wbd.nl', 'ewbd.science.ru.nl', 
+                 'corpus-studio-web.cttnww-meertens.surf-hosted.nl']
 
 
 # Application definition
@@ -65,6 +69,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    # The apps for RU-wbd
     'wbd.dictionary',
 ]
 
@@ -149,7 +154,10 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.9/howto/static-files/
 
 STATIC_URL = '/static/'
+MEDIA_URL = '/media/'
 if ("/scratch" in WRITABLE_DIR or "ewbd" in APP_PREFIX):
     STATIC_URL = '/'+APP_PREFIX+'static/'
+    MEDIA_URL = "/" + APP_PREFIX + "media/"
 
-STATIC_ROOT = posixpath.join(*(BASE_DIR.split(os.path.sep) + ['static']))
+# STATIC_ROOT = posixpath.join(*(BASE_DIR.split(os.path.sep) + ['static']))
+STATIC_ROOT = os.path.abspath(os.path.join("/", posixpath.join(*(BASE_DIR.split(os.path.sep) + ['static']))))
