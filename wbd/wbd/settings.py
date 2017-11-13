@@ -12,7 +12,11 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 
 import os
 import posixpath
+import socket
 from django.contrib import admin
+
+# Get the HOST by IP address
+hst = socket.gethostbyname(socket.gethostname())
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -26,7 +30,7 @@ if "RU-wbd\\writable" in WRITABLE_DIR:
 APP_PREFIX = "dd/"
 if "d:" in WRITABLE_DIR or "D:" in WRITABLE_DIR:
     APP_PREFIX = ""
-elif "/scratch" in WRITABLE_DIR:
+elif "/scratch" in WRITABLE_DIR or "131.174" in hst:
     # Configuration for http://ewbd.science.ru.nl/
     # Also works for http://e-wbd.nl
     APP_PREFIX = ""
