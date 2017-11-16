@@ -11,7 +11,9 @@ from django.db import transaction
 from django.db import models
 from django.db.models import Q
 from datetime import datetime
+import time
 from wbd.settings import APP_PREFIX, MEDIA_ROOT
+from wbd.utils import *
 import os
 import sys
 import io
@@ -27,42 +29,6 @@ MAX_LEMMA_LEN = 100
 
 
 # ============================= LOCAL CLASSES ======================================
-class ErrHandle:
-    """Error handling"""
-
-    # ======================= CLASS INITIALIZER ========================================
-    def __init__(self):
-        # Initialize a local error stack
-        self.loc_errStack = []
-
-    # ----------------------------------------------------------------------------------
-    # Name :    Status
-    # Goal :    Just give a status message
-    # History:
-    # 6/apr/2016    ERK Created
-    # ----------------------------------------------------------------------------------
-    def Status(self, msg):
-        # Just print the message
-        print(msg, file=sys.stderr)
-
-    # ----------------------------------------------------------------------------------
-    # Name :    DoError
-    # Goal :    Process an error
-    # History:
-    # 6/apr/2016    ERK Created
-    # ----------------------------------------------------------------------------------
-    def DoError(self, msg, bExit = False):
-        # Append the error message to the stack we have
-        self.loc_errStack.append(msg)
-        # Print the error message for the user
-        print("Error: "+msg+"\nSystem:", file=sys.stderr)
-        for nErr in sys.exc_info():
-            if (nErr != None):
-                print(nErr, file=sys.stderr)
-        # Is this a fatal error that requires exiting?
-        if (bExit):
-            sys.exit(2)
-
 errHandle = ErrHandle()
 
 class FieldChoice(models.Model):
@@ -78,6 +44,9 @@ class FieldChoice(models.Model):
 
     class Meta:
         ordering = ['field','machine_value']
+
+def get_now_time():
+    return time.clock()
 
 def build_choice_list(field):
     """Create a list of choice-tuples"""
@@ -344,30 +313,36 @@ class Description(models.Model):
         return iPk
 
     def get_item(self):
-        # Get the parameters
-        bronnenlijst = self['bronnenlijst']
-        boek = self['boek']
-        toelichting = ""
-        if 'toelichting' in self:
-            toelichting = self['toelichting']
-        # Try find an existing item
-        lstQ = []
-        lstQ.append(Q(bronnenlijst__iexact=bronnenlijst))
-        lstQ.append(Q(boek__iexact=boek))
-        lstQ.append(Q(toelichting__iexact=toelichting))
-        qItem = Description.objects.filter(*lstQ).first()
-        # see if we get one value back
-        if qItem == None:
-            # add a new Description object
-            descr = Description(bronnenlijst=bronnenlijst, boek=boek, toelichting=toelichting)
-            descr.save()
-            iPk = descr.pk
-        else:
-            # Get the pk of the first hit
-            iPk = qItem.pk
+        oErr = ErrHandle()
+        try:
+            # Get the parameters
+            bronnenlijst = self['bronnenlijst']
+            boek = self['boek']
+            toelichting = ""
+            if 'toelichting' in self:
+                toelichting = self['toelichting']
+            # Try find an existing item
+            lstQ = []
+            lstQ.append(Q(bronnenlijst__iexact=bronnenlijst))
+            lstQ.append(Q(boek__iexact=boek))
+            lstQ.append(Q(toelichting__iexact=toelichting))
+            qItem = Description.objects.filter(*lstQ).first()
+            # see if we get one value back
+            if qItem == None:
+                # add a new Description object
+                descr = Description(bronnenlijst=bronnenlijst, boek=boek, toelichting=toelichting)
+                descr.save()
+                iPk = descr.pk
+                qItem = descr
+            else:
+                # Get the pk of the first hit
+                iPk = qItem.pk
 
-        # Return the result
-        return iPk
+            # Return the result
+            return iPk, qItem
+        except:
+            oErr.DoError("Description/get_item error:")
+            return -1, None
 
 
 class Lemma(models.Model):
@@ -393,19 +368,24 @@ class Lemma(models.Model):
         return iPk
 
     def get_item(self):
-        # Get the parameters
-        gloss = self['gloss']
+        oErr = ErrHandle()
         try:
-            qItem = Lemma.objects.get(gloss__iexact=gloss)
-            # Get the pk of the first hit
-            iPk = qItem.pk
-        except ObjectDoesNotExist:
-            lemma = Lemma(gloss=gloss)
-            lemma.save()
-            iPk = lemma.pk
+            # Get the parameters
+            gloss = self['gloss']
+            try:
+                lemma = Lemma.objects.get(gloss__iexact=gloss)
+                # Get the pk of the first hit
+                iPk = lemma.pk
+            except ObjectDoesNotExist:
+                lemma = Lemma(gloss=gloss)
+                lemma.save()
+                iPk = lemma.pk
 
-        # Return the result
-        return iPk
+            # Return the result
+            return iPk, lemma
+        except:
+            oErr.DoError("Lemma/get_item error:")
+            return -1, None
 
 
 class LemmaDescr(models.Model):
@@ -415,27 +395,33 @@ class LemmaDescr(models.Model):
     description=models.ForeignKey(Description, on_delete=models.CASCADE)
 
     def get_item(self):
-        # Get the parameters
-        lemma = self['lemma']
-        description = self['description']
-        # Try find an existing item
-        lstQ = []
-        lstQ.append(Q(lemma=lemma))
-        lstQ.append(Q(description=description))
-        qItem = LemmaDescr.objects.filter(*lstQ).first()
-        # see if we get one value back
-        if qItem == None:
-            # add a new Description object
-            # lemdescr = LemmaDescr(lemma=Lemma.objects.get(id=lemma), description=Description.objects.get(id=description))
-            lemdescr = LemmaDescr(lemma=Lemma, description=description)
-            lemdescr.save()
-            iPk = lemdescr.pk
-        else:
-            # Get the pk of the first hit
-            iPk = qItem.pk
+        oErr = ErrHandle()
+        try:
+            # Get the parameters
+            lemma = self['lemma']
+            description = self['description']
+            # Try find an existing item
+            lstQ = []
+            lstQ.append(Q(lemma=lemma))
+            lstQ.append(Q(description=description))
+            qItem = LemmaDescr.objects.filter(*lstQ).first()
+            # see if we get one value back
+            if qItem == None:
+                # add a new Description object
+                # lemdescr = LemmaDescr(lemma=Lemma.objects.get(id=lemma), description=Description.objects.get(id=description))
+                lemdescr = LemmaDescr(lemma=lemma, description=description)
+                lemdescr.save()
+                iPk = lemdescr.pk
+                qItem = lemdescr
+            else:
+                # Get the pk of the first hit
+                iPk = qItem.pk
 
-        # Return the result
-        return iPk
+            # Return the result
+            return iPk
+        except:
+            oErr.DoError("LemmaDescr/get_item error:")
+            return -1
     
 
 class Dialect(models.Model):
@@ -465,26 +451,31 @@ class Dialect(models.Model):
         return iPk
 
     def get_item(self):
-        # Get the parameters
-        stad = self['stad']
-        nieuw = self['nieuw']
-        # Try find an existing item
-        lstQ = []
-        lstQ.append(Q(stad__iexact=stad))
-        lstQ.append(Q(nieuw__iexact=nieuw))
-        qItem = Dialect.objects.filter(*lstQ).first()
-        # see if we get one value back
-        if qItem == None:
-            # add a new Dialect object
-            dialect = Dialect(stad=stad, nieuw=nieuw, code='-')
-            dialect.save()
-            iPk = dialect.pk
-        else:
-            # Get the pk of the first hit
-            iPk = qItem.pk
+        oErr = ErrHandle()
+        try:
+            # Get the parameters
+            stad = self['stad']
+            nieuw = self['nieuw']
+            # Try find an existing item
+            lstQ = []
+            lstQ.append(Q(stad__iexact=stad))
+            lstQ.append(Q(nieuw__iexact=nieuw))
+            qItem = Dialect.objects.filter(*lstQ).first()
+            # see if we get one value back
+            if qItem == None:
+                # add a new Dialect object
+                dialect = Dialect(stad=stad, nieuw=nieuw, code='-')
+                dialect.save()
+                iPk = dialect.pk
+            else:
+                # Get the pk of the first hit
+                iPk = qItem.pk
 
-        # Return the result
-        return iPk
+            # Return the result
+            return iPk
+        except:
+            oErr.DoError("Dialect/get_item error:")
+            return -1
 
 
 class Trefwoord(models.Model):
@@ -512,30 +503,35 @@ class Trefwoord(models.Model):
         return iPk
 
     def get_item(self):
-        toelichting = None
-        # Get the parameters
-        woord = self['woord']
-        # Try find an existing item
-        lstQ = []
-        lstQ.append(Q(woord__iexact=woord))
-        if 'toelichting' in self:
-            toelichting = self['toelichting']
-            lstQ.append(Q(toelichting__iexact = toelichting))
-        qItem = Trefwoord.objects.filter(*lstQ).first()
-        # see if we get one value back
-        if qItem == None:
-            # add a new Dialect object
-            trefwoord = Trefwoord(woord=woord)
-            if toelichting != None:
-                trefwoord.toelichting = toelichting
-            trefwoord.save()
-            iPk = trefwoord.pk
-        else:
-            # Get the pk of the first hit
-            iPk = qItem.pk
+        oErr = ErrHandle()
+        try:
+            toelichting = None
+            # Get the parameters
+            woord = self['woord']
+            # Try find an existing item
+            lstQ = []
+            lstQ.append(Q(woord__iexact=woord))
+            if 'toelichting' in self:
+                toelichting = self['toelichting']
+                lstQ.append(Q(toelichting__iexact = toelichting))
+            qItem = Trefwoord.objects.filter(*lstQ).first()
+            # see if we get one value back
+            if qItem == None:
+                # add a new Dialect object
+                trefwoord = Trefwoord(woord=woord)
+                if toelichting != None:
+                    trefwoord.toelichting = toelichting
+                trefwoord.save()
+                iPk = trefwoord.pk
+            else:
+                # Get the pk of the first hit
+                iPk = qItem.pk
 
-        # Return the result
-        return iPk
+            # Return the result
+            return iPk
+        except:
+            oErr.DoError("Trefwoord/get_item error:")
+            return -1
 
 
 class Deel(models.Model):
@@ -669,27 +665,32 @@ class Aflevering(models.Model):
         return iPk
 
     def get_item(self):
-        # Get the parameters
-        deel = self['deel']
-        sectie = self['sectie']
-        aflnum = self['aflnum']
-        # Try find an existing item
-        lstQ = []
-        lstQ.append(Q(deel__nummer__iexact=deel))
-        lstQ.append(Q(aflnum__iexact=aflnum))
-        if sectie != None:
-            lstQ.append(Q(sectie__iexact = sectie))
-        qItem = Aflevering.objects.filter(*lstQ).first()
-        # see if we get one value back
-        if qItem == None:
-            # We cannot add a new item
-            iPk = -1
-        else:
-            # Get the pk of the first hit
-            iPk = qItem.pk
+        oErr = ErrHandle()
+        try:
+            # Get the parameters
+            deel = self['deel']
+            sectie = self['sectie']
+            aflnum = self['aflnum']
+            # Try find an existing item
+            lstQ = []
+            lstQ.append(Q(deel__nummer__iexact=deel))
+            lstQ.append(Q(aflnum__iexact=aflnum))
+            if sectie != None:
+                lstQ.append(Q(sectie__iexact = sectie))
+            qItem = Aflevering.objects.filter(*lstQ).first()
+            # see if we get one value back
+            if qItem == None:
+                # We cannot add a new item
+                iPk = -1
+            else:
+                # Get the pk of the first hit
+                iPk = qItem.pk
 
-        # Return the result
-        return iPk
+            # Return the result
+            return iPk
+        except:
+            oErr.DoError("Aflevering/get_item error:")
+            return -1
 
 
 class Mijn(models.Model):
@@ -889,8 +890,6 @@ class EntryMijn(models.Model):
 
         # Return the result
         return iPk
-    
-
 
 
 # ============================= Fixture Database Classes ===========================
@@ -1185,7 +1184,7 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
     sVersie = ""    # The version we are using--this depends on the column names
     sDict = "wbd"   # The dictionary we are working for: wld, wbd, 
     bUsdDbaseMijnen = False
-
+    oErr = ErrHandle()
 
     try:
         # Retrieve the correct instance of the status object
@@ -1267,7 +1266,8 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
             oStatus.set_status("loading keywords")
             oTrefwoord.load(Trefwoord.objects.all())
 
-            oStatus.set_status("loading lemma-descriptions")
+            iSize = LemmaDescr.objects.all().count()
+            oStatus.set_status("loading {} lemma-descriptions ".format(iSize))
             oLemmaDescr.load(LemmaDescr.objects.all())
 
             oStatus.set_status("loading descriptions")
@@ -1325,10 +1325,12 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
                 if str(iDeel).isnumeric(): iDeel = int(iDeel)
                 if str(iSectie).isnumeric(): iSectie = int(iSectie)
                 if str(iAflevering).isnumeric(): iAflevering = int(iAflevering)
-                if iSectie == None or iSectie == "":
-                    oAfl = Aflevering.objects.filter(deel__nummer=iDeel, aflnum=iAflevering).first()
-                else:
-                    oAfl = Aflevering.objects.filter(deel__nummer=iDeel, sectie=iSectie, aflnum=iAflevering).first()
+                lstQ = []
+                lstQ.append(Q(deel__nummer=iDeel))
+                lstQ.append(Q(aflnum=iAflevering))
+                if iSectie != None and iSectie != "":
+                    lstQ.append(Q(sectie=iSectie))
+                oAfl = Aflevering.objects.filter(*lstQ).first()
                 iPkAflevering = oAfl.pk
 
                 # Open source file to read line-by-line
@@ -1351,6 +1353,13 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
                     # The WBD doesn't have any mijnen
                     bDoMijnen = False
 
+                # Time measurements: keep track of time used in different parts
+                oTime = {}
+                oTime['read'] = 0   # time to read the source file
+                oTime['db'] = 0     # Time spent in reading and saving database items
+                oTime['entry'] = 0  # Processing entries
+
+
                 # Iterate through the lines of the CSV file
                 while (not bEnd):
                     # Show where we are
@@ -1358,12 +1367,14 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
                     if iCounter % 1000 == 0:
                         errHandle.Status("Processing: " + str(iCounter))
                     # Read one line
+                    iStarttime = get_now_time()
                     strLine = f.readline()
                     if (strLine == ""):
                         bEnd = True
                         break
                     strLine = str(strLine)
                     strLine = strLine.strip(" \n\r")
+                    oTime['read'] += get_now_time() - iStarttime
                     # Only process substantial lines
                     if (strLine != ""):
                         # Split the line into parts
@@ -1379,6 +1390,7 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
                             # Check if the line starts correctly
                             if sVersie != 'Lemmanummer' and sVersie != "lemma.name":
                                 # The first line does not start correctly -- return false
+                                oErr.DoError("csv_to_fixture: cannot process version [{}]".format(sVersie))
                                 return oBack
                             # Indicate that the first item has been had
                             bFirst = False
@@ -1393,47 +1405,52 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
 
 
                             if bUseDbase:
-                                # Find out which lemma this is
-                                sLemma = oLine['lemma_name']
-                                if sLemma != sLastLemma:
-                                    iPkLemma = Lemma.get_item({'gloss': sLemma})
-                                    sLastLemma = sLemma
+                                # Try to do all of this within one actual transation
+                                iStarttime = get_now_time()
+                                with transaction.atomic():
+                                    # Find out which lemma this is
+                                    sLemma = oLine['lemma_name']
+                                    if sLemma != sLastLemma:
+                                        iPkLemma, lemma_this = Lemma.get_item({'gloss': sLemma})
+                                        sLastLemma = sLemma
 
-                                # Find out which lemma-description this is
-                                iPkDescr = Description.get_item({'bronnenlijst': oLine['lemma_bronnenlijst'],
-                                                                 'toelichting': oLine['lemma_toelichting'], 
-                                                                 'boek': oLine['lemma_boek']})
+                                    # Find out which lemma-description this is
+                                    iPkDescr, descr_this = Description.get_item({'bronnenlijst': oLine['lemma_bronnenlijst'],
+                                                                     'toelichting': oLine['lemma_toelichting'], 
+                                                                     'boek': oLine['lemma_boek']})
 
-                                # Add the [iPkDescr] to the LemmaDescr--but only if it is not already there
-                                iPkLemmaDescr = LemmaDescr.get_item({'lemma': iPkLemma,
-                                                                     'description': iPkDescr})
+                                    # Add the [iPkDescr] to the LemmaDescr--but only if it is not already there
+                                    iPkLemmaDescr = LemmaDescr.get_item({'lemma': lemma_this,
+                                                                         'description': descr_this})
 
-                                # Find out which dialect this is
-                                if oLine['dialect_kloeke'] != None and oLine['dialect_kloeke'] != "":
-                                    iPkDialect = Dialect.get_item({'stad': oLine['dialect_stad'], 
-                                                                    'nieuw': oLine['dialect_nieuw'],
-                                                                    'code': oLine['dialect_kloeke']})
-                                    # Note: removed 'dialect_toelichting' in accordance with issue #22 of WLD
-                                else:
-                                    iPkDialect = Dialect.get_item({'stad': oLine['dialect_stad'], 
-                                                                    'nieuw': oLine['dialect_nieuw']})
+                                    # Find out which dialect this is
+                                    if oLine['dialect_kloeke'] != None and oLine['dialect_kloeke'] != "":
+                                        iPkDialect = Dialect.get_item({'stad': oLine['dialect_stad'], 
+                                                                        'nieuw': oLine['dialect_nieuw'],
+                                                                        'code': oLine['dialect_kloeke']})
+                                        # Note: removed 'dialect_toelichting' in accordance with issue #22 of WLD
+                                    else:
+                                        iPkDialect = Dialect.get_item({'stad': oLine['dialect_stad'], 
+                                                                        'nieuw': oLine['dialect_nieuw']})
 
-                                # Find out which trefwoord this is
-                                sTwToel = oLine['trefwoord_toelichting']
-                                if sTwToel == None or sTwToel == "":
-                                    if sLastTwToel != "" or sLastTw != sTrefWoord:
-                                        iPkTrefwoord = Trefwoord.get_item({'woord': sTrefWoord})
-                                        sLastTw = sTrefWoord
-                                        sLastTwToel = ""
-                                else:
-                                    if sLastTw != sTrefWoord or sLastTwToel != sTwToel:
-                                        iPkTrefwoord = Trefwoord.get_item({'woord': sTrefWoord,
-                                                                       'toelichting': sTwToel})
-                                        sLastTw = sTrefWoord
-                                        sLastTwToel = sTwToel
+                                    # Find out which trefwoord this is
+                                    sTwToel = oLine['trefwoord_toelichting']
+                                    if sTwToel == None or sTwToel == "":
+                                        if sLastTwToel != "" or sLastTw != sTrefWoord:
+                                            iPkTrefwoord = Trefwoord.get_item({'woord': sTrefWoord})
+                                            sLastTw = sTrefWoord
+                                            sLastTwToel = ""
+                                    else:
+                                        if sLastTw != sTrefWoord or sLastTwToel != sTwToel:
+                                            iPkTrefwoord = Trefwoord.get_item({'woord': sTrefWoord,
+                                                                           'toelichting': sTwToel})
+                                            sLastTw = sTrefWoord
+                                            sLastTwToel = sTwToel
+                                oTime['db'] += get_now_time() - iStarttime
 
                             else:
                                 # Get a lemma number from this
+                                iStarttime = get_now_time()
                                 # NOTE: assume 2 = toelichting 
                                 iPkLemma = oFix.get_pk(oLemma, "dictionary.lemma", True,
                                                        gloss=oLine['lemma_name'])
@@ -1471,12 +1488,21 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
                                     iPkTrefwoord = oFix.get_pk(oTrefwoord, "dictionary.trefwoord", True,
                                                                woord=sTrefWoord,
                                                                toelichting=sTwToel)
+                                # Keep track of the time
+                                oTime['db'] += get_now_time() - iStarttime
+                            # Check validity
+                            if iPkDescr < 0 or iPkLemma < 0 or iPkLemmaDescr < 0 or iPkDialect < 0 or iPkTrefwoord < 0:
+                                # Something has gone wrong: we cannot continue
+                                oStatus.set_status("error")
+                                errHandle.DoError("csv_to_fixture has a negative index", True)
+                                return oBack
 
                             # Process the ENTRY
                             sDialectWoord = oLine['dialectopgave_name']
                             # Make sure that I use my OWN continuous [pk] for Entry
                             iPkEntry += 1
                             # Do *NOT* use the Entry PK that is returned 
+                            iStarttime = get_now_time()
                             iDummy = oFix.get_pk(oEntry, "dictionary.entry", False,
                                                    pk=iPkEntry,
                                                    woord=sDialectWoord,
@@ -1486,6 +1512,7 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
                                                    dialect=iPkDialect,
                                                    trefwoord=iPkTrefwoord,
                                                    aflevering=iPkAflevering)
+                            oTime['entry'] += get_now_time() - iStarttime
 
                             if bDoMijnen:
                                 if bUseDbase and bUsdDbaseMijnen:
@@ -1520,7 +1547,7 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
                     # Keep track of progress
                     oStatus.skipped = iSkipped
                     oStatus.read = iRead
-                    oStatus.status = sWorking
+                    oStatus.status = "{} (read={:.3f}, db={:.3f}, entry={:.3f})".format(sWorking, oTime['read'], oTime['db'], oTime['entry'])
                     oStatus.save()
 
 
