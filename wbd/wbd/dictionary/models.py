@@ -1426,7 +1426,7 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
                 sProcessed = oInfo.processed
 
             # Determine whether we will process this item or not
-            bDoThisItem = (sProcessed == "")
+            bDoThisItem = (sProcessed == "" and (iDeel>0 or iSectie>0 or iAflevering>0))
 
             if bDoThisItem:
                 # Make sure 'NONE' sectie is turned into an empty string
