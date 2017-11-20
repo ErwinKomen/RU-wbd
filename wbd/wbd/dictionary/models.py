@@ -25,6 +25,7 @@ import json
 
 MAX_IDENTIFIER_LEN = 10
 MAX_LEMMA_LEN = 100
+MAX_TITEL_LEN = 255
 # oCsvImport = {'read': 0, 'skipped': 0, 'status': 'idle', 'method': 'none'}
 
 
@@ -662,7 +663,7 @@ class Deel(models.Model):
         verbose_name_plural = "Delen"
 
     # Titel van dit deel
-    titel = models.CharField("Volledige titel", blank=False, max_length=MAX_LEMMA_LEN, default="(unknown)")
+    titel = models.CharField("Volledige titel", blank=False, max_length=MAX_TITEL_LEN, default="(unknown)")
     # Nummer van dit deel
     nummer = models.IntegerField("Nummer", blank=False, default=0)
     # Allow for comments for this 'deel'
@@ -741,9 +742,9 @@ class Aflevering(models.Model):
     # The authors for this book
     auteurs = models.CharField("Auteurs", blank=False, max_length=MAX_LEMMA_LEN, default="(unknown)")
     # The title of this aflevering
-    afltitel = models.CharField("Boektitel", blank=False, max_length=MAX_LEMMA_LEN, default="(unknown)")
+    afltitel = models.CharField("Boektitel", blank=False, max_length=MAX_TITEL_LEN, default="(unknown)")
     # The title of this sectie
-    sectietitel = models.CharField("Sectietitel", blank=True, max_length=MAX_LEMMA_LEN, default="")
+    sectietitel = models.CharField("Sectietitel", blank=True, max_length=MAX_TITEL_LEN, default="")
     # The place(s) of publication
     plaats = models.CharField("Plaats van publicatie", blank=False, max_length=MAX_LEMMA_LEN, default="(unknown)")
     # Any additional information
@@ -859,6 +860,8 @@ class Entry(models.Model):
 
     # Lemma: obligatory
     lemma = models.ForeignKey(Lemma, db_index=True, blank=False)
+    # Description: this description should be one and the same for a whole lemma, but this is not true in practice
+    descr = models.ForeignKey(Description, db_index=True, blank=False)
     # Dialect: obligatory
     dialect = models.ForeignKey(Dialect, db_index=True, blank=False)
     # Trefwoord: obligatory
@@ -1644,6 +1647,7 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
                                                    toelichting=oLine['dialectopgave_toelichting'],
                                                    kloeketoelichting=oLine['dialectopgave_kloeketoelichting'],
                                                    lemma=iPkLemma,
+                                                   descr=iPkDescr,     # This is the Description that in principle is valid for the whole lemma, but not in practice
                                                    dialect=iPkDialect,
                                                    trefwoord=iPkTrefwoord,
                                                    aflevering=iPkAflevering)

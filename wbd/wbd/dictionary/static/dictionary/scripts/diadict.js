@@ -169,6 +169,29 @@ function do_search(el, sName, sType) {
 }
 
 /**
+ * do_additional
+ * Goal: show or hide additional locations
+ * @returns {bool}
+ */
+function do_additional(el) {
+    try {
+        var bOptVal = $(el).is(":checked");
+        if (bOptVal) {
+            $(".lemma-word-dialect-additional").removeClass("hidden");
+            $(".lemma-word-dialect-dots").addClass("hidden");
+        } else {
+            $(".lemma-word-dialect-additional").addClass("hidden");
+            $(".lemma-word-dialect-dots").removeClass("hidden");
+        }
+
+        // Make sure we return positively
+        return true;
+    } catch (ex) {
+        errMsg("do_additional", ex);
+        return false;
+    }
+}
+/**
  * Goal: change dialect choice
  * @returns {bool}
  */
@@ -199,6 +222,7 @@ function do_dialect(el) {
         return true;
     } catch (ex) {
         errMsg("do_dialect", ex);
+        return false;
     }
 
 }

@@ -260,3 +260,14 @@ table tbody tr:hover {
 #header  .navbar-custom  .open .dropdown-menu li  a:visited {
   color: black !important;
 }
+
+/* Nieuw toegevoegd voor e-WBD */
+.filter-summary {
+  font-family: monospace, serif;
+  color: darkblue;
+}
+.filter-item {
+  background-color: lightgray;
+  border-radius: 3px 4px;
+  margin: 2px 2px 2px 2px;
+}

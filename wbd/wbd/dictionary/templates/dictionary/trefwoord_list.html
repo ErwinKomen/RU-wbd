@@ -85,14 +85,21 @@
             <div class="row"><table><tr><td>&nbsp;</td></tr></table></div>
             <div class="panel panel-default">
 
-              <div class="panel-heading" data-toggle="collapse" data-target="#query-area">Filteren...</div>
+              <div class="panel-heading" data-toggle="collapse" data-target="#query-area">
+                <span>Filteren...</span>
+                <span class="filter-summary">
+                  <span class="filter-item">{% if searchform.lemma.value %}begrip={{searchform.lemma.value}}{% endif %}</span>
+                  <span class="filter-item">{% if searchform.dialectwoord.value %}woord={{searchform.dialectwoord.value}}{% endif %}</span>
+                  <span class="filter-item">{% if searchform.toelichting.value %}woord={{searchform.toelichting.value}}{% endif %}</span>
+                  <span class="filter-item">{% if searchform.dialectCity.value %}plaats={{searchform.dialectCity.value}}{% endif %}</span>
+                  <span class="filter-item">{% if searchform.dialectCode.value %}dialect={{searchform.dialectCode.value}}{% endif %}</span>
+                  <span class="filter-item">{% if afl %}aflevering={{afl}}{% endif %}</span>
+                </span>
+              </div>
 
               <!-- class="collapse" -->
               <div id="query-area" class="collapse {% if not request.GET.search %} inert {% endif %}">
-
-
                 <div id='searchformwell' class='well search-results-collapsable'>
-
                     <table class='table'>
                         <tr>
                           <td>
@@ -116,14 +123,6 @@
                               <label class='input-group-addon' for='id_toelichting'>{{searchform.toelichting.label}}</label>
                               <input name='toelichting' class='form-control' {% if searchform.toelichting.value %}value='{{searchform.toelichting.value}}'{% endif %}>
                             </div>
-                            <div><label>&nbsp;</label></div>
-                            <div class="input-group">
-                              <label class='input-group-addon' for='strict'>{{searchform.strict.label}}</label>
-                              <select class="form-control" name="strict">
-                                  <option value="False" {% if strict == 'False' %} selected {% endif %}>Nee</option>
-                                  <option value="True" {% if strict == 'True' %} selected {% endif %}>Ja</option>
-                              </select>
-                            </div>
                           </td>
                           <td>
                             <div class='input-group'>
@@ -145,26 +144,10 @@
                                 {% endfor %}
                               </select>
                             </div>
-                            <div><label>&nbsp;</label></div>
-                            <div class='input-group'>
-                              <label class='input-group-addon' for='mijn'>{{searchform.mijn.label}}</label>
-                              <select class='form-control' name="mijn">
-                                  <option value="0">-</option>
-                                {% for opt in mijnen %}
-                                  <option  {% if opt.id == mijnkeuze %} selected {% endif %} value="{{opt.id}}">{{opt.naam}}</option>
-                                {% endfor %}
-                              </select>
-                            </div>
 
                           </td>
                         </tr>
-
                     </table>
-
-
-
-
-
               </div>
             </div>
             </div>
@@ -203,13 +186,16 @@
                 <span class="lemma-word">{{item.entry.dialectopgave}}</span>
                 <span> (</span>
               {% endif %}
-              {% if item.entry.toelichting != "" %}<span class="lemma-word-toelichting">{{item.entry.toelichting}} </span>{% endif %}
-              {% if item.entry.dialect.nieuw != "Q000" %}
-              <span class="lemma-word-dialect">
+              {% if item.entry.dialect.nieuw != "Q000" %}                
+              <span class="lemma-word-dialect{% if not item.dialectopgave.first %}-additional hidden{% endif %}">
+                {% if item.entry.toelichting != "" %}<span class="lemma-word-toelichting">{{item.entry.toelichting}} </span>{% endif %}
                 <span class="lemma-word-dialect-code hidden">{{item.entry.dialect.nieuw}}</span>
                 <span class="lemma-word-dialect-space hidden">&nbsp;</span>
                 <span class="lemma-word-dialect-stad">{{item.entry.dialect.stad}}</span>
                 {% if not item.dialectopgave.last %}<span>, </span>{% endif %}
+                {% if item.dialectopgave.first and not item.dialectopgave.last %}
+                  <span class="lemma-word-dialect-dots">...</span>
+                {% endif %}
               </span>
               {% endif %}
               {% if item.entry.mijnlijst.count > 0 %}

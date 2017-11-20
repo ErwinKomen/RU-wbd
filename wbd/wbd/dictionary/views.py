@@ -29,7 +29,8 @@ from wbd.settings import APP_PREFIX, WSGI_FILE
 # Global variables
 paginateSize = 10
 paginateEntries = 100
-paginateValues = (1000, 500, 250, 100, 50, 40, 30, 20, 10, )
+# OLD: paginateValues = (1000, 500, 250, 100, 50, 40, 30, 20, 10, )
+paginateValues = (50, 20, 10, 5, 2, 1, )
 outputColumns = ['begrip', 'trefwoord', 'dialectopgave', 'Kloekecode', 'aflevering']
 
 # General help functions
@@ -438,8 +439,11 @@ class TrefwoordListView(ListView):
 
     model = Trefwoord
     template_name = 'dictionary/trefwoord_list.html'
-    paginate_by = paginateEntries # paginateSize
+    # paginate_by = paginateEntries
+    paginate_by = paginateSize
     entrycount = 0
+    bUseMijnen = False  # Limburg uses mijnen, Brabant not
+    bWbdApproach = True # Filter using the WBD approach
     qEntry = None
     qs = None
     strict = True      # Use strict filtering
@@ -475,6 +479,11 @@ class TrefwoordListView(ListView):
         # Call the base implementation first to get a context
         context = super(TrefwoordListView, self).get_context_data(**kwargs)
 
+        # Action depends on the approach
+        if self.bWbdApproach:
+            # Need to adapt the object_list to get the entries to be used
+            context['object_list'] = self.get_entryset(context['page_obj'])
+
         # Get parameters for the search
         initial = self.request.GET
         if initial is None:
@@ -490,15 +499,23 @@ class TrefwoordListView(ListView):
         else:
             context['paginateSize'] = self.paginate_by  # paginateSize
 
-        # Try to retain the choice for Aflevering and Mijn
-        if 'mijn' in initial:
-            context['mijnkeuze'] = int(initial['mijn'])
-        else:
-            context['mijnkeuze'] = 0
+        if self.bUseMijnen:
+            # Try to retain the choice for Mijn
+            if 'mijn' in initial:
+                context['mijnkeuze'] = int(initial['mijn'])
+            else:
+                context['mijnkeuze'] = 0
+        # Process and retain the choice for Aflevering
         if 'aflevering' in initial:
             context['aflkeuze'] = int(initial['aflevering'])
+            afl = Aflevering.objects.filter(id=context['aflkeuze']).first()
+            if afl == None:
+                context['afl'] = ''
+            else:
+                context['afl'] = afl.get_summary()
         else:
             context['aflkeuze'] = 0
+            context['afl'] = ''
 
         # Get possible user choice of 'strict'
         if 'strict' in initial:
@@ -586,43 +603,20 @@ class TrefwoordListView(ListView):
         Paginate by specified value in querystring, or use default class property value.
         """
         return self.request.GET.get('paginate_by', self.paginate_by)
-        
-    def get_queryset(self):
 
-        # Get the parameters passed on with the GET request
-        get = self.request.GET
-
-        # Get possible user choice of 'strict'
-        if 'strict' in get:
-            self.strict = (get['strict'] == "True")
-
+    def get_entryset(self, page_obj):
         lstQ = []
         bHasSearch = False
         bHasFilter = False
 
-        # Fine-tuning: search string is the LEMMA
-        if 'search' in get and get['search'] != '':
-            val = adapt_search(get['search'])
-            # Use the 'woord' attribute of Trefwoord
-            lstQ.append(Q(woord__iregex=val) )
-            bHasSearch = True
+        # Retrieve the set of trefwoorden from the page_obj
+        trefw_list = [item.id for item in page_obj]
 
-            # check for possible exact numbers having been given
-            if re.match('^\d+$', val):
-                lstQ.append(Q(sn__exact=val))
+        # Initialize the filtering
+        lstQ.append(Q(trefwoord__id__in=trefw_list))
 
-        # Check for 'toelichting'
-        if 'toelichting' in get and get['toelichting'] != '':
-            val = adapt_search(get['toelichting'])
-            # Try to get to the 'toelichting'
-            lstQ.append(Q(toelichting__iregex=val))
-            bHasSearch = True
-
-        if self.strict:
-            # Get the set of Trefwoord elements belonging to the selected Trefwoord/toelichting-elements
-            trefw = Trefwoord.objects.filter(*lstQ)
-            lstQ.clear()
-            lstQ.append(Q(trefwoord__id__in=trefw))
+        # Get the parameters passed on with the GET request
+        get = self.request.GET
 
         # Check for dialectwoord
         if 'dialectwoord' in get and get['dialectwoord'] != '':
@@ -678,7 +672,7 @@ class TrefwoordListView(ListView):
                     bHasFilter = True
 
         # Check for mijn
-        if 'mijn' in get and get['mijn'] != '':
+        if self.bUseMijnen and 'mijn' in get and get['mijn'] != '':
             # What we get should be a number
             val = get['mijn']
             if val.isdigit():
@@ -690,33 +684,203 @@ class TrefwoordListView(ListView):
                         lstQ.append(Q(entry__mijnlijst__id=iVal))
                     bHasFilter = True
 
-        # Make the QSE available
-        if self.strict:     # and (bHasSearch or bHasFilter):
-            # Order: "trefwoord_woord", "lemma_gloss", "dialectopgave", "dialect_stad"
-            if bHasFilter or bHasSearch:
-                qse = Entry.objects.filter(*lstQ).select_related().order_by(
-                  Lower('trefwoord__woord'), 
-                  Lower('lemma__gloss'),  
-                  Lower('woord'), 
-                  Lower('dialect__stad'))
-            else:
-                qse = Entry.objects.all().select_related().order_by(
-                  Lower('trefwoord__woord'), 
-                  Lower('lemma__gloss'),  
-                  Lower('woord'), 
-                  Lower('dialect__stad'))
-            self.qEntry = qse
-            self.qs = trefw
-        else:
-            #if self.strict:
-            #    # Make sure to reset strict
-            #    # self.strict = False
-            #    lstQ = []
-            #    self.paginate_by  = paginateSize
-            qse = Trefwoord.objects.filter(*lstQ).distinct().select_related().order_by(Lower('woord'))
-            self.qEntry = None
-            self.qs = qse
+        # Order: "trefwoord_woord", "lemma_gloss", "dialectopgave", "dialect_stad"
+        # Make sure we apply the filter
+        qse = Entry.objects.filter(*lstQ).distinct().select_related().order_by(
+            Lower('trefwoord__woord'), 
+            Lower('lemma__gloss'),  
+            Lower('woord'), 
+            Lower('dialect__stad'))
+        self.qEntry = qse
+        return qse
+        
+    def get_queryset(self):
 
+        # Get the parameters passed on with the GET request
+        get = self.request.GET
+
+        # Get possible user choice of 'strict'
+        if 'strict' in get:
+            self.strict = (get['strict'] == "True")
+
+        lstQ = []
+        bHasSearch = False
+        bHasFilter = False
+
+        # Fine-tuning: search string is the LEMMA
+        if 'search' in get and get['search'] != '':
+            val = adapt_search(get['search'])
+            # Use the 'woord' attribute of Trefwoord
+            lstQ.append(Q(woord__iregex=val) )
+            bHasSearch = True
+
+            # check for possible exact numbers having been given
+            if re.match('^\d+$', val):
+                lstQ.append(Q(sn__exact=val))
+
+        # Check for 'toelichting'
+        if 'toelichting' in get and get['toelichting'] != '':
+            val = adapt_search(get['toelichting'])
+            # Try to get to the 'toelichting'
+            lstQ.append(Q(toelichting__iregex=val))
+            bHasSearch = True
+
+        if self.bWbdApproach:
+            # Check for dialectwoord
+            if 'dialectwoord' in get and get['dialectwoord'] != '':
+                val = adapt_search(get['dialectwoord'])
+                # Adapt Entry filter
+                lstQ.append(Q(entry__woord__iregex=val))
+                bHasFilter = True
+
+            # Check for lemma
+            if 'lemma' in get and get['lemma'] != '':
+                val = adapt_search(get['lemma'])
+                # Adapt Entry filter
+                lstQ.append(Q(entry__lemma__gloss__iregex=val))
+                bHasFilter = True
+
+            # Check for dialect city
+            if 'dialectCity' in get and get['dialectCity'] != '':
+                val = adapt_search(get['dialectCity'])
+                # Adapt Entry filter
+                lstQ.append(Q(entry__dialect__stad__iregex=val))
+                bHasFilter = True
+
+            # Check for dialect code (Kloeke)
+            if 'dialectCode' in get and get['dialectCode'] != '':
+                val = adapt_search(get['dialectCode'])
+                # Adapt Entry filter
+                lstQ.append(Q(entry__dialect__nieuw__iregex=val))
+                bHasFilter = True
+
+            # Check for aflevering
+            if 'aflevering' in get and get['aflevering'] != '':
+                # What we get should be a number
+                val = get['aflevering']
+                if val.isdigit():
+                    iVal = int(val)
+                    if iVal>0:
+                        lstQ.append(Q(entry__aflevering__id=iVal))
+                        bHasFilter = True
+
+            # Check for mijn
+            if self.bUseMijnen and 'mijn' in get and get['mijn'] != '':
+                # What we get should be a number
+                val = get['mijn']
+                if val.isdigit():
+                    iVal = int(val)
+                    if iVal>0:
+                        lstQ.append(Q(entry__mijnlijst__id=iVal))
+                        bHasFilter = True
+            
+            # Use the E-WBD approach: be efficient here
+            #  (Only ordering by word is needed here)
+            qse = Trefwoord.objects.filter(*lstQ).distinct().select_related().order_by(
+                Lower('woord'))
+
+        else:
+            if self.strict:
+                # Get the set of Trefwoord elements belonging to the selected Trefwoord/toelichting-elements
+                trefw = Trefwoord.objects.filter(*lstQ)
+                lstQ.clear()
+                lstQ.append(Q(trefwoord__id__in=trefw))
+
+            # Check for dialectwoord
+            if 'dialectwoord' in get and get['dialectwoord'] != '':
+                val = adapt_search(get['dialectwoord'])
+                # Adapt Entry filter
+                if self.strict:
+                    lstQ.append(Q(woord__iregex=val))
+                else:
+                    lstQ.append(Q(entry__woord__iregex=val))
+                bHasFilter = True
+
+            # Check for lemma
+            if 'lemma' in get and get['lemma'] != '':
+                val = adapt_search(get['lemma'])
+                # Adapt Entry filter
+                if self.strict:
+                    lstQ.append(Q(lemma__gloss__iregex=val))
+                else:
+                    lstQ.append(Q(entry__lemma__gloss__iregex=val))
+                bHasFilter = True
+
+            # Check for dialect city
+            if 'dialectCity' in get and get['dialectCity'] != '':
+                val = adapt_search(get['dialectCity'])
+                # Adapt Entry filter
+                if self.strict:
+                    lstQ.append(Q(dialect__stad__iregex=val))
+                else:
+                    lstQ.append(Q(entry__dialect__stad__iregex=val))
+                bHasFilter = True
+
+            # Check for dialect code (Kloeke)
+            if 'dialectCode' in get and get['dialectCode'] != '':
+                val = adapt_search(get['dialectCode'])
+                # Adapt Entry filter
+                if self.strict:
+                    lstQ.append(Q(dialect__nieuw__iregex=val))
+                else:
+                    lstQ.append(Q(entry__dialect__nieuw__iregex=val))
+                bHasFilter = True
+
+            # Check for aflevering
+            if 'aflevering' in get and get['aflevering'] != '':
+                # What we get should be a number
+                val = get['aflevering']
+                if val.isdigit():
+                    iVal = int(val)
+                    if iVal>0:
+                        if self.strict:
+                            lstQ.append(Q(aflevering__id=iVal))
+                        else:
+                            lstQ.append(Q(entry__aflevering__id=iVal))
+                        bHasFilter = True
+
+            # Check for mijn
+            if 'mijn' in get and get['mijn'] != '':
+                # What we get should be a number
+                val = get['mijn']
+                if val.isdigit():
+                    iVal = int(val)
+                    if iVal>0:
+                        if self.strict:
+                            lstQ.append(Q(mijnlijst__id=iVal))
+                        else:
+                            lstQ.append(Q(entry__mijnlijst__id=iVal))
+                        bHasFilter = True
+
+            # Make the QSE available
+            if self.strict:     # and (bHasSearch or bHasFilter):
+                # Order: "trefwoord_woord", "lemma_gloss", "dialectopgave", "dialect_stad"
+                if bHasFilter or bHasSearch:
+                    qse = Entry.objects.filter(*lstQ).select_related().order_by(
+                      Lower('trefwoord__woord'), 
+                      Lower('lemma__gloss'),  
+                      Lower('woord'), 
+                      Lower('dialect__stad'))
+                else:
+                    qse = Entry.objects.all().select_related().order_by(
+                      Lower('trefwoord__woord'), 
+                      Lower('lemma__gloss'),  
+                      Lower('woord'), 
+                      Lower('dialect__stad'))
+                self.qEntry = qse
+                self.qs = trefw
+            else:
+                #if self.strict:
+                #    # Make sure to reset strict
+                #    # self.strict = False
+                #    lstQ = []
+                #    self.paginate_by  = paginateSize
+                qse = Trefwoord.objects.filter(*lstQ).distinct().select_related().order_by(Lower('woord'))
+                self.qEntry = None
+                self.qs = qse
+
+        # Note the number of ITEMS we have
+        #   (The nature of these items depends on the approach taken)
         self.entrycount = qse.count()
 
         return qse
@@ -728,8 +892,11 @@ class LemmaListView(ListView):
     model = Lemma
     # context_object_name = 'lemma'    
     template_name = 'dictionary/lemma_list.html'
-    paginate_by = paginateEntries # paginateSize
+    # paginate_by = paginateEntries
+    paginate_by = paginateSize
     entrycount = 0
+    bUseMijnen = False  # Limburg uses mijnen, Brabant not
+    bWbdApproach = True # Filter using the WBD approach
     qEntry = None
     qs = None
     strict = True      # Use strict filtering
@@ -771,6 +938,11 @@ class LemmaListView(ListView):
         # Call the base implementation first to get a context
         context = super(LemmaListView, self).get_context_data(**kwargs)
 
+        # Action depends on the approach
+        if self.bWbdApproach:
+            # Need to adapt the object_list to get the entries to be used
+            context['object_list'] = self.get_entryset(context['page_obj'])
+
         # Get parameters for the search
         initial = self.request.GET
         if initial is None:
@@ -796,15 +968,23 @@ class LemmaListView(ListView):
         else:
             context['paginateSize'] = self.paginate_by
 
-        # Try to retain the choice for Aflevering and Mijn
-        if 'mijn' in initial:
-            context['mijnkeuze'] = int(initial['mijn'])
-        else:
-            context['mijnkeuze'] = 0
+        if self.bUseMijnen:
+            # Try to retain the choice for Mijn
+            if 'mijn' in initial:
+                context['mijnkeuze'] = int(initial['mijn'])
+            else:
+                context['mijnkeuze'] = 0
+        # Process and retain the choice for Aflevering
         if 'aflevering' in initial:
             context['aflkeuze'] = int(initial['aflevering'])
+            afl = Aflevering.objects.filter(id=context['aflkeuze']).first()
+            if afl == None:
+                context['afl'] = ''
+            else:
+                context['afl'] = afl.get_summary()
         else:
             context['aflkeuze'] = 0
+            context['afl'] = ''
 
         # Set the prefix
         context['app_prefix'] = APP_PREFIX
@@ -897,35 +1077,19 @@ class LemmaListView(ListView):
         """
         return self.request.GET.get('paginate_by', self.paginate_by)
         
-    def get_queryset(self):
-
-        # Get the parameters passed on with the GET request
-        get = self.request.GET
-
-        # Get possible user choice of 'strict'
-        if 'strict' in get:
-            self.strict = (get['strict'] == "True")
-
+    def get_entryset(self, page_obj):
         lstQ = []
         bHasSearch = False
         bHasFilter = False
 
-        # Fine-tuning: search string is the LEMMA
-        if 'search' in get and get['search'] != '':
-            val = adapt_search(get['search'])
-            lstQ.append(Q(gloss__iregex=val) )
-            bHasSearch = True
+        # Retrieve the set of trefwoorden from the page_obj
+        lemma_list = [item.id for item in page_obj]
 
-            # check for possible exact numbers having been given
-            if re.match('^\d+$', val):
-                lstQ.append(Q(sn__exact=val))
- 
-        if self.strict:
-            # Get the set of Lemma elements that have been defined by "search"
-            lemmas = Lemma.objects.filter(*lstQ)
-            # Prepare the Entry filter
-            lstQ.clear()
-            lstQ.append(Q(lemma__id__in=lemmas))
+        # Initialize the filtering
+        lstQ.append(Q(lemma__id__in=lemma_list))
+
+        # Get the parameters passed on with the GET request
+        get = self.request.GET
 
         # Check for dialect city
         if 'dialectCity' in get and get['dialectCity'] != '':
@@ -981,32 +1145,169 @@ class LemmaListView(ListView):
                     bHasFilter = True
 
         # Make the QSE available
-        if self.strict:  # and (bHasSearch or bHasFilter):
-            # Order: "lemma_gloss", "trefwoord_woord", "dialectopgave", "dialect_stad"
-            if (bHasSearch or bHasFilter):
-                qse = Entry.objects.filter(*lstQ).select_related().order_by(
-                  Lower('lemma__gloss'),  
-                  Lower('trefwoord__woord'), 
-                  Lower('woord'), 
-                  Lower('dialect__stad'))
-            else:
-                qse = Entry.objects.all().select_related().order_by(
-                  Lower('lemma__gloss'),  
-                  Lower('trefwoord__woord'), 
-                  Lower('woord'), 
-                  Lower('dialect__stad'))
-            self.qEntry = qse
-            self.qs = lemmas
-        else:
-            #if self.strict:
-            #    # Make sure to reset strict
-            #    # self.strict = False
-            #    lstQ = []
-            #    self.paginate_by  = paginateSize
-            qse = Lemma.objects.filter(*lstQ).distinct().select_related().order_by(Lower('gloss'))
-            self.qEntry = None
-            self.qs = qse
+        # Order: "lemma_gloss", "trefwoord_woord", "dialectopgave", "dialect_stad"
+        qse = Entry.objects.filter(*lstQ).distinct().select_related().order_by(
+            Lower('lemma__gloss'),  
+            Lower('trefwoord__woord'), 
+            Lower('woord'), 
+            Lower('dialect__stad'))
+        self.qEntry = qse
+        return qse
 
+    def get_queryset(self):
+
+        # Get the parameters passed on with the GET request
+        get = self.request.GET
+
+        # Get possible user choice of 'strict'
+        if 'strict' in get:
+            self.strict = (get['strict'] == "True")
+
+        lstQ = []
+        bHasSearch = False
+        bHasFilter = False
+
+        # Fine-tuning: search string is the LEMMA
+        if 'search' in get and get['search'] != '':
+            val = adapt_search(get['search'])
+            lstQ.append(Q(gloss__iregex=val) )
+            bHasSearch = True
+
+            # check for possible exact numbers having been given
+            if re.match('^\d+$', val):
+                lstQ.append(Q(sn__exact=val))
+ 
+        if self.bWbdApproach:
+            # Check for dialect city
+            if 'dialectCity' in get and get['dialectCity'] != '':
+                val = adapt_search(get['dialectCity'])
+                lstQ.append(Q(entry__dialect__stad__iregex=val))
+                bHasFilter = True
+
+            # Check for dialect code (Kloeke)
+            if 'dialectCode' in get and get['dialectCode'] != '':
+                val = adapt_search(get['dialectCode'])
+                lstQ.append(Q(entry__dialect__nieuw__iregex=val))
+                bHasFilter = True
+
+            # Check for dialect word, which is a direct member of Entry
+            if 'woord' in get and get['woord'] != '':
+                val = adapt_search(get['woord'])
+                lstQ.append(Q(entry__woord__iregex=val))
+                bHasFilter = True
+
+            # Check for aflevering
+            if 'aflevering' in get and get['aflevering'] != '':
+                # What we get should be a number
+                val = get['aflevering']
+                if val.isdigit():
+                    iVal = int(val)
+                    if iVal>0:
+                        lstQ.append(Q(entry__aflevering__id=iVal))
+                        bHasFilter = True
+
+            # Check for mijn
+            if self.bUseMijnen and  'mijn' in get and get['mijn'] != '':
+                # What we get should be a number
+                val = get['mijn']
+                if val.isdigit():
+                    iVal = int(val)
+                    if iVal>0:
+                        lstQ.append(Q(entry__mijnlijst__id=iVal))
+                        bHasFilter = True
+
+            # Use the E-WBD approach: be efficient here
+            qse = Lemma.objects.filter(*lstQ).distinct().order_by(Lower('gloss'))
+        else:
+            if self.strict:
+                # Get the set of Lemma elements that have been defined by "search"
+                lemmas = Lemma.objects.filter(*lstQ)
+                # Prepare the Entry filter
+                lstQ.clear()
+                lstQ.append(Q(lemma__id__in=lemmas))
+
+            # Check for dialect city
+            if 'dialectCity' in get and get['dialectCity'] != '':
+                val = adapt_search(get['dialectCity'])
+                if self.strict:
+                    lstQ.append(Q(dialect__stad__iregex=val))
+                else:
+                    lstQ.append(Q(entry__dialect__stad__iregex=val))
+                bHasFilter = True
+
+            # Check for dialect code (Kloeke)
+            if 'dialectCode' in get and get['dialectCode'] != '':
+                val = adapt_search(get['dialectCode'])
+                if self.strict:
+                    lstQ.append(Q(dialect__nieuw__iregex=val))
+                else:
+                    lstQ.append(Q(entry__dialect__nieuw__iregex=val))
+                bHasFilter = True
+
+            # Check for dialect word, which is a direct member of Entry
+            if 'woord' in get and get['woord'] != '':
+                val = adapt_search(get['woord'])
+                if self.strict:
+                    lstQ.append(Q(woord__iregex=val))
+                else:
+                    lstQ.append(Q(entry__woord__iregex=val))
+                bHasFilter = True
+
+            # Check for aflevering
+            if 'aflevering' in get and get['aflevering'] != '':
+                # What we get should be a number
+                val = get['aflevering']
+                if val.isdigit():
+                    iVal = int(val)
+                    if iVal>0:
+                        if self.strict:
+                            lstQ.append(Q(aflevering__id=iVal))
+                        else:
+                            lstQ.append(Q(entry__aflevering__id=iVal))
+                        bHasFilter = True
+
+            # Check for mijn
+            if 'mijn' in get and get['mijn'] != '':
+                # What we get should be a number
+                val = get['mijn']
+                if val.isdigit():
+                    iVal = int(val)
+                    if iVal>0:
+                        if self.strict:
+                            lstQ.append(Q(mijnlijst__id=iVal))
+                        else:
+                            lstQ.append(Q(entry__mijnlijst__id=iVal))
+                        bHasFilter = True
+
+            # Make the QSE available
+            if self.strict:  # and (bHasSearch or bHasFilter):
+                # Order: "lemma_gloss", "trefwoord_woord", "dialectopgave", "dialect_stad"
+                if (bHasSearch or bHasFilter):
+                    qse = Entry.objects.filter(*lstQ).select_related().order_by(
+                      Lower('lemma__gloss'),  
+                      Lower('trefwoord__woord'), 
+                      Lower('woord'), 
+                      Lower('dialect__stad'))
+                else:
+                    qse = Entry.objects.all().select_related().order_by(
+                      Lower('lemma__gloss'),  
+                      Lower('trefwoord__woord'), 
+                      Lower('woord'), 
+                      Lower('dialect__stad'))
+                self.qEntry = qse
+                self.qs = lemmas
+            else:
+                #if self.strict:
+                #    # Make sure to reset strict
+                #    # self.strict = False
+                #    lstQ = []
+                #    self.paginate_by  = paginateSize
+                qse = Lemma.objects.filter(*lstQ).distinct().select_related().order_by(Lower('gloss'))
+                self.qEntry = None
+                self.qs = qse
+
+        # Note the number of ITEMS we have
+        #   (The nature of these items depends on the approach taken)
         self.entrycount = qse.count()
 
         # Return the resulting filtered and sorted queryset
