@@ -897,6 +897,7 @@ class LemmaListView(ListView):
     entrycount = 0
     bUseMijnen = False  # Limburg uses mijnen, Brabant not
     bWbdApproach = True # Filter using the WBD approach
+    bDoTime = True      # Measure time
     qEntry = None
     qs = None
     strict = True      # Use strict filtering
@@ -932,7 +933,11 @@ class LemmaListView(ListView):
             return export_html(self.get_qs(), 'begrippen')
 
         else:
-            return super(LemmaListView, self).render_to_response(context, **response_kwargs)
+            iStart = get_now_time()
+            oRendered = super(LemmaListView, self).render_to_response(context, **response_kwargs)
+            # Show what the render-time was
+            print("LemmaListView render time: {:.1f}".format(get_now_time() - iStart))
+            return oRendered
 
     def get_context_data(self, **kwargs):
         # Call the base implementation first to get a context
@@ -940,8 +945,15 @@ class LemmaListView(ListView):
 
         # Action depends on the approach
         if self.bWbdApproach:
+            # Start collecting context time
+            if self.bDoTime: iStart = get_now_time()
             # Need to adapt the object_list to get the entries to be used
             context['object_list'] = self.get_entryset(context['page_obj'])
+            if self.bDoTime:
+                print("LemmaListView get_entryset: {:.1f}".format( get_now_time() - iStart))
+
+        # Start collecting context time
+        if self.bDoTime: iStart = get_now_time()
 
         # Get parameters for the search
         initial = self.request.GET
@@ -996,11 +1008,15 @@ class LemmaListView(ListView):
         context['afleveringen'] = [afl for afl in Aflevering.objects.all()]
         context['mijnen'] = [mijn for mijn in Mijn.objects.all().order_by('naam')]
 
-        # If we are in 'strict' mode, we need to deliver the [qlist]
+        if self.bDoTime:
+            print("LemmaListView context part 1: {:.1f}".format( get_now_time() - iStart))
+
+        # If we are in 'strict' mode, we need to deliver the [qlist] and its subsidiaries
         if self.strict:
+
             # Transform the paginated queryset into a dict sorted by Dialect/Aflevering
             lAflev = self.get_qafl(context)
-
+            lastDescr = None
             # Get a list with 'first' and 'last' values for each item in the current paginated queryset
             lEntry = self.get_qlist(context)
             # Add the sorted-dialect information to lEntry
@@ -1008,17 +1024,27 @@ class LemmaListView(ListView):
                 # Start or Finish dialect information
                 if item['lemma_gloss']['first']:
                     qsa = []
+                    # start a list of all lemma-descriptions taken from the entries belonging to one particular lemma
+                    lemma_descr_list = []
                 # All: add this entry
                 qsa.append(lAflev[idx])
+                # If not already present: add description
+                iDescrId = item['entry'].descr.id
+                if iDescrId not in lemma_descr_list:
+                    lemma_descr_list.append(iDescrId)
                 if item['lemma_gloss']['last']:
                     # COpy the list of Entry elements sorted by Lemma/Aflevering here
                     lEntry[idx]['alist'] = qsa
-                    lEntry[idx]['dlist'] = self.get_qdescr(item['entry'])
+                    # OLD: lEntry[idx]['dlist'] = self.get_qdescr(item['entry'])
+                    lEntry[idx]['dlist'] = self.get_qdescrlist(lemma_descr_list)
                 else:
                     lEntry[idx]['alist'] = None
                     lEntry[idx]['dlist'] = None
 
             context['qlist'] = lEntry
+        # Finish measuring context time
+        if self.bDoTime:
+            print("LemmaListView context: {:.1f}".format( get_now_time() - iStart))
 
         # Return the calculated context
         return context
@@ -1057,12 +1083,25 @@ class LemmaListView(ListView):
         return lAfl            
 
     def get_qdescr(self, entry):
-        """Sort the paginated QS by Lemma/lmdescr.toelichting into a list"""
+        """OLD: Sort the paginated QS by Lemma/lmdescr.toelichting into a list"""
 
         # Get the sorted set of [lmdescr] objects for this lemma
         qsd = []
         # Walk through the query set
         for d in entry.lemma.lmdescr.order_by(Lower('toelichting'), Lower('bronnenlijst')): qsd.append(d)
+        # Prepare for processing
+        lVarsD = ["descr", "bronnen"]
+        lFunsD = [["toelichting"], ["bronnenlijst"]]
+        # Create a list of the items
+        lDescr = get_item_list(lVarsD, lFunsD, qsd)
+        # Return the result
+        return lDescr            
+      
+    def get_qdescrlist(self, descr_id_list):
+        """Sort the paginated QS by Lemma/lmdescr.toelichting into a list"""
+
+        # Make a query that gets the indicated id's
+        qsd = Description.objects.filter(Q(id__in=descr_id_list)).order_by(Lower('toelichting'), Lower('bronnenlijst'))
         # Prepare for processing
         lVarsD = ["descr", "bronnen"]
         lFunsD = [["toelichting"], ["bronnenlijst"]]
@@ -1083,10 +1122,14 @@ class LemmaListView(ListView):
         bHasFilter = False
 
         # Retrieve the set of trefwoorden from the page_obj
-        lemma_list = [item.id for item in page_obj]
+        if self.bDoTime: iStart = get_now_time()
+        lemma_list = [item.id for item in page_obj.object_list]
+        if self.bDoTime: print("LemmaListView get_entryset part 1: {:.1f}".format(get_now_time() - iStart))
 
+        if self.bDoTime: iStart = get_now_time()
         # Initialize the filtering
         lstQ.append(Q(lemma__id__in=lemma_list))
+        # lstQ.append(Q(lemma__id__in=page_obj))
 
         # Get the parameters passed on with the GET request
         get = self.request.GET
@@ -1144,17 +1187,25 @@ class LemmaListView(ListView):
                         lstQ.append(Q(entry__mijnlijst__id=iVal))
                     bHasFilter = True
 
+        if self.bDoTime: print("LemmaListView get_entryset part 2: {:.1f}".format(get_now_time() - iStart))
+
         # Make the QSE available
         # Order: "lemma_gloss", "trefwoord_woord", "dialectopgave", "dialect_stad"
+        if self.bDoTime: iStart = get_now_time()
         qse = Entry.objects.filter(*lstQ).distinct().select_related().order_by(
             Lower('lemma__gloss'),  
             Lower('trefwoord__woord'), 
             Lower('woord'), 
             Lower('dialect__stad'))
+        if self.bDoTime: print("LemmaListView get_entryset part 3: {:.1f}".format(get_now_time() - iStart))
+
         self.qEntry = qse
         return qse
 
     def get_queryset(self):
+        # Measure how long it takes
+        if self.bDoTime:
+            iStart = get_now_time()
 
         # Get the parameters passed on with the GET request
         get = self.request.GET
@@ -1217,7 +1268,7 @@ class LemmaListView(ListView):
                         bHasFilter = True
 
             # Use the E-WBD approach: be efficient here
-            qse = Lemma.objects.filter(*lstQ).distinct().order_by(Lower('gloss'))
+            qse = Lemma.objects.filter(*lstQ).distinct().select_related().order_by(Lower('gloss'))
         else:
             if self.strict:
                 # Get the set of Lemma elements that have been defined by "search"
@@ -1309,6 +1360,15 @@ class LemmaListView(ListView):
         # Note the number of ITEMS we have
         #   (The nature of these items depends on the approach taken)
         self.entrycount = qse.count()
+
+        # Time measurement
+        if self.bDoTime:
+            print("LemmaListView get_queryset: {:.1f}".format( get_now_time() - iStart))
+
+        # Testing the waters: get a list of lemma's right here (before doing pagination)
+        if self.bDoTime: iStart = get_now_time()
+        self.lemma_id_list = qse.values_list('id', flat=True) # qse.values('id')
+        if self.bDoTime: print("LemmaListView get_queryset values: {:.1f}".format( get_now_time() - iStart))
 
         # Return the resulting filtered and sorted queryset
         return qse

@@ -271,3 +271,9 @@ table tbody tr:hover {
   border-radius: 3px 4px;
   margin: 2px 2px 2px 2px;
 }
+.filter-item:hover {
+  background-color: lightyellow;
+  color: darkred;
+  border-radius: 3px 4px;
+  margin: 2px 2px 2px 2px;
+}

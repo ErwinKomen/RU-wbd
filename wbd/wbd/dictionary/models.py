@@ -1440,6 +1440,7 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
 
                 sWorking = "working {}/{}/{}".format(iDeel, iSectie, iAflevering)
                 oStatus.set_status(sWorking)
+                oErr.Status(sWorking)
 
                 # Create an output file writer
                 # Basename: derive from filename
