@@ -572,8 +572,8 @@ class TrefwoordListView(ListView):
         # Start the output
         html = []
         # Initialize the variables whose changes are important
-        lVars = ["trefwoord_woord", "lemma_gloss", "dialectopgave", "dialect_stad"]
-        lFuns = [["trefwoord", "woord"], ["lemma", "gloss"], Entry.dialectopgave, ["dialect", "stad"]]
+        lVars = ["trefwoord_woord", "lemma_gloss", "toelichting", "dialectopgave", "dialect_stad"]
+        lFuns = [["trefwoord", "woord"], ["lemma", "gloss"], Entry.get_toelichting, Entry.dialectopgave, ["dialect", "stad"]]
         # Get a list of items containing 'first' and 'last' information
         lItem = get_item_list(lVars, lFuns, qs)
         # REturn this list
@@ -689,6 +689,7 @@ class TrefwoordListView(ListView):
         qse = Entry.objects.filter(*lstQ).distinct().select_related().order_by(
             Lower('trefwoord__woord'), 
             Lower('lemma__gloss'),  
+            Lower('toelichting'),
             Lower('woord'), 
             Lower('dialect__stad'))
         self.qEntry = qse
@@ -897,10 +898,11 @@ class LemmaListView(ListView):
     entrycount = 0
     bUseMijnen = False  # Limburg uses mijnen, Brabant not
     bWbdApproach = True # Filter using the WBD approach
+    bNewOrder = True    # Use the new order (see issue #22 of the RU-wld)
     bDoTime = True      # Measure time
     qEntry = None
     qs = None
-    strict = True      # Use strict filtering
+    strict = True      # Use strict filtering ALWAYS
 
     def get_qs(self):
         """Get the Entry elements that are selected"""
@@ -1057,8 +1059,8 @@ class LemmaListView(ListView):
         # Start the output
         html = []
         # Initialize the variables whose changes are important
-        lVars = ["lemma_gloss", "trefwoord_woord", "dialectopgave", "dialect_stad"]
-        lFuns = [["lemma", "gloss"], ["trefwoord", "woord"], Entry.dialectopgave, ["dialect", "stad"]]
+        lVars = ["lemma_gloss", "trefwoord_woord", "toelichting", "dialectopgave", "dialect_stad"]
+        lFuns = [["lemma", "gloss"], ["trefwoord", "woord"], Entry.get_toelichting, Entry.dialectopgave, ["dialect", "stad"]]
         # Get a list of items containing 'first' and 'last' information
         lItem = get_item_list(lVars, lFuns, qs)
         # REturn this list
@@ -1192,11 +1194,19 @@ class LemmaListView(ListView):
         # Make the QSE available
         # Order: "lemma_gloss", "trefwoord_woord", "dialectopgave", "dialect_stad"
         if self.bDoTime: iStart = get_now_time()
-        qse = Entry.objects.filter(*lstQ).distinct().select_related().order_by(
-            Lower('lemma__gloss'),  
-            Lower('trefwoord__woord'), 
-            Lower('woord'), 
-            Lower('dialect__stad'))
+        if self.bNewOrder:
+            qse = Entry.objects.filter(*lstQ).distinct().select_related().order_by(
+                Lower('lemma__gloss'),  
+                Lower('trefwoord__woord'), 
+                Lower('toelichting'), 
+                Lower('woord'), 
+                Lower('dialect__stad'))
+        else:
+            qse = Entry.objects.filter(*lstQ).distinct().select_related().order_by(
+                Lower('lemma__gloss'),  
+                Lower('trefwoord__woord'), 
+                Lower('woord'), 
+                Lower('dialect__stad'))
         if self.bDoTime: print("LemmaListView get_entryset part 3: {:.1f}".format(get_now_time() - iStart))
 
         self.qEntry = qse

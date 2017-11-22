@@ -892,6 +892,9 @@ class Entry(models.Model):
             sWoord = self.woord
         return sWoord
 
+    def get_toelichting(self):
+        return self.toelichting
+
     def get_aflevering(self):
         afl = self.aflevering
         sAfl = "d" + str(afl.deel.nummer) + "-"

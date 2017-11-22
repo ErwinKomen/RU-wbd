@@ -86,7 +86,11 @@ table tbody tr:hover {
 
 .lemma-word-toelichting, .trefwoord-word-toelichting {
     background-color: lightyellow;
-    font-size: smaller;
+    /* font-size: smaller; */
+}
+.word-kloeketoelichting {
+  background-color: lightblue;
+  font-size: smaller;
 }
 
 .lemma-word-dialect-code {
