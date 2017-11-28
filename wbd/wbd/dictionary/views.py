@@ -28,6 +28,7 @@ from wbd.settings import APP_PREFIX, WSGI_FILE
 
 # Global variables
 paginateSize = 10
+paginateLocations = 1
 paginateEntries = 100
 # OLD: paginateValues = (1000, 500, 250, 100, 50, 40, 30, 20, 10, )
 paginateValues = (50, 20, 10, 5, 2, 1, )
@@ -1395,14 +1396,17 @@ class LocationListView(ListView):
     """Listview of locations"""
 
     model = Dialect     # The LocationListView uses [Dialect]
-    paginate_by = paginateEntries # paginateSize
-    # paginate_by = 10    # Default pagination number
     template_name = 'dictionary/location_list.html'
+    # paginate_by = paginateEntries # paginateSize
+    paginate_by = paginateLocations    # Default pagination number SPECIFICALLY for dialects (1)
     entrycount = 0      # Number of items in queryset (whether Entry or Dialect!!)
+    bUseMijnen = False  # Limburg uses mijnen, Brabant not
+    bWbdApproach = True # Filter using the WBD approach
+    bNewOrder = True    # Use the new order (see issue #22 of the RU-wld)
     qEntry = None       # Current queryset as restricted to ENTRY
     qAll = None         # Ordered queryset of ALL
     qs = None           # Current queryset (for speeding up)
-    strict = True      # Use strict filtering
+    strict = True       # Use strict filtering ALWAYS
 
     def get_qs(self):
         """Get the Entry elements that are selected"""
@@ -1441,6 +1445,11 @@ class LocationListView(ListView):
         # Call the base implementation first to get a context
         context = super(LocationListView, self).get_context_data(**kwargs)
 
+        # Action depends on the approach
+        if self.bWbdApproach:
+            # Need to adapt the object_list to get the entries to be used
+            context['object_list'] = self.get_entryset(context['page_obj'])
+
         # Get parameters for the search
         initial = self.request.GET
         search_form = DialectSearchForm(initial)
@@ -1458,6 +1467,7 @@ class LocationListView(ListView):
 
         # Set the afleveringen that are available
         context['afleveringen'] = [afl for afl in Aflevering.objects.all()]
+
         context['mijnen'] = [mijn for mijn in Mijn.objects.all().order_by('naam')]
 
         if 'paginate_by' in initial:
@@ -1467,14 +1477,21 @@ class LocationListView(ListView):
             context['paginateSize'] = self.paginate_by
 
         # Try to retain the choice for Aflevering and Mijn
-        if 'mijn' in initial:
-            context['mijnkeuze'] = int(initial['mijn'])
-        else:
-            context['mijnkeuze'] = 0
+        if self.bUseMijnen:
+            if 'mijn' in initial:
+                context['mijnkeuze'] = int(initial['mijn'])
+            else:
+                context['mijnkeuze'] = 0
         if 'aflevering' in initial:
             context['aflkeuze'] = int(initial['aflevering'])
+            afl = Aflevering.objects.filter(id=context['aflkeuze']).first()
+            if afl == None:
+                context['afl'] = ''
+            else:
+                context['afl'] = afl.get_summary()
         else:
             context['aflkeuze'] = 0
+            context['afl'] = ''
 
         # Set the title of the application
         context['title'] = "e-WBD plaatsen"
@@ -1517,8 +1534,8 @@ class LocationListView(ListView):
         # Start the output
         html = []
         # Initialize the variables whose changes are important
-        lVars = ["dialect_stad", "lemma_gloss", "trefwoord_woord", "dialectopgave"]
-        lFuns = [["dialect", "stad"], ["lemma", "gloss"], ["trefwoord", "woord"], Entry.dialectopgave]
+        lVars = ["dialect_stad", "lemma_gloss", "trefwoord_woord","toelichting", "dialectopgave"]
+        lFuns = [["dialect", "stad"], ["lemma", "gloss"], ["trefwoord", "woord"], Entry.get_toelichting, Entry.dialectopgave]
         # Get a list of items containing 'first' and 'last' information
         lItem = get_item_list(lVars, lFuns, qs)
         # REturn this list
@@ -1549,7 +1566,49 @@ class LocationListView(ListView):
         Paginate by specified value in querystring, or use default class property value.
         """
         return self.request.GET.get('paginate_by', self.paginate_by)
-        
+
+    def get_entryset(self, page_obj):
+        lstQ = []
+        bHasSearch = False
+        bHasFilter = False
+
+        # Initialize the filtering on ENTRY
+        lstQ.append(Q(dialect__id__in=self.dialect_id_list))
+
+        # Get the parameters passed on with the GET request
+        get = self.request.GET
+
+        # Check for aflevering
+        if 'aflevering' in get and get['aflevering'] != '':
+            # What we get should be a number
+            val = get['aflevering']
+            if val.isdigit():
+                iVal = int(val)
+                if iVal>0:
+                    lstQ.append(Q(aflevering__id=iVal) )
+                    bHasFilter = True
+
+        # Check for mijn
+        if self.bUseMijnen and 'mijn' in get and get['mijn'] != '':
+            # What we get should be a number
+            val = get['mijn']
+            if val.isdigit():
+                iVal = int(val)
+                if iVal>0:
+                    lstQ.append(Q(mijnlijst__id=iVal) )
+                    bHasFilter = True
+
+        qse = Entry.objects.filter(*lstQ).distinct().select_related().order_by(
+            Lower('dialect__stad'),
+            Lower('lemma__gloss'),  
+            Lower('trefwoord__woord'), 
+            Lower('toelichting'), 
+            Lower('woord'))
+
+        self.qEntry = qse
+        return qse
+
+       
     def get_queryset(self):
 
         # Get the parameters passed on with the GET request
@@ -1582,81 +1641,104 @@ class LocationListView(ListView):
             lstQ.append(Q(nieuw__iregex=val) )
             bHasSearch = True
 
-        if self.strict:
-            # Get the set of Dialect elements belonging to the selected STAD-elements
-            dialecten = Dialect.objects.filter(*lstQ)
-            # qse = Entry.objects.filter(dialect__id__in=dialecten)
-            lstQ.clear()
-            lstQ.append(Q(dialect__id__in=dialecten))
+        if self.bWbdApproach:
+            # Check for aflevering
+            if 'aflevering' in get and get['aflevering'] != '':
+                # What we get should be a number
+                val = get['aflevering']
+                if val.isdigit():
+                    iVal = int(val)
+                    if iVal>0:
+                        lstQ.append(Q(entry__aflevering__id=iVal) )
+                        bHasFilter = True
 
-        # Check for aflevering
-        if 'aflevering' in get and get['aflevering'] != '':
-            # What we get should be a number
-            val = get['aflevering']
-            if val.isdigit():
-                iVal = int(val)
-                if iVal>0:
-                    #query = Q(entry__aflevering__id=iVal)
-                    #qs = qs.filter(query)
-                    lstQ.append(Q(entry__aflevering__id=iVal) )
-                    bHasFilter = True
+            # Check for mijn
+            if self.bUseMijnen and 'mijn' in get and get['mijn'] != '':
+                # What we get should be a number
+                val = get['mijn']
+                if val.isdigit():
+                    iVal = int(val)
+                    if iVal>0:
+                        lstQ.append(Q(entry__mijnlijst__id=iVal) )
+                        bHasFilter = True
 
-        # Check for mijn
-        if 'mijn' in get and get['mijn'] != '':
-            # What we get should be a number
-            val = get['mijn']
-            if val.isdigit():
-                iVal = int(val)
-                if iVal>0:
-                    #query = Q(entry__mijnlijst__id=iVal)
-                    #qs = qs.filter(query)
-                    lstQ.append(Q(entry__mijnlijst__id=iVal) )
-                    bHasFilter = True
+            # Use the E-WBD approach: be efficient here
+            qs = Dialect.objects.filter(*lstQ).distinct().select_related().order_by(Lower('stad'))
+        else:
+            if self.strict:
+                # Get the set of Dialect elements belonging to the selected STAD-elements
+                dialecten = Dialect.objects.filter(*lstQ)
+                # qse = Entry.objects.filter(dialect__id__in=dialecten)
+                lstQ.clear()
+                lstQ.append(Q(dialect__id__in=dialecten))
 
-        # Implement the choices made by the user
-        if self.strict and ( bHasSearch or bHasFilter):
-            # Any special stuff?
-            if bHasSearch or bHasFilter:
-                # Get all the Entry elements fulfilling the conditions
-                qs = Entry.objects.filter(*lstQ).distinct().select_related().order_by(
-                  Lower('dialect__stad'), 
-                  Lower('lemma__gloss'), 
-                  Lower('trefwoord__woord'), 
-                  Lower('woord'))
-            else:
-                # Get all the Entry elements fulfilling the conditions
-                if self.qAll == None:
-                    qs = Entry.objects.all().select_related().order_by(
+            # Check for aflevering
+            if 'aflevering' in get and get['aflevering'] != '':
+                # What we get should be a number
+                val = get['aflevering']
+                if val.isdigit():
+                    iVal = int(val)
+                    if iVal>0:
+                        lstQ.append(Q(entry__aflevering__id=iVal) )
+                        bHasFilter = True
+
+            # Check for mijn
+            if 'mijn' in get and get['mijn'] != '':
+                # What we get should be a number
+                val = get['mijn']
+                if val.isdigit():
+                    iVal = int(val)
+                    if iVal>0:
+                        lstQ.append(Q(entry__mijnlijst__id=iVal) )
+                        bHasFilter = True
+
+            # Implement the choices made by the user
+            if self.strict and ( bHasSearch or bHasFilter):
+                # Any special stuff?
+                if bHasSearch or bHasFilter:
+                    # Get all the Entry elements fulfilling the conditions
+                    qs = Entry.objects.filter(*lstQ).distinct().select_related().order_by(
                       Lower('dialect__stad'), 
                       Lower('lemma__gloss'), 
                       Lower('trefwoord__woord'), 
                       Lower('woord'))
-                    self.qAll = qs
                 else:
-                    qs = self.qAll
-            # Adjust the settings for this view
-            self.qEntry = qs
-            self.qs = dialecten
-        else:
-            if self.strict:
-                # Make sure to reset strict
-                # self.strict = False
-                lstQ = []
-                self.paginate_by  = paginateSize
-            qs = Dialect.objects.filter(*lstQ).distinct().select_related()
-            # The following doesn't work--the number of items grows
-            #qs = qs.order_by(
-            #  Lower('stad'), 
-            #  Lower('entry__lemma__gloss'),
-            #  Lower('entry__trefwoord__woord'),
-            #  Lower('entry__woord'))
-            qs = qs.order_by(Lower('stad'))
-            # Adjust the settings for this view
-            self.qEntry = None
-            self.qs = qs
-        # qs = qs.distinct()
+                    # Get all the Entry elements fulfilling the conditions
+                    if self.qAll == None:
+                        qs = Entry.objects.all().select_related().order_by(
+                          Lower('dialect__stad'), 
+                          Lower('lemma__gloss'), 
+                          Lower('trefwoord__woord'), 
+                          Lower('woord'))
+                        self.qAll = qs
+                    else:
+                        qs = self.qAll
+                # Adjust the settings for this view
+                self.qEntry = qs
+                self.qs = dialecten
+            else:
+                if self.strict:
+                    # Make sure to reset strict
+                    # self.strict = False
+                    lstQ = []
+                    self.paginate_by  = paginateSize
+                qs = Dialect.objects.filter(*lstQ).distinct().select_related()
+                # The following doesn't work--the number of items grows
+                #qs = qs.order_by(
+                #  Lower('stad'), 
+                #  Lower('entry__lemma__gloss'),
+                #  Lower('entry__trefwoord__woord'),
+                #  Lower('entry__woord'))
+                qs = qs.order_by(Lower('stad'))
+                # Adjust the settings for this view
+                self.qEntry = None
+                self.qs = qs
+            # qs = qs.distinct()
 
         self.entrycount = qs.count()
+
+        # Get a list of locations right here (before doing pagination)
+        self.dialect_id_list = qs.values_list('id', flat = True)
 
         # Return the resulting filtered and sorted queryset
         return qs

@@ -101,7 +101,7 @@
           <tr class="dict-entry">
             <td class="hidden"> {{ dialect.id }}</td>
             <td>
-              <span class="dialect-stad">{{dialect.stad}}</span>
+              <span class="dialect-stad"><a href="{% url 'locationsearch' %}?search={{dialect.stad|urlencode}}">{{dialect.stad}}</a></span>
             </td>
             <td>
               <span class="dialect-nieuw">{{dialect.nieuw}}</span>
