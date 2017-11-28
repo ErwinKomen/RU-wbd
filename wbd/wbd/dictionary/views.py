@@ -166,11 +166,18 @@ def contact(request):
 def about(request):
     """Renders the about page."""
     assert isinstance(request, HttpRequest)
-    return render(
-        request,
-        'dictionary/about.html',
-        {
-            'title':'e-WBD informatie',
+    return render( request, 'dictionary/about.html',
+        {   'title':'e-WBD informatie',
+            'message':'Radboud Universiteit Nijmegen - Dialectenwoordenboek.',
+            'year':datetime.now().year,
+        }
+    )
+
+def guide(request):
+    """Renders the 'guide' page."""
+    assert isinstance(request, HttpRequest)
+    return render( request, 'dictionary/guide.html',
+        {   'title':'e-WBD handleiding',
             'message':'Radboud Universiteit Nijmegen - Dialectenwoordenboek.',
             'year':datetime.now().year,
         }

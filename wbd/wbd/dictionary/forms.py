@@ -54,7 +54,7 @@ class LemmaSearchForm(forms.ModelForm):
     sortOrder = forms.CharField(label=_("Sort Order"), initial="lemma")
     woord = forms.CharField(label=_("Dialectopgave"))
     dialectCode = forms.CharField(label=_("Kloeke code"))
-    dialectCity = forms.CharField(label=_("Stad"))
+    dialectCity = forms.CharField(label=_("Plaats"))
     bronnen = forms.CharField(label=_("Bronnen"))
     optdialect = forms.CharField(label=_("Dialectweergave"))
     aflevering = forms.CharField(label=_("Deel/sectie/aflevering"))
