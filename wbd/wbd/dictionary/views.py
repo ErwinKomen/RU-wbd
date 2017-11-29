@@ -28,10 +28,10 @@ from wbd.settings import APP_PREFIX, WSGI_FILE
 
 # Global variables
 paginateSize = 10
-paginateLocations = 50
+paginateLocations = 2
 paginateEntries = 100
 # OLD: paginateValues = (1000, 500, 250, 100, 50, 40, 30, 20, 10, )
-paginateValues = (250, 100, 50, 20, 10, 5, 2, 1, )
+paginateValues = (100, 50, 20, 10, 5, 2, 1, )
 outputColumns = ['begrip', 'trefwoord', 'dialectopgave', 'Kloekecode', 'aflevering']
 
 # General help functions
@@ -1383,10 +1383,10 @@ class LemmaListView(ListView):
         if self.bDoTime:
             print("LemmaListView get_queryset: {:.1f}".format( get_now_time() - iStart))
 
-        # Testing the waters: get a list of lemma's right here (before doing pagination)
-        if self.bDoTime: iStart = get_now_time()
-        self.lemma_id_list = qse.values_list('id', flat=True) # qse.values('id')
-        if self.bDoTime: print("LemmaListView get_queryset values: {:.1f}".format( get_now_time() - iStart))
+        ## Testing the waters: get a list of lemma's right here (before doing pagination)
+        #if self.bDoTime: iStart = get_now_time()
+        #self.lemma_id_list = qse.values_list('id', flat=True) # qse.values('id')
+        #if self.bDoTime: print("LemmaListView get_queryset values: {:.1f}".format( get_now_time() - iStart))
 
         # Return the resulting filtered and sorted queryset
         return qse
@@ -1398,12 +1398,11 @@ class LocationListView(ListView):
     model = Dialect     # The LocationListView uses [Dialect]
     template_name = 'dictionary/location_list.html'
     # paginate_by = paginateEntries # paginateSize
-    paginate_by = paginateLocations    # Total number of LEMMA's shown (sorted by dialect-lemma-trefwoord and so forth)
+    paginate_by = paginateLocations    # Default pagination number SPECIFICALLY for dialects (1)
     entrycount = 0      # Number of items in queryset (whether Entry or Dialect!!)
     bUseMijnen = False  # Limburg uses mijnen, Brabant not
     bWbdApproach = True # Filter using the WBD approach
     bNewOrder = True    # Use the new order (see issue #22 of the RU-wld)
-    bQsLemma = True     # Use the LEMMA queryset (instead of the DIALECT one)
     qEntry = None       # Current queryset as restricted to ENTRY
     qAll = None         # Ordered queryset of ALL
     qs = None           # Current queryset (for speeding up)
@@ -1574,12 +1573,8 @@ class LocationListView(ListView):
         bHasFilter = False
 
         # Initialize the filtering on ENTRY
-        if self.bQsLemma:
-            # We already know to which lemma's we need to restrict ourselves
-            lstQ.append(Q(lemma__id__in=self.lemma_id_list))
-        else:
-            # We already know to which dialects to restrict ourselves
-            lstQ.append(Q(dialect__id__in=self.dialect_id_list))
+        dialect_list = [item.id for item in page_obj]
+        lstQ.append(Q(dialect__id__in=dialect_list))
 
         # Get the parameters passed on with the GET request
         get = self.request.GET
@@ -1613,7 +1608,8 @@ class LocationListView(ListView):
 
         self.qEntry = qse
         return qse
-             
+
+       
     def get_queryset(self):
 
         # Get the parameters passed on with the GET request
@@ -1632,24 +1628,18 @@ class LocationListView(ListView):
         # Fine-tuning: search string is the STAD
         if 'search' in get and get['search'] != '':
             val = adapt_search(get['search'])
-            if self.bQsLemma:
-                lstQ.append(Q(entry__dialect__stad__iregex=val) )
-            else:
-                lstQ.append(Q(stad__iregex=val) )
+            lstQ.append(Q(stad__iregex=val) )
             bHasSearch = True
 
             # check for possible exact numbers having been given
-            if not self.bQsLemma and re.match('^\d+$', val):
+            if re.match('^\d+$', val):
                 query = query | Q(sn__exact=val)
                 lstQ.append(Q(sn__exact=val))
 
         # Check for dialect code (Kloeke)
         if 'nieuw' in get and get['nieuw'] != '':
             val = adapt_search(get['nieuw'])
-            if self.bQsLemma:
-                lstQ.append(Q(entry__dialect__nieuw__iregex=val) )
-            else:
-                lstQ.append(Q(nieuw__iregex=val) )
+            lstQ.append(Q(nieuw__iregex=val) )
             bHasSearch = True
 
         if self.bWbdApproach:
@@ -1660,7 +1650,6 @@ class LocationListView(ListView):
                 if val.isdigit():
                     iVal = int(val)
                     if iVal>0:
-                        #NOTE: no difference for QsLemma or other method
                         lstQ.append(Q(entry__aflevering__id=iVal) )
                         bHasFilter = True
 
@@ -1671,17 +1660,11 @@ class LocationListView(ListView):
                 if val.isdigit():
                     iVal = int(val)
                     if iVal>0:
-                        #NOTE: no difference for QsLemma or other method
                         lstQ.append(Q(entry__mijnlijst__id=iVal) )
                         bHasFilter = True
 
             # Use the E-WBD approach: be efficient here
-            if self.bQsLemma:
-                # Take LEMMA as the main one (but keep the order on stad)
-                qs = Lemma.objects.filter(*lstQ).distinct().select_related().order_by(Lower('stad'))
-            else:
-                # Take DIALECT as the main one
-                qs = Dialect.objects.filter(*lstQ).distinct().select_related().order_by(Lower('stad'))
+            qs = Dialect.objects.filter(*lstQ).distinct().select_related().order_by(Lower('stad'))
         else:
             if self.strict:
                 # Get the set of Dialect elements belonging to the selected STAD-elements
@@ -1736,33 +1719,17 @@ class LocationListView(ListView):
                 self.qs = dialecten
             else:
                 if self.strict:
-                    # Make sure to reset strict
-                    # self.strict = False
                     lstQ = []
                     self.paginate_by  = paginateSize
-                qs = Dialect.objects.filter(*lstQ).distinct().select_related()
-                # The following doesn't work--the number of items grows
-                #qs = qs.order_by(
-                #  Lower('stad'), 
-                #  Lower('entry__lemma__gloss'),
-                #  Lower('entry__trefwoord__woord'),
-                #  Lower('entry__woord'))
-                qs = qs.order_by(Lower('stad'))
+                qs = Dialect.objects.filter(*lstQ).distinct().select_related().order_by(Lower('stad'))
                 # Adjust the settings for this view
                 self.qEntry = None
                 self.qs = qs
-            # qs = qs.distinct()
 
         self.entrycount = qs.count()
 
         # Get a list of locations right here (before doing pagination)
-        if self.bWbdApproach:
-            if self.bQsLemma:
-                # Create a list of LEMMA ids to be used
-                self.lemma_id_list = qs.values_list('id', flat = True)
-            else:
-                # Create a list of dialect ids
-                self.dialect_id_list = qs.values_list('id', flat = True)
+        # self.dialect_id_list = qs.values_list('id', flat = True)
 
         # Return the resulting filtered and sorted queryset
         return qs
