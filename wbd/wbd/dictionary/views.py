@@ -1574,7 +1574,7 @@ class LocationListView(ListView):
         bHasFilter = False
 
         # Initialize the filtering on ENTRY
-        if bQsLemma:
+        if self.bQsLemma:
             # We already know to which lemma's we need to restrict ourselves
             lstQ.append(Q(lemma__id__in=self.lemma_id_list))
         else:
@@ -1632,21 +1632,21 @@ class LocationListView(ListView):
         # Fine-tuning: search string is the STAD
         if 'search' in get and get['search'] != '':
             val = adapt_search(get['search'])
-            if bQsLemma:
+            if self.bQsLemma:
                 lstQ.append(Q(entry__dialect__stad__iregex=val) )
             else:
                 lstQ.append(Q(stad__iregex=val) )
             bHasSearch = True
 
             # check for possible exact numbers having been given
-            if not bQsLemma and re.match('^\d+$', val):
+            if not self.bQsLemma and re.match('^\d+$', val):
                 query = query | Q(sn__exact=val)
                 lstQ.append(Q(sn__exact=val))
 
         # Check for dialect code (Kloeke)
         if 'nieuw' in get and get['nieuw'] != '':
             val = adapt_search(get['nieuw'])
-            if bQsLemma:
+            if self.bQsLemma:
                 lstQ.append(Q(entry__dialect__nieuw__iregex=val) )
             else:
                 lstQ.append(Q(nieuw__iregex=val) )
@@ -1676,7 +1676,7 @@ class LocationListView(ListView):
                         bHasFilter = True
 
             # Use the E-WBD approach: be efficient here
-            if bQsLemma:
+            if self.bQsLemma:
                 # Take LEMMA as the main one (but keep the order on stad)
                 qs = Lemma.objects.filter(*lstQ).distinct().select_related().order_by(Lower('stad'))
             else:
@@ -1757,7 +1757,7 @@ class LocationListView(ListView):
 
         # Get a list of locations right here (before doing pagination)
         if bWbdApproach:
-            if bQsLemma:
+            if self.bQsLemma:
                 # Create a list of LEMMA ids to be used
                 self.lemma_id_list = qs.values_list('id', flat = True)
             else:
