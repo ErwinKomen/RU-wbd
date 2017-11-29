@@ -1756,7 +1756,7 @@ class LocationListView(ListView):
         self.entrycount = qs.count()
 
         # Get a list of locations right here (before doing pagination)
-        if bWbdApproach:
+        if self.bWbdApproach:
             if self.bQsLemma:
                 # Create a list of LEMMA ids to be used
                 self.lemma_id_list = qs.values_list('id', flat = True)
