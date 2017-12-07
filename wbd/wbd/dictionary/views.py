@@ -1923,6 +1923,8 @@ class DeelListView(ListView):
         # Set the title of the application
         context['title'] = "e-WBD afleveringen"
 
+        context['intro_pdf'] = "wbd-1/2000_Brabantse Dialecten III Inleiding_Compleet.pdf"
+
         # Return the calculated context
         return context
 
