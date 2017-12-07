@@ -21,6 +21,7 @@ import re
 import fnmatch
 import csv
 import codecs
+import copy
 from wbd.dictionary.models import *
 from wbd.dictionary.forms import *
 #from wbd.dictionary.adminviews import order_queryset_by_sort_order
@@ -1079,11 +1080,22 @@ class LemmaListView(ListView):
 
         # REtrieve the correct queryset, as determined by paginate_by
         qs = context['object_list']
-        qsd = []
-        # Walk through the query set
-        for entry in qs: qsd.append(entry)
-        # Now sort the resulting set
-        qsd = sorted(qsd, key=lambda el: el.lemma.gloss + " " + el.get_aflevering())
+        #qsd = []
+        ## Walk through the query set
+        #for entry in qs: qsd.append(entry)
+        #qsd = copy.copy(qs)
+        ## Now sort the resulting set
+        #qsd = sorted(qsd, key=lambda el: el.lemma.gloss + " " + el.get_aflevering())
+
+        # Create a list of entry ids
+        id_list = [item.id for item in qs]
+        # Create the correctly sorted queryset
+        qsd = Entry.objects.filter(Q(id__in=id_list)).select_related().order_by(
+            Lower('lemma__gloss'), 
+            Lower('aflevering__deel__nummer'), 
+            Lower('aflevering__sectie'), 
+            Lower('aflevering__aflnum'))
+
         # Prepare for processing
         lVarsD = ["lem", "afl"]
         lFunsD = [["lemma", "gloss"], Entry.get_aflevering]
