@@ -627,6 +627,12 @@ class TrefwoordListView(ListView):
         # Get the parameters passed on with the GET request
         get = self.request.GET
 
+        # Check for aflevering being publishable
+        if self.strict:
+            lstQ.append(Q(aflevering__toonbaar=True))
+        else:
+            lstQ.append(Q(entry__aflevering__toonbaar=True))
+
         # Check for dialectwoord
         if 'dialectwoord' in get and get['dialectwoord'] != '':
             val = adapt_search(get['dialectwoord'])
@@ -736,6 +742,9 @@ class TrefwoordListView(ListView):
             bHasSearch = True
 
         if self.bWbdApproach:
+            # Can this aflevering be shown??
+            lstQ.append(Q(entry__aflevering__toonbaar=True))
+
             # Check for dialectwoord
             if 'dialectwoord' in get and get['dialectwoord'] != '':
                 val = adapt_search(get['dialectwoord'])
@@ -1209,6 +1218,12 @@ class LemmaListView(ListView):
                         lstQ.append(Q(entry__mijnlijst__id=iVal))
                     bHasFilter = True
 
+        # Make sure we filter on aflevering.toonbaar
+        if self.strict:
+            lstQ.append(Q(aflevering__toonbaar=True))
+        else:
+            lstQ.append(Q(entry__aflevering__toonbaar=True))
+
         if self.bDoTime: print("LemmaListView get_entryset part 2: {:.1f}".format(get_now_time() - iStart))
 
         # Make the QSE available
@@ -1296,6 +1311,9 @@ class LemmaListView(ListView):
                     if iVal>0:
                         lstQ.append(Q(entry__mijnlijst__id=iVal))
                         bHasFilter = True
+
+            # Check for aflevering being publishable
+            lstQ.append(Q(entry__aflevering__toonbaar=True))
 
             # Use the E-WBD approach: be efficient here
             qse = Lemma.objects.filter(*lstQ).distinct().select_related().order_by(Lower('gloss'))
@@ -1588,6 +1606,9 @@ class LocationListView(ListView):
         dialect_list = [item.id for item in page_obj]
         lstQ.append(Q(dialect__id__in=dialect_list))
 
+        # Make sure we filter on aflevering.toonbaar
+        lstQ.append(Q(aflevering__toonbaar=True))
+
         # Get the parameters passed on with the GET request
         get = self.request.GET
 
@@ -1621,7 +1642,6 @@ class LocationListView(ListView):
         self.qEntry = qse
         return qse
 
-       
     def get_queryset(self):
 
         # Get the parameters passed on with the GET request
@@ -1674,6 +1694,9 @@ class LocationListView(ListView):
                     if iVal>0:
                         lstQ.append(Q(entry__mijnlijst__id=iVal) )
                         bHasFilter = True
+
+            # Make sure we filter on aflevering.toonbaar
+            lstQ.append(Q(entry__aflevering__toonbaar=True))
 
             # Use the E-WBD approach: be efficient here
             qs = Dialect.objects.filter(*lstQ).distinct().select_related().order_by(Lower('stad'))
