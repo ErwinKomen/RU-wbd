@@ -91,52 +91,58 @@ def order_queryset_by_sort_order(get, qs, sOrder = 'gloss'):
 def get_item_list(lVar, lFun, qs):
     """Turn the queryset [qs] into a list of Items that have first and last information"""
 
-    # Initialize the variables whose changes are important
-    oVariable = {}
-    for i, key in enumerate(lVar):
-        oVariable[key] = "" # {'name': key, 'fun': lFun[i]}
     lItem = []
-    iLast = len(qs)-1
-    # Iterate over the entries looking for first, last etc
-    for i, entry in enumerate(qs):
-        bIsLastEntry = (i==iLast)
-        oItem = {'entry': entry}
-        for k in lVar:
-            oItem[k] = {'first':False, 'last':False}
-        bIsDict = isinstance(entry, dict)
-        bVarIsLast = False
-        # Check for changes in all the variables
-        for j, k in enumerate(lVar):
-            fun = lFun[j]
-            if callable(fun):
-                sValue = fun(entry)
-            else:
-                for idx, val in enumerate(fun):
-                    if idx==0:
-                        if bIsDict:
-                            sValue = entry[val]
+    oErr = ErrHandle()
+    try:
+        # Initialize the variables whose changes are important
+        oVariable = {}
+        for i, key in enumerate(lVar):
+            oVariable[key] = "" # {'name': key, 'fun': lFun[i]}
+        iLast = len(qs)-1
+        # Iterate over the entries looking for first, last etc
+        for i, entry in enumerate(qs):
+            bIsLastEntry = (i==iLast)
+            oItem = {'entry': entry}
+            for k in lVar:
+                oItem[k] = {'first':False, 'last':False}
+            bIsDict = isinstance(entry, dict)
+            bVarIsLast = False
+            # Check for changes in all the variables
+            for j, k in enumerate(lVar):
+                fun = lFun[j]
+                if callable(fun):
+                    sValue = fun(entry)
+                else:
+                    for idx, val in enumerate(fun):
+                        if idx==0:
+                            if bIsDict:
+                                sValue = entry[val]
+                            else:
+                                sValue = getattr(entry, val)
                         else:
-                            sValue = getattr(entry, val)
-                    else:
-                        if bIsDict:
-                            sValue = sValue[val]
-                        else:
-                            sValue = getattr(sValue, val)
-            # Check for changes in the value of the variable 
-            # if sValue != oVariable[k]:
-            if sValue != oVariable[k] or bVarIsLast or (i>0 and lItem[i-1][k]['last']):
-                # Check if the previous one's [last] must be changed
-                if oVariable[k] != "": lItem[i-1][k]['last'] = True
-                # Adapt the current one's [first] property
-                oItem[k]['first']= True
-                # Adapt the variable
-                oVariable[k] = sValue      
-                # Indicate that the next ones should be regarded as 'last'
-                bVarIsLast = True      
-            # Check if this is the last
-            if bIsLastEntry: oItem[k]['last'] = True
-        # Add this object to the list of items
-        lItem.append(oItem)
+                            if bIsDict:
+                                sValue = sValue[val]
+                            else:
+                                sValue = getattr(sValue, val)
+                # Check for changes in the value of the variable 
+                # if sValue != oVariable[k]:
+                if sValue != oVariable[k] or bVarIsLast or (i>0 and lItem[i-1][k]['last']):
+                    # Check if the previous one's [last] must be changed
+                    if oVariable[k] != "": lItem[i-1][k]['last'] = True
+                    # Adapt the current one's [first] property
+                    oItem[k]['first']= True
+                    # Adapt the variable
+                    oVariable[k] = sValue      
+                    # Indicate that the next ones should be regarded as 'last'
+                    bVarIsLast = True      
+                # Check if this is the last
+                if bIsLastEntry: oItem[k]['last'] = True
+            # Add this object to the list of items
+            lItem.append(oItem)
+    except:
+        oErr.DoError("import_csv_start error")
+        lItem = []
+
     # Return the list we have made
     return lItem
 
@@ -326,6 +332,7 @@ def do_repair_progress(request):
 def import_csv_start(request):
     # Formulate a response
     data = {'status': 'done'}
+    oErr = ErrHandle()
 
     try:
         # x = request.POST
@@ -914,10 +921,10 @@ class LemmaListView(ListView):
     # paginate_by = paginateEntries
     paginate_by = paginateSize
     entrycount = 0
-    bUseMijnen = False  # Limburg uses mijnen, Brabant not
-    bWbdApproach = True # Filter using the WBD approach
-    bNewOrder = True    # Use the new order (see issue #22 of the RU-wld)
-    bDoTime = True      # Measure time
+    bUseMijnen = False      # Limburg uses mijnen, Brabant not
+    bWbdApproach = True     # Filter using the WBD approach
+    bOrderWrdToel = True    # Use the word order 'dialectopgave-toelichting' if True
+    bDoTime = True          # Measure time
     qEntry = None
     qs = None
     strict = True      # Use strict filtering ALWAYS
@@ -1028,6 +1035,9 @@ class LemmaListView(ListView):
         context['afleveringen'] = [afl for afl in Aflevering.objects.all()]
         context['mijnen'] = [mijn for mijn in Mijn.objects.all().order_by('naam')]
 
+        # Pass on the word-order boolean
+        context['order_word_toel'] = self.bOrderWrdToel
+
         if self.bDoTime:
             print("LemmaListView context part 1: {:.1f}".format( get_now_time() - iStart))
 
@@ -1077,8 +1087,12 @@ class LemmaListView(ListView):
         # Start the output
         html = []
         # Initialize the variables whose changes are important
-        lVars = ["lemma_gloss", "trefwoord_woord", "toelichting", "dialectopgave", "dialect_stad"]
-        lFuns = [["lemma", "gloss"], ["trefwoord", "woord"], Entry.get_toelichting, Entry.dialectopgave, ["dialect", "stad"]]
+        if self.bOrderWrdToel:
+            lVars = ["lemma_gloss", "trefwoord_woord", "dialectopgave", "toelichting", "dialect_stad"]
+            lFuns = [["lemma", "gloss"], ["trefwoord", "woord"], Entry.dialectopgave, Entry.get_toelichting, ["dialect", "stad"]]
+        else:
+            lVars = ["lemma_gloss", "trefwoord_woord", "toelichting", "dialectopgave", "dialect_stad"]
+            lFuns = [["lemma", "gloss"], ["trefwoord", "woord"], Entry.get_toelichting, Entry.dialectopgave, ["dialect", "stad"]]
         # Get a list of items containing 'first' and 'last' information
         lItem = get_item_list(lVars, lFuns, qs)
         # REturn this list
@@ -1087,23 +1101,25 @@ class LemmaListView(ListView):
     def get_qafl(self, context):
         """Sort the paginated QS by Lemma/Aflevering into a list"""
 
+        bMethodQset = False
+
         # REtrieve the correct queryset, as determined by paginate_by
         qs = context['object_list']
-        #qsd = []
-        ## Walk through the query set
-        #for entry in qs: qsd.append(entry)
-        #qsd = copy.copy(qs)
-        ## Now sort the resulting set
-        #qsd = sorted(qsd, key=lambda el: el.lemma.gloss + " " + el.get_aflevering())
 
-        # Create a list of entry ids
-        id_list = [item.id for item in qs]
-        # Create the correctly sorted queryset
-        qsd = Entry.objects.filter(Q(id__in=id_list)).select_related().order_by(
-            Lower('lemma__gloss'), 
-            Lower('aflevering__deel__nummer'), 
-            Lower('aflevering__sectie'), 
-            Lower('aflevering__aflnum'))
+        if bMethodQset:
+            # Create a list of entry ids
+            id_list = [item.id for item in qs]
+
+            # Create the correctly sorted queryset
+            qsd = Entry.objects.filter(Q(id__in=id_list)).select_related().order_by(
+                Lower('lemma__gloss'), 
+                Lower('aflevering__deel__nummer'), 
+                Lower('aflevering__sectie'), 
+                Lower('aflevering__aflnum'))
+        else:
+            qsd = copy.copy(qs)
+            # Now sort the resulting set
+            qsd = sorted(qsd, key=lambda el: (el.lemma.gloss, el.get_aflevering()) )
 
         # Prepare for processing
         lVarsD = ["lem", "afl"]
@@ -1229,17 +1245,18 @@ class LemmaListView(ListView):
         # Make the QSE available
         # Order: "lemma_gloss", "trefwoord_woord", "dialectopgave", "dialect_stad"
         if self.bDoTime: iStart = get_now_time()
-        if self.bNewOrder:
+        if self.bOrderWrdToel:
             qse = Entry.objects.filter(*lstQ).distinct().select_related().order_by(
                 Lower('lemma__gloss'),  
                 Lower('trefwoord__woord'), 
-                Lower('toelichting'), 
                 Lower('woord'), 
+                Lower('toelichting'), 
                 Lower('dialect__stad'))
         else:
             qse = Entry.objects.filter(*lstQ).distinct().select_related().order_by(
                 Lower('lemma__gloss'),  
                 Lower('trefwoord__woord'), 
+                Lower('toelichting'), 
                 Lower('woord'), 
                 Lower('dialect__stad'))
         if self.bDoTime: print("LemmaListView get_entryset part 3: {:.1f}".format(get_now_time() - iStart))

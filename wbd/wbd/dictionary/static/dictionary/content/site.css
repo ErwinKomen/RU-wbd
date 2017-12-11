@@ -88,6 +88,9 @@ table tbody tr:hover {
     background-color: lightyellow;
     /* font-size: smaller; */
 }
+.lemma-word-has-toelichting:hover {
+    background-color: yellow;
+}
 .word-kloeketoelichting {
   background-color: lightblue;
   font-size: smaller;

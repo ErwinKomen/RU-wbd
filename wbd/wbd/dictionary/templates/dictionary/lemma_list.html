@@ -171,9 +171,11 @@
               <span class="lemma-trefwoord"><a href="{% url 'trefwoordsearch' %}?search={{item.entry.trefwoord.woord|urlencode}}">{{item.entry.trefwoord.woord}}</a>:</span>
             {% endif %}
             {% spaceless %}
-              {% if item.toelichting.first and entry.toelichting != "" %}<span class="lemma-word-toelichting">{{item.entry.toelichting}}</span>&nbsp;{% endif %}
+              {% if not order_word_toel and item.toelichting.first and item.entry.toelichting != "" %}<span class="lemma-word-toelichting">{{item.entry.toelichting}}</span>&nbsp;{% endif %}
               {% if item.dialectopgave.first  %}
-                <span class="lemma-word">{{item.entry.dialectopgave}}</span>
+                <span class="lemma-word {% if order_word_toel and item.entry.toelichting != "" %}lemma-word-has-toelichting{% endif %}" 
+                  {% if order_word_toel and item.entry.toelichting != "" %}title="{{item.entry.toelichting}}"{% endif %}
+                  >{{item.entry.dialectopgave}}</span>
                 <span> (</span>
               {% endif %}
               {% if entry.dialect.nieuw != "Q000" %}
