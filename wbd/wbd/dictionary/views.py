@@ -923,7 +923,7 @@ class LemmaListView(ListView):
     entrycount = 0
     bUseMijnen = False      # Limburg uses mijnen, Brabant not
     bWbdApproach = True     # Filter using the WBD approach
-    bOrderWrdToel = True    # Use the word order 'dialectopgave-toelichting' if True
+    bOrderWrdToel = False   # Use the word order 'dialectopgave-toelichting' if True
     bDoTime = True          # Measure time
     qEntry = None
     qs = None
@@ -1836,13 +1836,19 @@ class DialectListView(ListView):
         get = self.request.GET.copy()
         get['sortOrder'] = 'stad'
 
-        # Queryset: start out with *ALL* the lemma's
-        qs = Dialect.objects.all()
+        bWbdMethod = True
+
+        if bWbdMethod:
+            lstQ = []
+            # Include only those that have at least one aflevering that is 'toonbaar'
+            lstQ.append(Q(entry__aflevering__toonbaar=True))
+        else:
+            # Queryset: start out with *ALL* the lemma's
+            qs = Dialect.objects.all()
 
         # Fine-tuning: search string is the LEMMA
         if 'search' in get and get['search'] != '':
             val = adapt_search(get['search'])
-            # query = Q(stad__istartswith=val) 
             query = Q(stad__iregex=val) 
 
             # check for possible exact numbers having been given
@@ -1850,23 +1856,35 @@ class DialectListView(ListView):
                 query = query | Q(sn__exact=val)
 
             # Apply the filter
-            qs = qs.filter(query)
+            if bWbdMethod:
+                lstQ.append(query)
+            else:
+                qs = qs.filter(query)
 
         # Check for dialect code (Kloeke)
         if 'nieuw' in get and get['nieuw'] != '':
             val = adapt_search(get['nieuw'])
-            # query = Q(nieuw__istartswith=val)
             query = Q(nieuw__iregex=val)
-            qs = qs.filter(query)
+            # Apply the filter
+            if bWbdMethod:
+                lstQ.append(query)
+            else:
+                qs = qs.filter(query)
 
-        # Make sure we only have distinct values
-        qs = qs.distinct()
+        # Calculate the final qs
+        if bWbdMethod:
+            qs = Dialect.objects.filter(*lstQ).distinct().order_by(
+              Lower('stad'))
+        else:
+            # Make sure we only have distinct values
+            qs = qs.distinct()
 
-        # Sort the queryset by the parameters given
-        qs = order_queryset_by_sort_order(get, qs)
+            # Sort the queryset by the parameters given
+            qs = order_queryset_by_sort_order(get, qs)
 
         # Return the resulting filtered and sorted queryset
         return qs
+
 
 
 class MijnListView(ListView):
