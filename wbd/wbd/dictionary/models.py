@@ -856,7 +856,7 @@ class Entry(models.Model):
           ]
 
     def __str__(self):
-        return self.woord + '_' + self.dialect.code
+        return self.woord + '_' + self.dialect.nieuw
 
     # Lemma: obligatory
     lemma = models.ForeignKey(Lemma, db_index=True, blank=False)

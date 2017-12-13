@@ -138,7 +138,8 @@ class EntryListView(ListView):
         if 'dialectCode' in get and get['dialectCode'] != '':
             val = adapt_search(get['dialectCode'])
             # query = Q(entry__dialect__code__istartswith=val)
-            query = Q(entry__dialect__code__iregex=val)
+            # NOTE: must take 'nieuw' (nieuwe kloekecode)
+            query = Q(entry__dialect__nieuw__iregex=val)
             qs = qs.filter(query)
 
         # Check for lemma
