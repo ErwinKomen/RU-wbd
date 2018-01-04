@@ -803,8 +803,8 @@ class TrefwoordListView(ListView):
             
             # Use the E-WBD approach: be efficient here
             #  (Only ordering by word is needed here)
-            qse = Trefwoord.objects.filter(*lstQ).distinct().select_related().order_by(
-                Lower('woord'))
+            qse = Trefwoord.objects.filter(*lstQ).select_related().order_by(
+                Lower('woord')).distinct()
 
         else:
             if self.strict:
@@ -908,7 +908,9 @@ class TrefwoordListView(ListView):
 
         # Note the number of ITEMS we have
         #   (The nature of these items depends on the approach taken)
-        self.entrycount = qse.count()
+        # self.entrycount = qse.count()
+        # Using 'len' is faster since [qse] is being actually used again
+        self.entrycount = len(qse)
 
         return qse
 
@@ -1334,7 +1336,7 @@ class LemmaListView(ListView):
             lstQ.append(Q(entry__aflevering__toonbaar=True))
 
             # Use the E-WBD approach: be efficient here
-            qse = Lemma.objects.filter(*lstQ).distinct().select_related().order_by(Lower('gloss'))
+            qse = Lemma.objects.filter(*lstQ).select_related().order_by(Lower('gloss')).distinct()
         else:
             if self.strict:
                 # Get the set of Lemma elements that have been defined by "search"
@@ -1423,18 +1425,19 @@ class LemmaListView(ListView):
                 self.qEntry = None
                 self.qs = qse
 
+        # Time measurement
+        if self.bDoTime:
+            print("LemmaListView get_queryset point 'a': {:.1f}".format( get_now_time() - iStart))
+            print("LemmaListView query: {}".format(qse.query))
+
         # Note the number of ITEMS we have
         #   (The nature of these items depends on the approach taken)
-        self.entrycount = qse.count()
+        # self.entrycount = qse.count()
+        self.entrycount = len(qse)
 
         # Time measurement
         if self.bDoTime:
-            print("LemmaListView get_queryset: {:.1f}".format( get_now_time() - iStart))
-
-        ## Testing the waters: get a list of lemma's right here (before doing pagination)
-        #if self.bDoTime: iStart = get_now_time()
-        #self.lemma_id_list = qse.values_list('id', flat=True) # qse.values('id')
-        #if self.bDoTime: print("LemmaListView get_queryset values: {:.1f}".format( get_now_time() - iStart))
+            print("LemmaListView get_queryset point 'b': {:.1f}".format( get_now_time() - iStart))
 
         # Return the resulting filtered and sorted queryset
         return qse
@@ -1779,7 +1782,9 @@ class LocationListView(ListView):
                 self.qEntry = None
                 self.qs = qs
 
-        self.entrycount = qs.count()
+        # self.entrycount = qs.count()
+        # Using 'len' is faster since [qse] is being actually used again
+        self.entrycount = len(qs)
 
         # Get a list of locations right here (before doing pagination)
         # self.dialect_id_list = qs.values_list('id', flat = True)
