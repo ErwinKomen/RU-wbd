@@ -22,6 +22,7 @@ from django.core import urlresolvers
 from django.shortcuts import redirect
 from django.core.urlresolvers import reverse, reverse_lazy
 from django.views.generic.base import RedirectView
+from django.views.generic import TemplateView
 
 admin.autodiscover()
 
@@ -37,6 +38,7 @@ urlpatterns = [
     url(r'^contact$', wbd.dictionary.views.contact, name='contact'),
     url(r'^about', wbd.dictionary.views.about, name='about'),
     url(r'^guide', wbd.dictionary.views.guide, name='guide'),
+    url(r'^robots.txt', TemplateView.as_view(template_name='dictionary/robots.txt', content_type='text/plain')),
     url(r'^delen', DeelListView.as_view(), name='delen'),
     url(r'^definitions$', RedirectView.as_view(url='/'+pfx+'admin/'), name='definitions'),
     url(r'^entries$', RedirectView.as_view(url='/'+pfx+'admin/dictionary/entry/'), name='entries'),

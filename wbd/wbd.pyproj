@@ -106,6 +106,7 @@
     <Content Include="wbd\dictionary\templates\dictionary\mijn_list.html" />
     <Content Include="wbd\dictionary\templates\dictionary\dialect_list.html" />
     <Content Include="wbd\dictionary\templates\dictionary\pagination.html" />
+    <Content Include="wbd\dictionary\templates\dictionary\robots.txt" />
     <Content Include="wbd\dictionary\templates\dictionary\trefwoord_list.html" />
     <Content Include="wbd\dictionary\templates\dictionary\lemma_list.html" />
     <Content Include="wbd\dictionary\templates\dictionary\topnav.html" />

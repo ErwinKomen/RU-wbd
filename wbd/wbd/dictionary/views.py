@@ -191,6 +191,7 @@ def guide(request):
         }
     )
 
+
 def do_repair(request):
     """Renders the REPAIR page."""
     assert isinstance(request, HttpRequest)
