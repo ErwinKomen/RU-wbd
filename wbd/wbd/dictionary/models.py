@@ -913,6 +913,7 @@ class Entry(models.Model):
         arRow.append(self.woord)
         arRow.append(self.dialect.nieuw)
         arRow.append(self.aflevering.naam)
+        arRow.append(self.descr.bronnenlijst)
         return arRow
 
     def get_tsv(self):
