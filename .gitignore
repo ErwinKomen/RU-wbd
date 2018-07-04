@@ -248,3 +248,4 @@ ModelManifest.xml
 *.pyc
 /wbd/wbd/dictionary/migrations
 /ewbd-start.sh
+/wbd/1.11

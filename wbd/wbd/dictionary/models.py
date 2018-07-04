@@ -853,6 +853,7 @@ class Entry(models.Model):
                        )
         index_together = [
             ["dialect", "lemma", "trefwoord", "woord"],
+            ["lemma", "aflevering"],
           ]
 
     def __str__(self):

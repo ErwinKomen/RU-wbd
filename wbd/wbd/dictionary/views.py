@@ -8,6 +8,7 @@ from django.shortcuts import get_object_or_404, render
 from django.http import HttpRequest, HttpResponse
 from django.core.urlresolvers import reverse
 from django.template import RequestContext, loader
+from django.template.loader import render_to_string
 from django.db.models import Q
 from django.db.models.functions import Lower
 from django.http import JsonResponse
@@ -463,7 +464,8 @@ class TrefwoordListView(ListView):
     bWbdApproach = True # Filter using the WBD approach
     qEntry = None
     qs = None
-    strict = True      # Use strict filtering
+    bDoTime = True      # Measure time
+    strict = True       # Use strict filtering
 
     def get_qs(self):
         if self.qEntry == None:
@@ -490,7 +492,8 @@ class TrefwoordListView(ListView):
             """ Provide Html response"""
             return export_html(self.get_qs(), 'trefwoorden')
         else:
-            return super(TrefwoordListView, self).render_to_response(context, **response_kwargs)
+            oResponse = super(TrefwoordListView, self).render_to_response(context, **response_kwargs)
+            return oResponse
 
     def get_context_data(self, **kwargs):
         # Call the base implementation first to get a context
@@ -723,6 +726,9 @@ class TrefwoordListView(ListView):
         # Get the parameters passed on with the GET request
         get = self.request.GET
 
+        # Debugging: mesaure time
+        if self.bDoTime: iStart = get_now_time()
+
         # Get possible user choice of 'strict'
         if 'strict' in get:
             self.strict = (get['strict'] == "True")
@@ -750,8 +756,8 @@ class TrefwoordListView(ListView):
             bHasSearch = True
 
         if self.bWbdApproach:
-            # Can this aflevering be shown??
-            lstQ.append(Q(entry__aflevering__toonbaar=True))
+            ## Can this aflevering be shown??
+            #lstQ.append(Q(entry__aflevering__toonbaar=True))
 
             # Check for dialectwoord
             if 'dialectwoord' in get and get['dialectwoord'] != '':
@@ -800,11 +806,31 @@ class TrefwoordListView(ListView):
                     if iVal>0:
                         lstQ.append(Q(entry__mijnlijst__id=iVal))
                         bHasFilter = True
+
+            # Debugging: time
+            if self.bDoTime: print("TrefwoordListView get_queryset part 1: {:.1f}".format(get_now_time() - iStart))
+
+            # Debugging: mesaure time
+            if self.bDoTime: iStart = get_now_time()
             
-            # Use the E-WBD approach: be efficient here
-            #  (Only ordering by word is needed here)
-            qse = Trefwoord.objects.filter(*lstQ).select_related().order_by(
-                Lower('woord')).distinct()
+            ## Use the E-WBD approach: be efficient here
+            ##  (Only ordering by word is needed here)
+            #qse = Trefwoord.objects.filter(*lstQ).select_related().order_by(
+            #    Lower('woord')).distinct()
+
+            # First get all the lemma's
+            qse = Trefwoord.objects.filter(*lstQ).select_related().order_by(Lower('woord')).distinct()
+
+            # Get a list of lemma's to ignor
+            lemma_ignore = Lemma.objects.filter(entry__aflevering__toonbaar=0).distinct()
+
+            # Adapt the QSE
+            qse = qse.exclude(id=lemma_ignore)
+
+            # Debugging: time
+            if self.bDoTime: 
+                    print("TrefwoordListView get_queryset part 2: {:.1f}".format(get_now_time() - iStart))
+                    iStart = get_now_time()
 
         else:
             if self.strict:
@@ -912,6 +938,10 @@ class TrefwoordListView(ListView):
         # Using 'len' is faster since [qse] is being actually used again
         self.entrycount = len(qse)
 
+        # Debugging: time
+        if self.bDoTime: 
+                print("TrefwoordListView get_queryset part 3: {:.1f}".format(get_now_time() - iStart))
+
         return qse
 
 
@@ -964,6 +994,7 @@ class LemmaListView(ListView):
 
         else:
             iStart = get_now_time()
+            # sResp = render_to_string(self.template_name, context)
             oRendered = super(LemmaListView, self).render_to_response(context, **response_kwargs)
             # Show what the render-time was
             print("LemmaListView render time: {:.1f}".format(get_now_time() - iStart))
@@ -978,7 +1009,8 @@ class LemmaListView(ListView):
             # Start collecting context time
             if self.bDoTime: iStart = get_now_time()
             # Need to adapt the object_list to get the entries to be used
-            context['object_list'] = self.get_entryset(context['page_obj'])
+            # context['object_list'] = self.get_entryset(context['page_obj'])
+            context['object_list'] = list(self.get_entryset(context['page_obj']))
             if self.bDoTime:
                 print("LemmaListView get_entryset: {:.1f}".format( get_now_time() - iStart))
 
@@ -1043,15 +1075,27 @@ class LemmaListView(ListView):
 
         if self.bDoTime:
             print("LemmaListView context part 1: {:.1f}".format( get_now_time() - iStart))
+            # Reset the time
+            iStart = get_now_time()
 
         # If we are in 'strict' mode, we need to deliver the [qlist] and its subsidiaries
         if self.strict:
 
             # Transform the paginated queryset into a dict sorted by Dialect/Aflevering
             lAflev = self.get_qafl(context)
+            if self.bDoTime:
+                print("LemmaListView context get_qafl(): {:.1f}".format( get_now_time() - iStart))
+                # Reset the time
+                iStart = get_now_time()
+
             lastDescr = None
             # Get a list with 'first' and 'last' values for each item in the current paginated queryset
             lEntry = self.get_qlist(context)
+            if self.bDoTime:
+                print("LemmaListView context get_qlist(): {:.1f}".format( get_now_time() - iStart))
+                # Reset the time
+                iStart = get_now_time()
+
             # Add the sorted-dialect information to lEntry
             for idx, item in enumerate(lEntry):
                 # Start or Finish dialect information
@@ -1115,12 +1159,14 @@ class LemmaListView(ListView):
 
             # Create the correctly sorted queryset
             qsd = Entry.objects.filter(Q(id__in=id_list)).select_related().order_by(
-                Lower('lemma__gloss'), 
-                Lower('aflevering__deel__nummer'), 
-                Lower('aflevering__sectie'), 
-                Lower('aflevering__aflnum'))
+                'lemma__gloss', 
+                'aflevering__deel__nummer', 
+                'aflevering__sectie', 
+                'aflevering__aflnum')
         else:
-            qsd = copy.copy(qs)
+            # qsd = copy.copy(qs)
+            # Force evaluation
+            qsd = list(qs)
             # Now sort the resulting set
             qsd = sorted(qsd, key=lambda el: (el.lemma.gloss, el.get_aflevering()) )
 
@@ -1136,9 +1182,10 @@ class LemmaListView(ListView):
         """OLD: Sort the paginated QS by Lemma/lmdescr.toelichting into a list"""
 
         # Get the sorted set of [lmdescr] objects for this lemma
-        qsd = []
-        # Walk through the query set
-        for d in entry.lemma.lmdescr.order_by(Lower('toelichting'), Lower('bronnenlijst')): qsd.append(d)
+        #qsd = []
+        ## Walk through the query set
+        #for d in entry.lemma.lmdescr.order_by(Lower('toelichting'), Lower('bronnenlijst')): qsd.append(d)
+        qsd = [d for d in entry.lemma.lmdescr.order_by(Lower('toelichting'), 'bronnenlijst')]
         # Prepare for processing
         lVarsD = ["descr", "bronnen"]
         lFunsD = [["toelichting"], ["bronnenlijst"]]
@@ -1263,7 +1310,7 @@ class LemmaListView(ListView):
                 Lower('woord'), 
                 Lower('dialect__stad'))
         if self.bDoTime: print("LemmaListView get_entryset part 3: {:.1f}".format(get_now_time() - iStart))
-
+        # x = str(Entry.objects.filter(*lstQ).distinct().select_related().query)
         self.qEntry = qse
         return qse
 
@@ -1332,11 +1379,31 @@ class LemmaListView(ListView):
                         lstQ.append(Q(entry__mijnlijst__id=iVal))
                         bHasFilter = True
 
-            # Check for aflevering being publishable
-            lstQ.append(Q(entry__aflevering__toonbaar=True))
+            bFasterApproach = True
+            if bFasterApproach:
+                ## Get a list of all lemma's that may *NOT* be shown
+                #lemma_ignore = list(Lemma.objects.filter(entry__aflevering__toonbaar=0).distinct().values_list('id', flat = True))
+                ## Efficiently get all the lemma's that *MAY* be shown
+                #qse = Lemma.objects.exclude(id__in=lemma_ignore).filter(*lstQ).select_related().order_by('gloss').distinct()
 
-            # Use the E-WBD approach: be efficient here
-            qse = Lemma.objects.filter(*lstQ).select_related().order_by(Lower('gloss')).distinct()
+                # First get all the lemma's
+                qse = Lemma.objects.filter(*lstQ).select_related().order_by('gloss').distinct()
+
+                # Get a list of lemma's to ignor
+                lemma_ignore = Lemma.objects.filter(entry__aflevering__toonbaar=0).distinct()
+
+                # Adapt the QSE
+                qse = qse.exclude(id=lemma_ignore)
+
+            else:
+                # Check for aflevering being publishable
+                lstQ.append(Q(entry__aflevering__toonbaar=True))
+
+                # Use the E-WBD approach: be efficient here
+                qse = Lemma.objects.filter(*lstQ).select_related().order_by('gloss').distinct()
+
+                # NOTE: this approach is slower than [bFasterApproach]. 
+                #       It leads to a query with two inner-joins that takes at least 4 seconds
         else:
             if self.strict:
                 # Get the set of Lemma elements that have been defined by "search"

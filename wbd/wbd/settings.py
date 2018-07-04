@@ -58,7 +58,7 @@ SECRET_KEY = '485c409a-daf7-47d3-81af-257049728c58'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'e-wbd.science.ru.nl',
                  'e-wbd.nl', 'www.e-wbd.nl', 'ewbd.science.ru.nl', 
                  'corpus-studio-web.cttnww-meertens.surf-hosted.nl']
 
@@ -94,7 +94,6 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [os.path.join(BASE_DIR, 'wbd/templates')],
-        'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.debug',
@@ -102,8 +101,15 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
             ],
+            'loaders': [
+                ('django.template.loaders.cached.Loader', [
+                    'django.template.loaders.filesystem.Loader',
+                    'django.template.loaders.app_directories.Loader',
+                ]),
+            ],
             'debug': DEBUG,
         },
+        # 'APP_DIRS': True, # This cannot co-occur with 'loaders' in Django 1.9
     },
 ]
 
