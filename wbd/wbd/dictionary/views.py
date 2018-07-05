@@ -951,6 +951,7 @@ class LemmaListView(ListView):
     model = Lemma
     # context_object_name = 'lemma'    
     template_name = 'dictionary/lemma_list.html'
+    template_ajax = 'dictionary/lemma_list_oview.html'
     # paginate_by = paginateEntries
     paginate_by = paginateSize
     entrycount = 0
@@ -999,6 +1000,44 @@ class LemmaListView(ListView):
             # Show what the render-time was
             print("LemmaListView render time: {:.1f}".format(get_now_time() - iStart))
             return oRendered
+
+    def post(self, request, *args, **kwargs):
+        # Prepare return object
+        oData = {'status': 'error', 'msg': ''}
+        oErr = ErrHandle()
+        try:
+            self.object_list = self.get_queryset()
+            allow_empty = self.get_allow_empty()
+
+            if not allow_empty:
+                # When pagination is enabled and object_list is a queryset,
+                # it's better to do a cheap query than to load the unpaginated
+                # queryset in memory.
+                if self.get_paginate_by(self.object_list) is not None and hasattr(self.object_list, 'exists'):
+                    is_empty = not self.object_list.exists()
+                else:
+                    is_empty = len(self.object_list) == 0
+                if is_empty:
+                    raise Http404(_("Empty list and '%(class_name)s.allow_empty' is False.") % {
+                        'class_name': self.__class__.__name__,
+                    })
+            # Start collecting context time
+            if self.bDoTime: iStart = get_now_time()
+
+            context = self.get_context_data()
+            if self.bDoTime:
+                print("LemmaListView context [a]: {:.1f}".format( get_now_time() - iStart))
+                iStart = get_now_time()
+
+            sText = render_to_string(self.template_ajax, context, request)
+            if self.bDoTime:
+                print("LemmaListView context [b]: {:.1f}".format( get_now_time() - iStart))
+
+            oData['html'] = sText
+            oData['status'] = "ok"
+        except:
+            oData['msg'] = oErr.get_error_message()
+        return JsonResponse(oData)
 
     def get_context_data(self, **kwargs):
         # Call the base implementation first to get a context

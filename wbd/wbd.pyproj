@@ -98,6 +98,7 @@
     <Content Include="wbd\dictionary\static\dictionary\scripts\diadict.js" />
     <Content Include="wbd\dictionary\static\dictionary\scripts\gtrack.js" />
     <Content Include="wbd\dictionary\templates\dictionary\guide.html" />
+    <Content Include="wbd\dictionary\templates\dictionary\lemma_list - Copy.html" />
     <Content Include="wbd\dictionary\templates\dictionary\lemma_list.html" />
     <Content Include="wbd\dictionary\templates\dictionary\repair.html" />
     <Content Include="wbd\dictionary\templates\dictionary\aflevering_list.html" />
@@ -109,7 +110,7 @@
     <Content Include="wbd\dictionary\templates\dictionary\pagination.html" />
     <Content Include="wbd\dictionary\templates\dictionary\robots.txt" />
     <Content Include="wbd\dictionary\templates\dictionary\trefwoord_list.html" />
-    <Content Include="wbd\dictionary\templates\dictionary\lemma_list2.html" />
+    <Content Include="wbd\dictionary\templates\dictionary\lemma_list_oview.html" />
     <Content Include="wbd\dictionary\templates\dictionary\topnav.html" />
     <Content Include="wbd\templates\admin\base.html" />
     <Content Include="wbd\templates\admin\base_site.html" />

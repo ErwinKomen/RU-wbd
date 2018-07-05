@@ -133,16 +133,17 @@ function do_sort_column(field_name, action, frmName) {
  * @returns {bool}
  */
 function do_search(el, sName, sType) {
-    try {
-        var sSearch = 'search';
+  var sSearch = 'search',
+      data = null,          // Data to be sent
+      sUrl = "",            // The URL we need to have
+      elMsg = null,
+      elOview = null;       // Element of type [sName_list_oview]
+
+  try {
 
         // Check if this is resetting
         if (sType === 'Herstel')
             return clearForm(sName);
-        /*
-        if (sType === 'Csv')
-          sSearch = 'csv';
-          */
         var f = $("#" + sName + "search");
         // var sSearchType = $(el).attr('value');
         var url_prefix = $(".container").attr("url_home");
@@ -158,7 +159,36 @@ function do_search(el, sName, sType) {
         f.attr('action', sPath);
         // Set the submit type
         $("#submit_type").attr('value', sType);
-        document.getElementById(sName + 'search').submit();
+        
+        // Check if we are going to do a new page load or an ajax call
+        elOview = "#" + sName + "_list_oview";
+        if ($(elOview).length == 0) {
+          // Load a new page
+          document.getElementById(sName + 'search').submit();
+        } else {
+          // Do an ajax call with the data we have
+          data = $(f).serializeArray();
+          sUrl = sPath + "ajax/";
+          $(f).attr("method", "POST");
+          sSearch = $(f).attr("method");
+          // Show a waiting message
+          $(elOview).html("<span><i>we zijn aan het zoeken...</i></span><span class=\"glyphicon glyphicon-refresh glyphicon-refresh-animate\"></span>");
+          // Now make the POST call
+          $.post(sUrl, data, function (response) {
+            // Sanity check
+            if (response !== undefined) {
+              if (response.status == "ok") {
+                if ('html' in response) {
+                  $(elOview).html(response['html']);
+                } else {
+                  $(elOview).html("Response is okay, but [html] is missing");
+                }
+              } else {
+                $(elOview).html("Could not interpret response " + response.status);
+              }
+            }
+          });
+        }
 
         // Make sure we return positively
         return true;
