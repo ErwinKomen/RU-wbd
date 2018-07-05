@@ -1359,7 +1359,7 @@ class LemmaListView(ListView):
             iStart = get_now_time()
 
         # Get the parameters passed on with the GET request
-        get = self.request.GET
+        get = self.request.GET if self.request.method == "GET" else self.request.POST
 
         # Get possible user choice of 'strict'
         if 'strict' in get:

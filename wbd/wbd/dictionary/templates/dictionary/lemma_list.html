@@ -26,15 +26,16 @@
                         data-toggle="popover" data-trigger="hover"
                         data-placement="right" data-content="Willekeurige tekens: ? (één) * (0 of meer). Groep tekens: [m-n]"
                         for='id_entry'>{{searchform.search.label}}</label>
-                <input name='search' class='form-control' {% if searchform.search.value %}value='{{searchform.search.value}}'{% endif %}>
+                <input name='search' class='form-control search-input' 
+                       {% if searchform.search.value %}value='{{searchform.search.value}}'{% endif %}>
               </div>
             </div>
             <div class="col-sm-4 col-sm-offset-2">
               <div><label>&nbsp;</label></div>
               <div class='btn-group'>
                   <!-- Make sure no button has the *name* 'submit', otherwise submit() cannot be used -->
-                  <input class='btn btn-primary btn-xs' onclick="do_search(this, 'lemma', 'simple');" value="Zoek">
-                  <input class='btn btn-default btn-xs' onclick="do_search(this, 'lemma', 'Herstel');" value="Herstel">
+                  <button type="button" class="btn btn-primary" id="button_search" onclick="do_search(this, 'lemma', 'simple');">Zoek</button>
+                  <button type="button" class="btn btn-default" id="button_herstel" onclick="do_search(this, 'lemma', 'Herstel');">Herstel</button>
                   <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" 
                       aria-haspopup="true" aria-expanded="false">Download <span class="caret"></span></button>
                   <ul class="dropdown-menu">

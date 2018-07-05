@@ -140,7 +140,6 @@ function do_search(el, sName, sType) {
       elOview = null;       // Element of type [sName_list_oview]
 
   try {
-
         // Check if this is resetting
         if (sType === 'Herstel')
             return clearForm(sName);
@@ -162,6 +161,7 @@ function do_search(el, sName, sType) {
         
         // Check if we are going to do a new page load or an ajax call
         elOview = "#" + sName + "_list_oview";
+        elMsg = "#" + sName + "_list_msg";
         if ($(elOview).length == 0) {
           // Load a new page
           document.getElementById(sName + 'search').submit();
@@ -172,7 +172,9 @@ function do_search(el, sName, sType) {
           $(f).attr("method", "POST");
           sSearch = $(f).attr("method");
           // Show a waiting message
-          $(elOview).html("<span><i>we zijn aan het zoeken...</i></span><span class=\"glyphicon glyphicon-refresh glyphicon-refresh-animate\"></span>");
+          $(elMsg).html("<span><i>we zijn aan het zoeken...</i></span><span class=\"glyphicon glyphicon-refresh glyphicon-refresh-animate\"></span>");
+          // De knoppen even uitschakelen
+
           // Now make the POST call
           $.post(sUrl, data, function (response) {
             // Sanity check
@@ -180,11 +182,14 @@ function do_search(el, sName, sType) {
               if (response.status == "ok") {
                 if ('html' in response) {
                   $(elOview).html(response['html']);
+                  $(elMsg).html("");
                 } else {
-                  $(elOview).html("Response is okay, but [html] is missing");
+                  $(elMsg).html("Response is okay, but [html] is missing");
                 }
+                // Knoppen weer inschakelen
+
               } else {
-                $(elOview).html("Could not interpret response " + response.status);
+                $(elMsg).html("Could not interpret response " + response.status);
               }
             }
           });
@@ -196,6 +201,14 @@ function do_search(el, sName, sType) {
         errMsg("do_search", ex);
     }
 
+}
+
+function init_events() {
+  $(".search-input").keyup(function (e) {
+    if (e.keyCode === 13) {
+      $("#button_search").click();
+    }
+  });
 }
 
 /**
