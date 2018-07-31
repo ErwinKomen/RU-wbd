@@ -818,14 +818,14 @@ class TrefwoordListView(ListView):
             #qse = Trefwoord.objects.filter(*lstQ).select_related().order_by(
             #    Lower('woord')).distinct()
 
-            # First get all the lemma's
+            # First get all the Trefwoord objects that satisfy [lstQ]
             qse = Trefwoord.objects.filter(*lstQ).select_related().order_by(Lower('woord')).distinct()
 
-            # Get a list of lemma's to ignor
+            # Get a list of lemma's to ignore
             lemma_ignore = Lemma.objects.filter(entry__aflevering__toonbaar=0).distinct()
-
+ 
             # Adapt the QSE
-            qse = qse.exclude(id=lemma_ignore)
+            qse = qse.exclude(entry__lemma=lemma_ignore)
 
             # Debugging: time
             if self.bDoTime: 
@@ -1428,7 +1428,7 @@ class LemmaListView(ListView):
                 # First get all the lemma's
                 qse = Lemma.objects.filter(*lstQ).select_related().order_by('gloss').distinct()
 
-                # Get a list of lemma's to ignor
+                # Get a list of lemma's to ignore
                 lemma_ignore = Lemma.objects.filter(entry__aflevering__toonbaar=0).distinct()
 
                 # Adapt the QSE
@@ -1822,11 +1822,22 @@ class LocationListView(ListView):
                         lstQ.append(Q(entry__mijnlijst__id=iVal) )
                         bHasFilter = True
 
-            # Make sure we filter on aflevering.toonbaar
-            lstQ.append(Q(entry__aflevering__toonbaar=True))
+            bNieuw2018 = True
+            if bNieuw2018:
+                # Get a list of lemma's that may be included
+                lemma_include = Lemma.objects.exclude(entry__aflevering__toonbaar=0).distinct()
+                lstQ.append(Q(entry__lemma=lemma_include))
 
-            # Use the E-WBD approach: be efficient here
-            qs = Dialect.objects.filter(*lstQ).distinct().select_related().order_by(Lower('stad'))
+                # Get the preliminary queryset
+                qs = Dialect.objects.filter(*lstQ).distinct().select_related().order_by(Lower('stad'))
+            else:
+                # Make sure we filter on aflevering.toonbaar
+                lstQ.append(Q(entry__aflevering__toonbaar=True))
+
+                # Use the E-WBD approach: be efficient here
+                qs = Dialect.objects.filter(*lstQ).distinct().select_related().order_by(Lower('stad'))
+
+
         else:
             if self.strict:
                 # Get the set of Dialect elements belonging to the selected STAD-elements
