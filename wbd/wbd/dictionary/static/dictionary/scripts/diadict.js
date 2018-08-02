@@ -132,11 +132,12 @@ function do_sort_column(field_name, action, frmName) {
  * @param {string} sType  - when 'Herstel', then 
  * @returns {bool}
  */
-function do_search(el, sName, sType) {
+function do_search(el, sName, sType, pageNum) {
   var sSearch = 'search',
       data = null,          // Data to be sent
       sUrl = "",            // The URL we need to have
       elMsg = null,
+      sMethod = "",         // The calling method
       elOview = null;       // Element of type [sName_list_oview]
 
   try {
@@ -158,41 +159,57 @@ function do_search(el, sName, sType) {
         f.attr('action', sPath);
         // Set the submit type
         $("#submit_type").attr('value', sType);
+
+        // Get the calling method
+        if ($(el).attr("m")) {
+          sMethod = $(el).attr("m");
+        }
+        if (sMethod ==="") {sMethod = "get"}
         
         // Check if we are going to do a new page load or an ajax call
         elOview = "#" + sName + "_list_oview";
         elMsg = "#" + sName + "_list_msg";
-        if ($(elOview).length == 0) {
-          // Load a new page
-          document.getElementById(sName + 'search').submit();
-        } else {
-          // Do an ajax call with the data we have
-          data = $(f).serializeArray();
-          sUrl = sPath + "ajax/";
-          $(f).attr("method", "POST");
-          sSearch = $(f).attr("method");
-          // Show a waiting message
-          $(elMsg).html("<span><i>we zijn aan het zoeken...</i></span><span class=\"glyphicon glyphicon-refresh glyphicon-refresh-animate\"></span>");
-          // De knoppen even uitschakelen
-
-          // Now make the POST call
-          $.post(sUrl, data, function (response) {
-            // Sanity check
-            if (response !== undefined) {
-              if (response.status == "ok") {
-                if ('html' in response) {
-                  $(elOview).html(response['html']);
-                  $(elMsg).html("");
-                } else {
-                  $(elMsg).html("Response is okay, but [html] is missing");
-                }
-                // Knoppen weer inschakelen
-
-              } else {
-                $(elMsg).html("Could not interpret response " + response.status);
-              }
+        
+        switch (sMethod) {
+          case "get":
+            // Load a new page
+            document.getElementById(sName + 'search').submit();
+            break;
+          case "ajax":
+            // Do an ajax call with the data we have
+            data = $(f).serializeArray();
+            // Possibly add a page number
+            if (pageNum !== undefined) {
+              data.push({ 'name': 'page', 'value': pageNum });
             }
-          });
+
+            // Figure out what the path should be
+            sUrl = sPath + "ajax/";
+            $(f).attr("method", "POST");
+            sSearch = $(f).attr("method");
+            // Show a waiting message
+            $(elMsg).html("<span><i>we zijn aan het zoeken...</i></span><span class=\"glyphicon glyphicon-refresh glyphicon-refresh-animate\"></span>");
+            // De knoppen even uitschakelen
+
+            // Now make the POST call
+            $.post(sUrl, data, function (response) {
+              // Sanity check
+              if (response !== undefined) {
+                if (response.status == "ok") {
+                  if ('html' in response) {
+                    $(elOview).html(response['html']);
+                    $(elMsg).html("");
+                  } else {
+                    $(elMsg).html("Response is okay, but [html] is missing");
+                  }
+                  // Knoppen weer inschakelen
+
+                } else {
+                  $(elMsg).html("Could not interpret response " + response.status);
+                }
+              }
+            });
+            break;
         }
 
         // Make sure we return positively

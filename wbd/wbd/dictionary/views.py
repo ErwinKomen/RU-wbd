@@ -723,9 +723,9 @@ class TrefwoordListView(ListView):
         
     def get_queryset(self):
 
-        # Get the parameters passed on with the GET request
-        get = self.request.GET
-
+        # Get the parameters passed on with the GET or the POST request
+        get = self.request.GET if self.request.method == "GET" else self.request.POST
+        
         # Debugging: mesaure time
         if self.bDoTime: iStart = get_now_time()
 
@@ -1043,6 +1043,18 @@ class LemmaListView(ListView):
         # Call the base implementation first to get a context
         context = super(LemmaListView, self).get_context_data(**kwargs)
 
+        # Get parameters for the search
+        # initial = self.request.GET
+        initial = self.get
+        if initial is None:
+            initial = {'optdialect': 'stad'}
+
+        # Possibly set the page object
+        if 'page' in initial:
+            oPage = context['page_obj']
+            oPage.number = int(initial['page'])
+            context['page_obj'] = oPage
+
         # Action depends on the approach
         if self.bWbdApproach:
             # Start collecting context time
@@ -1056,10 +1068,6 @@ class LemmaListView(ListView):
         # Start collecting context time
         if self.bDoTime: iStart = get_now_time()
 
-        # Get parameters for the search
-        initial = self.request.GET
-        if initial is None:
-            initial = {'optdialect': 'stad'}
         search_form = LemmaSearchForm(initial)
 
         context['searchform'] = search_form
@@ -1162,6 +1170,9 @@ class LemmaListView(ListView):
         if self.bDoTime:
             print("LemmaListView context: {:.1f}".format( get_now_time() - iStart))
 
+        # Set the method
+        context['method'] = "get"       # Alternative: "ajax"
+
         # Return the calculated context
         return context
 
@@ -1257,8 +1268,10 @@ class LemmaListView(ListView):
         bHasSearch = False
         bHasFilter = False
 
-        # Retrieve the set of trefwoorden from the page_obj
+        # Initialize timer
         if self.bDoTime: iStart = get_now_time()
+
+        # Retrieve the set of trefwoorden from the page_obj
         lemma_list = [item.id for item in page_obj.object_list]
         if self.bDoTime: print("LemmaListView get_entryset part 1: {:.1f}".format(get_now_time() - iStart))
 
@@ -1268,7 +1281,8 @@ class LemmaListView(ListView):
         # lstQ.append(Q(lemma__id__in=page_obj))
 
         # Get the parameters passed on with the GET request
-        get = self.request.GET
+        #get = self.request.GET
+        get = self.get
 
         # Check for dialect city
         if 'dialectCity' in get and get['dialectCity'] != '':
@@ -1358,8 +1372,9 @@ class LemmaListView(ListView):
         if self.bDoTime:
             iStart = get_now_time()
 
-        # Get the parameters passed on with the GET request
+        # Get the parameters passed on with the GET or the POST request
         get = self.request.GET if self.request.method == "GET" else self.request.POST
+        self.get = get
 
         # Get possible user choice of 'strict'
         if 'strict' in get:
@@ -1564,6 +1579,7 @@ class LocationListView(ListView):
     qAll = None         # Ordered queryset of ALL
     qs = None           # Current queryset (for speeding up)
     strict = True       # Use strict filtering ALWAYS
+    bDoTime = True      # Use timing to determine what goes fastest
 
     def get_qs(self):
         """Get the Entry elements that are selected"""
@@ -1602,10 +1618,19 @@ class LocationListView(ListView):
         # Call the base implementation first to get a context
         context = super(LocationListView, self).get_context_data(**kwargs)
 
+        # Start collecting context time
+        if self.bDoTime: iStart = get_now_time()
+
         # Action depends on the approach
         if self.bWbdApproach:
             # Need to adapt the object_list to get the entries to be used
-            context['object_list'] = self.get_entryset(context['page_obj'])
+            # context['object_list'] = self.get_entryset(context['page_obj'])
+            context['object_list'] = list(self.get_entryset(context['page_obj']))
+            if self.bDoTime:
+                print("LocationListView context - get_entryset(): {:.1f}".format( get_now_time() - iStart))
+                # Reset the time
+                iStart = get_now_time()
+
 
         # Get parameters for the search
         initial = self.request.GET
@@ -1622,6 +1647,11 @@ class LocationListView(ListView):
         # Make sure the paginate-values are available
         context['paginateValues'] = paginateValues
 
+        if self.bDoTime:
+            print("LocationListView context part 0: {:.1f}".format( get_now_time() - iStart))
+            # Reset the time
+            iStart = get_now_time()
+
         # Set the afleveringen that are available
         context['afleveringen'] = [afl for afl in Aflevering.objects.all()]
 
@@ -1633,12 +1663,18 @@ class LocationListView(ListView):
         else:
             context['paginateSize'] = self.paginate_by
 
+        if self.bDoTime:
+            print("LocationListView context part 1: {:.1f}".format( get_now_time() - iStart))
+            # Reset the time
+            iStart = get_now_time()
+
         # Try to retain the choice for Aflevering and Mijn
         if self.bUseMijnen:
             if 'mijn' in initial:
                 context['mijnkeuze'] = int(initial['mijn'])
             else:
                 context['mijnkeuze'] = 0
+
         if 'aflevering' in initial:
             context['aflkeuze'] = int(initial['aflevering'])
             afl = Aflevering.objects.filter(id=context['aflkeuze']).first()
@@ -1649,6 +1685,12 @@ class LocationListView(ListView):
         else:
             context['aflkeuze'] = 0
             context['afl'] = ''
+
+        if self.bDoTime:
+            print("LocationListView context part 2: {:.1f}".format( get_now_time() - iStart))
+            # Reset the time
+            iStart = get_now_time()
+
 
         # Set the title of the application
         context['title'] = "e-WBD plaatsen"
@@ -1661,9 +1703,19 @@ class LocationListView(ListView):
         if self.strict:
             # Transform the paginated queryset into a dict sorted by Dialect/Aflevering
             lDialect = self.get_qafl(context)
+            if self.bDoTime:
+                print("LocationListView context get_qafl(): {:.1f}".format( get_now_time() - iStart))
+                # Reset the time
+                iStart = get_now_time()
 
             # Get a list with 'first' and 'last' values for each item in the current paginated queryset
             lEntry = self.get_qlist(context)
+
+            if self.bDoTime:
+                print("LocationListView context get_qlist(): {:.1f}".format( get_now_time() - iStart))
+                # Reset the time
+                iStart = get_now_time()
+
             # Add the sorted-dialect information to lEntry
             for idx, item in enumerate(lEntry):
                 # Start or Finish dialect information
@@ -1679,6 +1731,10 @@ class LocationListView(ListView):
                     lEntry[idx]['alist'] = None
 
             context['qlist'] = lEntry
+
+        # Finish measuring context time
+        if self.bDoTime:
+            print("LocationListView context: {:.1f}".format( get_now_time() - iStart))
 
         # Return the calculated context
         return context
@@ -1701,15 +1757,24 @@ class LocationListView(ListView):
     def get_qafl(self, context):
         """Sort the paginated QS by Dialect/Aflevering and turn into a dict"""
 
+        bMethodQset = False
+
         # REtrieve the correct queryset, as determined by paginate_by
         qs = context['object_list']
         qsd = []
-        # Walk through the query set
-        for entry in qs:
-            qsd.append(entry)
-        # Now sort the resulting set
-        qsd = sorted(qsd, key=lambda el: el.dialect.stad + " " + el.get_aflevering())
-        # qsd = sorted(qsd, key=itemgetter('stad', 'afl'))
+
+        if bMethodQset:
+            # Walk through the query set
+            for entry in qs:
+                qsd.append(entry)
+            # Now sort the resulting set
+            qsd = sorted(qsd, key=lambda el: el.dialect.stad + " " + el.get_aflevering())
+            # qsd = sorted(qsd, key=itemgetter('stad', 'afl'))
+        else:
+            qsd = list(qs)
+            # Now sort the resulting set
+            qsd = sorted(qsd, key=lambda el: el.dialect.stad + " " + el.get_aflevering())
+
         # Prepare for dialect processing
         lVarsD = ["stad", "afl"]
         lFunsD = [["dialect", "stad"], Entry.get_aflevering]
@@ -1729,6 +1794,9 @@ class LocationListView(ListView):
         bHasSearch = False
         bHasFilter = False
 
+        # Time measurement
+        if self.bDoTime: iStart = get_now_time()
+
         # Initialize the filtering on ENTRY
         dialect_list = [item.id for item in page_obj]
         lstQ.append(Q(dialect__id__in=dialect_list))
@@ -1736,8 +1804,13 @@ class LocationListView(ListView):
         # Make sure we filter on aflevering.toonbaar
         lstQ.append(Q(aflevering__toonbaar=True))
 
-        # Get the parameters passed on with the GET request
-        get = self.request.GET
+        # Time measurement
+        if self.bDoTime:
+            print("LocationListView get_entryset (point 'e:a'): {:.1f}".format( get_now_time() - iStart))
+            iStart = get_now_time()
+
+        # Get the parameters passed on with the GET or the POST request
+        get = self.request.GET if self.request.method == "GET" else self.request.POST
 
         # Check for aflevering
         if 'aflevering' in get and get['aflevering'] != '':
@@ -1759,20 +1832,46 @@ class LocationListView(ListView):
                     lstQ.append(Q(mijnlijst__id=iVal) )
                     bHasFilter = True
 
-        qse = Entry.objects.filter(*lstQ).distinct().select_related().order_by(
-            Lower('dialect__stad'),
-            Lower('lemma__gloss'),  
-            Lower('trefwoord__woord'), 
-            Lower('toelichting'), 
-            Lower('woord'))
+        bUseLower = False
+        if bUseLower:
+            qse = Entry.objects.filter(*lstQ).distinct().select_related().order_by(
+                Lower('dialect__stad'),
+                Lower('lemma__gloss'),  
+                Lower('trefwoord__woord'), 
+                Lower('toelichting'), 
+                Lower('woord'))
+        else:
+            qse = Entry.objects.filter(*lstQ).distinct().select_related().order_by(
+                'dialect__stad',
+                'lemma__gloss',  
+                'trefwoord__woord', 
+                'toelichting', 
+                'woord')
+
+        # Time measurement
+        if self.bDoTime:
+            print("LocationListView get_entryset (point 'e:b'): {:.1f}".format( get_now_time() - iStart))
 
         self.qEntry = qse
+
+        qse = list(qse)
+        # Time measurement
+        if self.bDoTime:
+            print("LocationListView get_entryset (point 'e:c'): {:.1f}".format( get_now_time() - iStart))
+
         return qse
 
     def get_queryset(self):
+        # Get the parameters passed on with the GET or the POST request
+        get = self.request.GET if self.request.method == "GET" else self.request.POST
+        # Not sure why, but get a copy
+        get = get.copy()
 
-        # Get the parameters passed on with the GET request
-        get = self.request.GET.copy()
+        # Measure how long it takes
+        if self.bDoTime:
+            iStart = get_now_time()
+
+        # Set the [sortOrder] parameter to 'stad' (the name of the city)
         get['sortOrder'] = 'stad'
 
         # Get possible user choice of 'strict'
@@ -1822,6 +1921,11 @@ class LocationListView(ListView):
                         lstQ.append(Q(entry__mijnlijst__id=iVal) )
                         bHasFilter = True
 
+            # Time measurement
+            if self.bDoTime:
+                print("LocationListView get_queryset point 'a': {:.1f}".format( get_now_time() - iStart))
+                iStart = get_now_time()
+
             bNieuw2018 = True
             if bNieuw2018:
                 # Get a list of lemma's that may be included
@@ -1830,12 +1934,22 @@ class LocationListView(ListView):
 
                 # Get the preliminary queryset
                 qs = Dialect.objects.filter(*lstQ).distinct().select_related().order_by(Lower('stad'))
+
+                # Time measurement
+                if self.bDoTime:
+                    print("LocationListView get_queryset point 'b': {:.1f}".format( get_now_time() - iStart))
+                    iStart = get_now_time()
             else:
                 # Make sure we filter on aflevering.toonbaar
                 lstQ.append(Q(entry__aflevering__toonbaar=True))
 
                 # Use the E-WBD approach: be efficient here
                 qs = Dialect.objects.filter(*lstQ).distinct().select_related().order_by(Lower('stad'))
+
+                # Time measurement
+                if self.bDoTime:
+                    print("LocationListView get_queryset point 'c': {:.1f}".format( get_now_time() - iStart))
+                    iStart = get_now_time()
 
 
         else:
@@ -1903,6 +2017,11 @@ class LocationListView(ListView):
         # Using 'len' is faster since [qse] is being actually used again
         self.entrycount = len(qs)
 
+        # Time measurement
+        if self.bDoTime:
+            print("LocationListView get_queryset point 'd': {:.1f}".format( get_now_time() - iStart))
+            iStart = get_now_time()
+
         # Get a list of locations right here (before doing pagination)
         # self.dialect_id_list = qs.values_list('id', flat = True)
 
@@ -1916,6 +2035,8 @@ class DialectListView(ListView):
     model = Dialect
     paginate_by = 10
     template_name = 'dictionary/dialect_list.html'
+    entrycount = 0
+    bDoTime = True
 
     def get_context_data(self, **kwargs):
         # Call the base implementation first to get a context
@@ -1928,7 +2049,7 @@ class DialectListView(ListView):
         context['searchform'] = search_form
 
         # Determine the count 
-        context['entrycount'] = self.get_queryset().count()
+        context['entrycount'] = self.entrycount # self.get_queryset().count()
 
         # Set the prefix
         context['app_prefix'] = APP_PREFIX
@@ -1954,14 +2075,35 @@ class DialectListView(ListView):
         return self.request.GET.get('paginate_by', self.paginate_by)
         
     def get_queryset(self):
+        # Measure how long it takes
+        if self.bDoTime: iStart = get_now_time()
 
-        # Get the parameters passed on with the GET request
-        get = self.request.GET.copy()
+        # Get the parameters passed on with the GET or the POST request
+        get = self.request.GET if self.request.method == "GET" else self.request.POST
+        get = get.copy()
+        self.get = get
+
+        # Fix the sort-order
         get['sortOrder'] = 'stad'
 
         bWbdMethod = True
+        bFasterApproach = True
 
-        if bWbdMethod:
+        if bFasterApproach:
+            # Create an unordered set of allowed dialects
+            lstQ = []
+            lstQ.append(Q(entry__aflevering__toonbaar=1))
+            dialect_allowed = Dialect.objects.filter(*lstQ).distinct()
+
+            # Time measurement
+            if self.bDoTime:
+                print("DialectListView get_queryset Allowed: {:.1f}".format( get_now_time() - iStart))
+                print("DialectListView query[allowed]: {}".format(dialect_allowed.query))
+                iStart = get_now_time()
+
+            # Start adding other filters
+            lstQ = []
+        elif bWbdMethod:
             lstQ = []
             # Include only those that have at least one aflevering that is 'toonbaar'
             lstQ.append(Q(entry__aflevering__toonbaar=True))
@@ -1996,14 +2138,30 @@ class DialectListView(ListView):
 
         # Calculate the final qs
         if bWbdMethod:
-            qs = Dialect.objects.filter(*lstQ).distinct().order_by(
-              Lower('stad'))
+            if bFasterApproach:
+                lstQ.append(Q(id__in=dialect_allowed))
+                qs = Dialect.objects.filter(*lstQ).order_by('stad').distinct()
+            else:
+                qs = Dialect.objects.filter(*lstQ).order_by(Lower('stad')).distinct()
         else:
             # Make sure we only have distinct values
             qs = qs.distinct()
 
             # Sort the queryset by the parameters given
             qs = order_queryset_by_sort_order(get, qs)
+
+        # Time measurement
+        if self.bDoTime:
+            print("DialectListView get_queryset point 'a': {:.1f}".format( get_now_time() - iStart))
+            print("DialectListView query: {}".format(qs.query))
+            iStart = get_now_time()
+
+        # Determine the length
+        self.entrycount = len(qs)
+
+        # Time measurement
+        if self.bDoTime:
+            print("DialectListView get_queryset point 'b': {:.1f}".format( get_now_time() - iStart))
 
         # Return the resulting filtered and sorted queryset
         return qs

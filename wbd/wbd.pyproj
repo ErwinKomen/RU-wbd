@@ -100,6 +100,7 @@
     <Content Include="wbd\dictionary\templates\dictionary\guide.html" />
     <Content Include="wbd\dictionary\templates\dictionary\lemma_list - Copy.html" />
     <Content Include="wbd\dictionary\templates\dictionary\lemma_list.html" />
+    <Content Include="wbd\dictionary\templates\dictionary\pagination_post.html" />
     <Content Include="wbd\dictionary\templates\dictionary\repair.html" />
     <Content Include="wbd\dictionary\templates\dictionary\aflevering_list.html" />
     <Content Include="wbd\dictionary\templates\dictionary\dialectviewing.html" />

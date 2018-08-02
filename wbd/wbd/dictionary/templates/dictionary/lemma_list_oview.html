@@ -6,7 +6,11 @@
           <div class="col-sm-9">
           <span class="step-links pull-right">
 
-          {% include 'dictionary/pagination.html' %}
+          {% if method == "ajax" %}
+            {% include 'dictionary/pagination_post.html' with method=method %}
+          {% else %}
+            {% include 'dictionary/pagination.html' with method=method %}
+          {% endif %}
 
           </span>
           </div>
@@ -95,7 +99,12 @@
       <div class="pagination">
           <span class="step-links">
 
-          {% include 'dictionary/pagination.html' %}
+          {% if method == "ajax" %}
+            {% include 'dictionary/pagination_post.html' with method=method %}
+          {% else %}
+            {% include 'dictionary/pagination.html' with method=method %}
+          {% endif %}
+
 
           </span>
       </div>

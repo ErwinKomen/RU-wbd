@@ -4,7 +4,7 @@
 
     <div class="panel panel-default">
       <form name='lemmasearch' id='lemmasearch' action="" method='get' >
-        {% csrf_token %}
+        {% if method == 'ajax' %} {% csrf_token %} {% endif %}
           <!-- EK: A sort-order specification is in a hidden form field, which is filled by JS:do_sort_column() -->
           <div class="hidden">
               <input name='sortOrder' class='form-control' value='gloss' >
@@ -34,8 +34,8 @@
               <div><label>&nbsp;</label></div>
               <div class='btn-group'>
                   <!-- Make sure no button has the *name* 'submit', otherwise submit() cannot be used -->
-                  <button type="button" class="btn btn-primary" id="button_search" onclick="do_search(this, 'lemma', 'simple');">Zoek</button>
-                  <button type="button" class="btn btn-default" id="button_herstel" onclick="do_search(this, 'lemma', 'Herstel');">Herstel</button>
+                  <button type="button" class="btn btn-primary" id="button_search" m="{{method}}" onclick="do_search(this, 'lemma', 'simple');">Zoek</button>
+                  <button type="button" class="btn btn-default" id="button_herstel" m="{{method}}" onclick="do_search(this, 'lemma', 'Herstel');">Herstel</button>
                   <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" 
                       aria-haspopup="true" aria-expanded="false">Download <span class="caret"></span></button>
                   <ul class="dropdown-menu">
@@ -125,7 +125,7 @@
 
     <div id="lemma_list_msg"><!-- Room for any error messages --></div>
     <div id="lemma_list_oview">
-      {% include 'dictionary/lemma_list_oview.html' %}
+      {% include 'dictionary/lemma_list_oview.html' with method=method %}
     </div>
 
 
