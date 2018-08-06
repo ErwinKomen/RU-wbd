@@ -826,14 +826,29 @@ class TrefwoordListView(ListView):
             #qse = Trefwoord.objects.filter(*lstQ).select_related().order_by(
             #    Lower('woord')).distinct()
 
-            # First get all the Trefwoord objects that satisfy [lstQ]
-            qse = Trefwoord.objects.filter(*lstQ).select_related().order_by(Lower('woord')).distinct()
+            method_number = 2
 
-            # Get a list of lemma's to ignore
-            lemma_ignore = Lemma.objects.filter(entry__aflevering__toonbaar=0).distinct()
+            if method_number == 1:
+                # Method #1: this is the wrong method; it excludes some that should not be excluded
+
+                # First get all the Trefwoord objects that satisfy [lstQ]
+                qse = Trefwoord.objects.filter(*lstQ).select_related().order_by(Lower('woord')).distinct()
+
+                # Get a list of lemma's to ignore
+                lemma_ignore = Lemma.objects.filter(entry__aflevering__toonbaar=0).distinct()
  
-            # Adapt the QSE
-            qse = qse.exclude(entry__lemma=lemma_ignore)
+                # Adapt the QSE
+                qse = qse.exclude(entry__lemma=lemma_ignore)
+            elif method_number == 2:
+                # Method #2: correct method - filter on inclusion
+                # First get all the Trefwoord objects that satisfy [lstQ]
+                qse = Trefwoord.objects.filter(*lstQ).select_related().order_by(Lower('woord')).distinct()
+
+                # Get a list of lemma's te be included
+                lemma_include = Lemma.objects.filter(entry__aflevering__toonbaar=1).distinct()
+
+                # Adapt the QSE
+                qse = qse.filter(entry__lemma__in=lemma_include)
 
             # Debugging: time
             if self.bDoTime: 
@@ -1451,36 +1466,69 @@ class LemmaListView(ListView):
                         bHasFilter = True
 
             bFasterApproach = True
+            method_number = 6
+
             if bFasterApproach:
-                # METHOD #1
-                ## Get a list of all lemma's that may *NOT* be shown
-                #lemma_ignore = list(Lemma.objects.filter(entry__aflevering__toonbaar=0).distinct().values_list('id', flat = True))
-                ## Efficiently get all the lemma's that *MAY* be shown
-                #qse = Lemma.objects.exclude(id__in=lemma_ignore).filter(*lstQ).select_related().order_by('gloss').distinct()
 
-                # METHOD #2
-                ## Get a list of all lemma's that may *NOT* be shown
-                #lemma_ignore = Lemma.objects.filter(entry__aflevering__toonbaar=0).distinct()
-                ## Efficiently get all the lemma's that *MAY* be shown
-                #qse = Lemma.objects.exclude(id=lemma_ignore).filter(*lstQ).select_related().order_by('gloss').distinct()
+                if method_number == 1:
+                    # METHOD #1 ==> incorrect results
+                    # Get a list of all lemma's that may *NOT* be shown
+                    lemma_ignore = list(Lemma.objects.filter(entry__aflevering__toonbaar=0).distinct().values_list('id', flat = True))
+                    # Efficiently get all the lemma's that *MAY* be shown
+                    qse = Lemma.objects.exclude(id__in=lemma_ignore).filter(*lstQ).select_related().order_by('gloss').distinct()
 
-                # METHOD #3
-                # Get a list of all lemma's that may *NOT* be shown
-                lstQ.append(Q(entry__aflevering__toonbaar=True))
-                # Efficiently get all the lemma's that *MAY* be shown
-                qse = Lemma.objects.filter(*lstQ).select_related().order_by('gloss').distinct()
-                # qse = Lemma.objects.filter(*lstQ).order_by('gloss')
+                elif method_number == 2:
+                    # METHOD #2 ==> incorrect results
+                    # Get a list of all lemma's that may *NOT* be shown
+                    lemma_ignore = Lemma.objects.filter(entry__aflevering__toonbaar=0).distinct()
+                    # Efficiently get all the lemma's that *MAY* be shown
+                    qse = Lemma.objects.exclude(id__in=lemma_ignore).filter(*lstQ).select_related().order_by('gloss').distinct()
 
+                elif method_number == 3:
+                    # METHOD #3
+                    # Get a list of all lemma's that *MAY* be shown
+                    lstQ.append(Q(entry__aflevering__toonbaar=True))
+                    # Efficiently get all the lemma's that *MAY* be shown
+                    qse = Lemma.objects.filter(*lstQ).select_related().order_by('gloss').distinct()
 
-                # METHOD #4
-                ## First get all the lemma's
-                #qse = Lemma.objects.filter(*lstQ).select_related().order_by('gloss').distinct()
+                elif method_number == 4:
+                    # METHOD #4 ==> incorrect results
+                    # First get all the lemma's
+                    qse = Lemma.objects.filter(*lstQ).select_related().order_by('gloss').distinct()
 
-                ## Get a list of lemma's to ignore
-                #lemma_ignore = Lemma.objects.filter(entry__aflevering__toonbaar=0).distinct()
+                    # Get a list of lemma's to ignore
+                    lemma_ignore = Lemma.objects.filter(entry__aflevering__toonbaar=0).distinct()
 
-                ## Adapt the QSE
-                #qse = qse.exclude(id=lemma_ignore)
+                    # Adapt the QSE
+                    qse = qse.exclude(id__in=lemma_ignore)
+
+                elif method_number == 5:
+                    # METHOD #5
+                    # Get a list of lemma's that *MAY* be shown
+                    lemma_show = Lemma.objects.filter(entry__aflevering__toonbaar=1).distinct()
+                    lstQ.append(Q(id__in=lemma_show))
+
+                    # First get all the lemma's
+                    qse = Lemma.objects.filter(*lstQ).select_related().order_by('gloss').distinct()
+
+                elif method_number == 6:
+                    # METHOD #6
+                    # First get all the lemma's
+                    qse = Lemma.objects.filter(*lstQ).select_related().order_by('gloss').distinct()
+
+                    # Get a list of lemma's to be shown
+                    lemma_show = Lemma.objects.filter(entry__aflevering__toonbaar=1).distinct()
+
+                    # Adapt the QSE
+                    qse = qse.filter(id__in=lemma_show)
+
+                elif method_number == 7:
+                    # METHOD #7
+                    # First get the lemma's that MAY be shown
+                    qse =Lemma.objects.filter(entry__aflevering__toonbaar=1).distinct()
+
+                    # Then filter it further
+                    qse = qse.filter(*lstQ).select_related().order_by('gloss').distinct()
 
             else:
                 # Check for aflevering being publishable
