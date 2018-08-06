@@ -98,7 +98,6 @@
     <Content Include="wbd\dictionary\static\dictionary\scripts\diadict.js" />
     <Content Include="wbd\dictionary\static\dictionary\scripts\gtrack.js" />
     <Content Include="wbd\dictionary\templates\dictionary\guide.html" />
-    <Content Include="wbd\dictionary\templates\dictionary\lemma_list - Copy.html" />
     <Content Include="wbd\dictionary\templates\dictionary\lemma_list.html" />
     <Content Include="wbd\dictionary\templates\dictionary\pagination_post.html" />
     <Content Include="wbd\dictionary\templates\dictionary\repair.html" />

@@ -9,6 +9,7 @@ from django.http import HttpRequest, HttpResponse
 from django.core.urlresolvers import reverse
 from django.template import RequestContext, loader
 from django.template.loader import render_to_string
+from django.db import connection
 from django.db.models import Q
 from django.db.models.functions import Lower
 from django.http import JsonResponse
@@ -739,9 +740,16 @@ class TrefwoordListView(ListView):
 
         # Fine-tuning: search string is the LEMMA
         if 'search' in get and get['search'] != '':
-            val = adapt_search(get['search'])
-            # Use the 'woord' attribute of Trefwoord
-            lstQ.append(Q(woord__iregex=val) )
+            val = get['search']
+            if '*' in val or '[' in val or '?' in val:
+                val = adapt_search(val)
+                lstQ.append(Q(woord__iregex=val) )
+            else:
+                # Strive for equality, but disregard case
+                lstQ.append(Q(woord__iexact=val))
+            #val = adapt_search(get['search'])
+            ## Use the 'woord' attribute of Trefwoord
+            #lstQ.append(Q(woord__iregex=val) )
             bHasSearch = True
 
             # check for possible exact numbers having been given
@@ -1060,10 +1068,9 @@ class LemmaListView(ListView):
             # Start collecting context time
             if self.bDoTime: iStart = get_now_time()
             # Need to adapt the object_list to get the entries to be used
-            # context['object_list'] = self.get_entryset(context['page_obj'])
             context['object_list'] = list(self.get_entryset(context['page_obj']))
             if self.bDoTime:
-                print("LemmaListView get_entryset: {:.1f}".format( get_now_time() - iStart))
+                print("LemmaListView get_context_data: {:.1f}".format( get_now_time() - iStart))
 
         # Start collecting context time
         if self.bDoTime: iStart = get_now_time()
@@ -1281,7 +1288,6 @@ class LemmaListView(ListView):
         # lstQ.append(Q(lemma__id__in=page_obj))
 
         # Get the parameters passed on with the GET request
-        #get = self.request.GET
         get = self.get
 
         # Check for dialect city
@@ -1386,8 +1392,13 @@ class LemmaListView(ListView):
 
         # Fine-tuning: search string is the LEMMA
         if 'search' in get and get['search'] != '':
-            val = adapt_search(get['search'])
-            lstQ.append(Q(gloss__iregex=val) )
+            val = get['search']
+            if '*' in val or '[' in val or '?' in val:
+                val = adapt_search(val)
+                lstQ.append(Q(gloss__iregex=val) )
+            else:
+                # Strive for equality, but disregard case
+                lstQ.append(Q(gloss__iexact=val))
             bHasSearch = True
 
             # check for possible exact numbers having been given
@@ -1397,8 +1408,14 @@ class LemmaListView(ListView):
         if self.bWbdApproach:
             # Check for dialect city
             if 'dialectCity' in get and get['dialectCity'] != '':
-                val = adapt_search(get['dialectCity'])
-                lstQ.append(Q(entry__dialect__stad__iregex=val))
+                val = get['dialectCity']
+                if '*' in val or '[' in val or '?' in val:
+                    # val = adapt_search(get['dialectCity'])
+                    val = adapt_search(val)
+                    lstQ.append(Q(entry__dialect__stad__iregex=val))
+                else:
+                    # Strive for equality, but disregard case
+                    lstQ.append(Q(entry__dialect__stad__iexact=val))
                 bHasFilter = True
 
             # Check for dialect code (Kloeke)
@@ -1435,19 +1452,35 @@ class LemmaListView(ListView):
 
             bFasterApproach = True
             if bFasterApproach:
+                # METHOD #1
                 ## Get a list of all lemma's that may *NOT* be shown
                 #lemma_ignore = list(Lemma.objects.filter(entry__aflevering__toonbaar=0).distinct().values_list('id', flat = True))
                 ## Efficiently get all the lemma's that *MAY* be shown
                 #qse = Lemma.objects.exclude(id__in=lemma_ignore).filter(*lstQ).select_related().order_by('gloss').distinct()
 
-                # First get all the lemma's
+                # METHOD #2
+                ## Get a list of all lemma's that may *NOT* be shown
+                #lemma_ignore = Lemma.objects.filter(entry__aflevering__toonbaar=0).distinct()
+                ## Efficiently get all the lemma's that *MAY* be shown
+                #qse = Lemma.objects.exclude(id=lemma_ignore).filter(*lstQ).select_related().order_by('gloss').distinct()
+
+                # METHOD #3
+                # Get a list of all lemma's that may *NOT* be shown
+                lstQ.append(Q(entry__aflevering__toonbaar=True))
+                # Efficiently get all the lemma's that *MAY* be shown
                 qse = Lemma.objects.filter(*lstQ).select_related().order_by('gloss').distinct()
+                # qse = Lemma.objects.filter(*lstQ).order_by('gloss')
 
-                # Get a list of lemma's to ignore
-                lemma_ignore = Lemma.objects.filter(entry__aflevering__toonbaar=0).distinct()
 
-                # Adapt the QSE
-                qse = qse.exclude(id=lemma_ignore)
+                # METHOD #4
+                ## First get all the lemma's
+                #qse = Lemma.objects.filter(*lstQ).select_related().order_by('gloss').distinct()
+
+                ## Get a list of lemma's to ignore
+                #lemma_ignore = Lemma.objects.filter(entry__aflevering__toonbaar=0).distinct()
+
+                ## Adapt the QSE
+                #qse = qse.exclude(id=lemma_ignore)
 
             else:
                 # Check for aflevering being publishable
@@ -1554,6 +1587,7 @@ class LemmaListView(ListView):
         # Note the number of ITEMS we have
         #   (The nature of these items depends on the approach taken)
         # self.entrycount = qse.count()
+        # Note: while taking more time here, it saves time later
         self.entrycount = len(qse)
 
         # Time measurement

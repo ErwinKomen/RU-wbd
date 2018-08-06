@@ -20,6 +20,7 @@
                       <ul class="dropdown-menu">
                           <li><a href="#" onclick="set_search('lemmasearch')">Begrippen</a></li>
                           <li><a href="#" onclick="set_search('locationsearch')">Plaatsen</a></li>
+                          <li><a href="#" onclick="set_search('dialectsearch')">Dialecten</a></li>
                           <li><a href="#" onclick="set_search('trefwoordsearch')">Trefwoorden</a></li>
                       </ul>
                     </li>
@@ -48,6 +49,12 @@
                       action="{% url 'locationsearch' %}">
                   <div class="form-group">
                     <input id="search" name="search" type="text" class="form-control" placeholder="Plaats">
+                  </div>
+                </form>
+                <form name="topdialectsearch" id="topdialectsearch" class="navbar-form navbar-left hidden"
+                      action="{% url 'dialectsearch' %}">
+                  <div class="form-group">
+                    <input id="search" name="search" type="text" class="form-control" placeholder="Dialect">
                   </div>
                 </form>
                 <form name="toptrefwoordsearch" id="toptrefwoordsearch" class="navbar-form navbar-left hidden"

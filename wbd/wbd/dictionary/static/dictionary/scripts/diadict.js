@@ -504,7 +504,7 @@ function progress_stop() {
 
 function set_search(sId) {
     try {
-        var lSearchId = ['lemmasearch', 'locationsearch', 'trefwoordsearch'];
+        var lSearchId = ['lemmasearch', 'locationsearch', 'dialectsearch', 'trefwoordsearch'];
         for (i = 0; i < lSearchId.length; i++) {
             $("#top" + lSearchId[i]).addClass("hidden");
         }
