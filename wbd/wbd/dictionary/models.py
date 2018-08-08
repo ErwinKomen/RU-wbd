@@ -394,6 +394,8 @@ class Lemma(models.Model):
     # bronnenlijst = models.TextField("Bronnenlijst bij dit lemma", db_index=True, blank=True)
     # boek = models.TextField("Boekaanduiding", db_index=True, null=True,blank=True)
     lmdescr = models.ManyToManyField(Description, through='LemmaDescr')
+    # A field that indicates this item may be showed
+    toonbaar = models.BooleanField("Mag getoond worden", blank=False, default=True)
 
     class Meta:
         # Note: no index is possible, since lmdescr is many-to-many
@@ -459,6 +461,23 @@ class Lemma(models.Model):
         except:
             oErr.DoError("Lemma/get_instance error:")
             return None
+
+    def change_toonbaar():
+        # Set all lemma's to 'toonbaar
+        with transaction.atomic():
+            for lemma in Lemma.objects.all():
+                if lemma.toonbaar != True:
+                    lemma.toonbaar = True
+                    lemma.save()
+        # Get a list of all lemma's that are NOT toonbaar
+        lemma_show = Lemma.objects.filter(entry__aflevering__toonbaar=1).distinct()
+        lemma_hide = Lemma.objects.exclude(Q(id__in=lemma_show))
+        with transaction.atomic():
+            for lemma in lemma_hide:
+                lemma.toonbaar = False
+                lemma.save()
+        # Return positively
+        return True
 
 
 class LemmaDescr(models.Model):
@@ -543,6 +562,8 @@ class Dialect(models.Model):
     stad = models.CharField("Dialectlocatie", db_index=True, blank=False, max_length=MAX_LEMMA_LEN, default="(unknown)")
     code = models.CharField("Plaatscode (Kloeke)", blank=False, max_length=6, default="xxxxxx")
     nieuw = models.CharField("Plaatscode (Nieuwe Kloeke)", db_index=True, blank=False, max_length=6, default="xxxxxx")
+    # A field that indicates this item may be showed
+    toonbaar = models.BooleanField("Mag getoond worden", blank=False, default=True)
     # Note: removed 'dialect_toelichting' in accordance with issue #22 of WLD
     # toelichting = models.TextField("Toelichting bij dialect", blank=True)
 
@@ -594,12 +615,31 @@ class Dialect(models.Model):
             oErr.DoError("Dialect/get_item error:")
             return -1
 
+    def change_toonbaar():
+        # Set all inst's to 'toonbaar
+        with transaction.atomic():
+            for inst in Dialect.objects.all():
+                if inst.toonbaar != True:
+                    inst.toonbaar = True
+                    inst.save()
+        # Get a list of all inst's that are NOT toonbaar
+        dialect_show = Dialect.objects.filter(entry__aflevering__toonbaar=1).distinct()
+        dialect_hide = Dialect.objects.exclude(Q(id__in=dialect_show))
+        with transaction.atomic():
+            for inst in dialect_hide:
+                inst.toonbaar = False
+                inst.save()
+        # Return positively
+        return True
+
 
 class Trefwoord(models.Model):
     """Trefwoord"""
 
     woord = models.CharField("Trefwoord", db_index=True, blank=False, max_length=MAX_LEMMA_LEN, default="(unknown)")
     toelichting = models.TextField("Toelichting bij trefwoord", blank=True)
+    # A field that indicates this item may be showed
+    toonbaar = models.BooleanField("Mag getoond worden", blank=False, default=True)
 
     class Meta:
         verbose_name_plural = "Trefwoorden"
@@ -654,6 +694,23 @@ class Trefwoord(models.Model):
         except:
             oErr.DoError("Trefwoord/get_item error:")
             return -1
+
+    def change_toonbaar():
+        # Set all inst's to 'toonbaar
+        with transaction.atomic():
+            for inst in Trefwoord.objects.all():
+                if inst.toonbaar != True:
+                    inst.toonbaar = True
+                    inst.save()
+        # Get a list of all inst's that are NOT toonbaar
+        trefwoord_show = Trefwoord.objects.filter(entry__aflevering__toonbaar=1).distinct()
+        trefwoord_hide = Trefwoord.objects.exclude(Q(id__in=trefwoord_show))
+        with transaction.atomic():
+            for inst in trefwoord_hide:
+                inst.toonbaar = False
+                inst.save()
+        # Return positively
+        return True
 
 
 class Deel(models.Model):
@@ -756,6 +813,19 @@ class Aflevering(models.Model):
 
     def __str__(self):
         return self.naam
+
+    def save(self, force_insert = False, force_update = False, using = None, update_fields = None):
+        # Get the original
+        orig = Aflevering.objects.get(pk=self.pk)
+        bToonbaarChanged = (self.toonbaar != orig.toonbaar)
+        result = super(Aflevering, self).save(force_insert, force_update, using, update_fields)
+        # Action if Toonbaar has changed
+        if bToonbaarChanged:
+            # Adapt Lemma, Trefwoord and Dialect instances
+            Lemma.change_toonbaar()
+            Trefwoord.change_toonbaar()
+            Dialect.change_toonbaar()
+        return result
 
     def get_number(self):
         if self.sectie == None:
