@@ -344,7 +344,6 @@ def import_csv_start(request):
         iAflnum = request.GET.get('aflnum', 1)
         sFile = request.GET.get('filename', '')
 
-
         bUseDbase = request.GET.get('usedbase', False)
         if bUseDbase:
             if bUseDbase == "true":

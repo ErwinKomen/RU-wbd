@@ -400,7 +400,7 @@ class Lemma(models.Model):
     class Meta:
         # Note: no index is possible, since lmdescr is many-to-many
         # index_together = ['gloss', 'lmdescr']
-        pass
+        verbose_name_plural = "Lemma's"
 
     def __str__(self):
         return self.gloss
@@ -556,9 +556,6 @@ class LemmaDescr(models.Model):
 class Dialect(models.Model):
     """Dialect"""
 
-    class Meta:
-        verbose_name_plural = "Dialecten"
-
     stad = models.CharField("Dialectlocatie", db_index=True, blank=False, max_length=MAX_LEMMA_LEN, default="(unknown)")
     code = models.CharField("Plaatscode (Kloeke)", blank=False, max_length=6, default="xxxxxx")
     nieuw = models.CharField("Plaatscode (Nieuwe Kloeke)", db_index=True, blank=False, max_length=6, default="xxxxxx")
@@ -568,6 +565,7 @@ class Dialect(models.Model):
     # toelichting = models.TextField("Toelichting bij dialect", blank=True)
 
     class Meta:
+        verbose_name_plural = "Dialecten"
         index_together = ['stad', 'code', 'nieuw']
 
     def __str__(self):
@@ -1121,7 +1119,6 @@ class FixSkip:
     def close(self):
         # Close the output file
         self.fl_out.close()
-
 
 
 class FixOut:
