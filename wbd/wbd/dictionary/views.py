@@ -993,9 +993,16 @@ class LemmaListView(ListView):
         if self.bUseMijnen:
             # Try to retain the choice for Mijn
             if 'mijn' in initial:
-                context['mijnkeuze'] = int(initial['mijn'])
+                mijn_id = int(initial['mijn'])
+                context['mijnkeuze'] = mijn_id
+                mijn_inst = Mijn.objects.filter(id=mijn_id).first()
+                if mijn_inst == None:
+                    context['mijnnaam'] = ''
+                else:
+                    context['mijnnaam'] = mijn_inst.naam
             else:
                 context['mijnkeuze'] = 0
+                context['mijnnaam'] = ''
         # Process and retain the choice for Aflevering
         if 'aflevering' in initial:
             context['aflkeuze'] = int(initial['aflevering'])
