@@ -14,7 +14,7 @@ from datetime import datetime
 import time
 from wbd.settings import APP_PREFIX, MEDIA_ROOT
 from wbd.utils import *
-import os
+import os, os.path
 import sys
 import io
 import codecs
@@ -350,10 +350,11 @@ class Description(models.Model):
             oErr.DoError("Description/get_item error:")
             return -1, None
 
-    def get_instance(options, oTime = None):
+    def get_instance(options, instance, oTime = None):
         """Return the instance described by the options"""
 
         oErr = ErrHandle()
+        bSpeedUp = True
         try:
             # Get the parameters
             bronnenlijst = options['bronnenlijst']
@@ -361,15 +362,26 @@ class Description(models.Model):
             toelichting = ""
             if 'toelichting' in options:
                 toelichting = options['toelichting']
-            # Try find an existing item
-            lstQ = []
-            lstQ.append(Q(bronnenlijst__iexact=bronnenlijst))
-            lstQ.append(Q(boek__iexact=boek))
-            lstQ.append(Q(toelichting__iexact=toelichting))
+            # Check if we have an existing instance and if it equals that one
+            if instance != None:
+                if instance.bronnenlijst == bronnenlijst and instance.boek == boek and instance.toelichting == toelichting:
+                    # Return this instance
+                    return instance
 
-            if oTime != None: iStart = get_now_time()
-            qItem = Description.objects.filter(*lstQ).first()
-            if oTime != None: oTime['search'] += get_now_time() - iStart
+            # SPEEDING UP:
+            #  - If there was no previous instance, then just create a new one without searching any further.
+            if bSpeedUp:
+                qItem = None
+            else:
+                # Try find an existing item
+                lstQ = []
+                lstQ.append(Q(bronnenlijst__iexact=bronnenlijst))
+                lstQ.append(Q(boek__iexact=boek))
+                lstQ.append(Q(toelichting__iexact=toelichting))
+
+                if oTime != None: iStart = get_now_time()
+                qItem = Description.objects.filter(*lstQ).first()
+                if oTime != None: oTime['search_Ds'] += get_now_time() - iStart
 
             # see if we get one value back
             if qItem == None:
@@ -447,7 +459,7 @@ class Lemma(models.Model):
 
             if oTime != None: iStart = get_now_time()
             qItem = Lemma.objects.filter(*lstQ).first()
-            if oTime != None: oTime['search'] += get_now_time() - iStart
+            if oTime != None: oTime['search_L'] += get_now_time() - iStart
 
             # see if we get one value back
             if qItem == None:
@@ -502,7 +514,7 @@ class LemmaDescr(models.Model):
 
             if oTime != None: iStart = get_now_time()
             qItem = LemmaDescr.objects.filter(*lstQ).first()
-            if oTime != None: oTime['search'] += get_now_time() - iStart
+            if oTime != None: oTime['search_LD'] += get_now_time() - iStart
 
             # see if we get one value back
             if qItem == None:
@@ -536,7 +548,7 @@ class LemmaDescr(models.Model):
 
             if oTime != None: iStart = get_now_time()
             qItem = LemmaDescr.objects.filter(*lstQ).first()
-            if oTime != None: oTime['search'] += get_now_time() - iStart
+            if oTime != None: oTime['search_LD'] += get_now_time() - iStart
 
             # see if we get one value back
             if qItem == None:
@@ -595,7 +607,7 @@ class Dialect(models.Model):
 
             if oTime != None: iStart = get_now_time()
             qItem = Dialect.objects.filter(*lstQ).first()
-            if oTime != None: oTime['search'] += get_now_time() - iStart
+            if oTime != None: oTime['search_Dt'] += get_now_time() - iStart
 
             # see if we get one value back
             if qItem == None:
@@ -673,7 +685,7 @@ class Trefwoord(models.Model):
 
             if oTime != None: iStart = get_now_time()
             qItem = Trefwoord.objects.filter(*lstQ).first()
-            if oTime != None: oTime['search'] += get_now_time() - iStart
+            if oTime != None: oTime['search_T'] += get_now_time() - iStart
 
             # see if we get one value back
             if qItem == None:
@@ -1488,7 +1500,30 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
             else:
                 iPkEntry = Entry.objects.latest('id').id
 
+        # First check the presence of all the 'promised' files
+        lMsg = []
+        for oInfo in lstInfo:
+            # Get the details of this object
+            csv_file = oInfo.csv_file.path
+            iDeel = oInfo.deel
+            iSectie = oInfo.sectie
+            iAflevering = oInfo.aflnum
+            if not os.path.isfile(csv_file):
+                lMsg.append("{}/{}/{} file is not existing: {}".format(
+                    iDeel, iSectie, iAflevering, csv_file))
 
+        # Any messages?
+        if len(lMsg) > 0:
+            sMsg = "\n".join(lMsg)
+            oStatus.set_status("error", sMsg)
+            oBack['result'] = False
+            oBack['msg'] = sMsg
+            oErr.Status(sMsg)
+            return oBack
+
+         # Initialization of 'last' items
+        descr_this = None
+               
         # Process all the objects in [lstInfo]
         for oInfo in lstInfo:
             # Get the details of this object
@@ -1564,7 +1599,11 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
                 oTime['db'] = 0     # Time spent in reading and saving database items
                 oTime['entry'] = 0  # Processing entries
                 oTime['save'] = 0   # Time spent in saving
-                oTime['search'] = 0 # Time spent in searching
+                oTime['search_L'] = 0 # Time spent in searching (lemma)
+                oTime['search_T'] = 0 # Time spent in searching (trefwoord)
+                oTime['search_Ds'] = 0 # Time spent in searching (description)
+                oTime['search_Dt'] = 0 # Time spent in searching (dialect)
+                oTime['search_LD'] = 0 # Time spent in searching (lemmadescription)
 
 
                 # Iterate through the lines of the CSV file
@@ -1624,7 +1663,7 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
                                     # Find out which lemma-description this is
                                     descr_this = Description.get_instance({'bronnenlijst': oLine['lemma_bronnenlijst'],
                                                                      'toelichting': oLine['lemma_toelichting'], 
-                                                                     'boek': oLine['lemma_boek']}, oTime)
+                                                                     'boek': oLine['lemma_boek']}, descr_this, oTime)
 
                                     # We do need the PKs of the lemma and the description
                                     iPkLemma = lemma_this.pk
@@ -1759,9 +1798,9 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
                     # Keep track of progress
                     oStatus.skipped = iSkipped
                     oStatus.read = iRead
-                    oStatus.status = "{} (read={:.1f}, db={:.1f}, entry={:.1f}, search={:.1f}, save={:.1f})".format(
+                    oStatus.status = "{} (read={:.1f}, db={:.1f}, entry={:.1f}, search L={:.1f}, T={:.1f}, Ds={:.1f}, LD={:.1f}, Dt={:.1f}, save={:.1f})".format(
                         sWorking, oTime['read'], oTime['db'], oTime['entry'],
-                        oTime['search'], oTime['save'])
+                        oTime['search_L'], oTime['search_T'], oTime['search_Ds'], oTime['search_LD'], oTime['search_Dt'], oTime['save'])
                     oStatus.save()
 
 
