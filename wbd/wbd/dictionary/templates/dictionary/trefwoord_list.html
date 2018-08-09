@@ -69,12 +69,17 @@
                   <span class="filter-item">{% if searchform.dialectCity.value %}plaats={{searchform.dialectCity.value}}{% endif %}</span>
                   <span class="filter-item">{% if searchform.dialectCode.value %}dialect={{searchform.dialectCode.value}}{% endif %}</span>
                   <span class="filter-item">{% if afl %}aflevering={{afl}}{% endif %}</span>
+                  {% if mijnen|length > 0 %}
+                    <span class="filter-item">{% if mijnnaam %}mijn={{mijnnaam}}{% endif %}</span>
+                  {% endif %}
                 </span>
               </div>
 
               <!-- class="collapse" -->
               <div id="query-area" class="collapse {% if not request.GET.search %} inert {% endif %}">
+
                 <div id='searchformwell' class='well search-results-collapsable'>
+
                     <table class='table'>
                         <tr>
                           <td>
@@ -120,9 +125,23 @@
                               </select>
                             </div>
 
+                            {% if mijnen|length > 0 %}
+                              <div><label>&nbsp;</label></div>
+                              <div class='input-group'>
+                                <label class='input-group-addon' for='mijn'>{{searchform.mijn.label}}</label>
+                                <select class='form-control' name="mijn">
+                                    <option value="0">-</option>
+                                  {% for opt in mijnen %}
+                                    <option  {% if opt.id == mijnkeuze %} selected {% endif %} value="{{opt.id}}">{{opt.naam}}</option>
+                                  {% endfor %}
+                                </select>
+                              </div>
+                            {% endif %}
+
                           </td>
                         </tr>
                     </table>
+
               </div>
             </div>
             </div>

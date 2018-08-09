@@ -433,7 +433,8 @@ class Lemma(models.Model):
             # Get the parameters
             gloss = self['gloss']
             try:
-                lemma = Lemma.objects.get(gloss__iexact=gloss)
+                # OLD: lemma = Lemma.objects.get(gloss__iexact=gloss)
+                lemma = Lemma.objects.get(gloss=gloss)
             except ObjectDoesNotExist:
                 lemma = Lemma(gloss=gloss)
                 lemma.save()
@@ -453,9 +454,12 @@ class Lemma(models.Model):
         try:
             # Get the parameters
             gloss = options['gloss']
+            # Make sure it is lower case
+            gloss = gloss.lower()
             # Try find an existing item
             lstQ = []
-            lstQ.append(Q(gloss__iexact=gloss))
+            # lstQ.append(Q(gloss__iexact=gloss))
+            lstQ.append(Q(gloss=gloss))
 
             if oTime != None: iStart = get_now_time()
             qItem = Lemma.objects.filter(*lstQ).first()
@@ -676,9 +680,12 @@ class Trefwoord(models.Model):
             toelichting = None
             # Get the parameters
             woord = self['woord']
+            # Make sure it is lower case
+            woord = woord.lower()
             # Try find an existing item
             lstQ = []
-            lstQ.append(Q(woord__iexact=woord))
+            # lstQ.append(Q(woord__iexact=woord))
+            lstQ.append(Q(woord=woord))
             if 'toelichting' in self:
                 toelichting = self['toelichting']
                 lstQ.append(Q(toelichting__iexact = toelichting))
@@ -922,6 +929,35 @@ class Mijn(models.Model):
 
         return iPk
 
+    def get_item(self, oTime = None):
+        oErr = ErrHandle()
+        try:
+            # Get the parameters
+            naam = self['naam']
+            # Try find an existing item
+            lstQ = []
+            lstQ.append(Q(naam__iexact=naam))
+
+            if oTime != None: iStart = get_now_time()
+            qItem = Mijn.objects.filter(*lstQ).first()
+            if oTime != None: oTime['search_M'] += get_now_time() - iStart
+
+            # see if we get one value back
+            if qItem == None:
+                # add a new Dialect object
+                if oTime != None: iStart = get_now_time()
+                qItem = Mijn(naam=naam)
+                qItem.save()
+                if oTime != None: oTime['save'] += get_now_time() - iStart
+            # Get the pk of the first hit
+            iPk = qItem.pk
+
+            # Return the result
+            return iPk
+        except:
+            oErr.DoError("Mijn/get_item error:")
+            return -1
+
 
 class Entry(models.Model):
     """Dictionary entry"""
@@ -1084,7 +1120,7 @@ class EntryMijn(models.Model):
     entry=models.ForeignKey(Entry, db_index=True, on_delete=models.CASCADE)
     mijn=models.ForeignKey(Mijn, db_index=True, on_delete=models.CASCADE)
 
-    def get_item(self):
+    def get_item(self, bSet):
         # Get the parameters
         entry = self['entry']
         mijn = self['mijn']
@@ -1094,7 +1130,11 @@ class EntryMijn(models.Model):
         # see if we get one value back
         if qItem == None:
             # add a new Description object
-            entrymijn = EntryMijn(entry=Entry.objects.get(id=entry), mijn=Mijn.objects.get(id=mijn))
+            if bSet:
+                # Just add this link; do not start looking for Entry or Mijn
+                entrymijn = EntryMijn(entry_id=entry, mijn_id=mijn)
+            else:
+                entrymijn = EntryMijn(entry=Entry.objects.get(id=entry), mijn=Mijn.objects.get(id=mijn))
             entrymijn.save()
             iPk = entrymijn.pk
         else:
@@ -1395,7 +1435,8 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
     oBack = {}      # What we return
     sVersie = ""    # The version we are using--this depends on the column names
     sDict = "wbd"   # The dictionary we are working for: wld, wbd, 
-    bUsdDbaseMijnen = False
+    # bUsdDbaseMijnen = False
+    bUsdDbaseMijnen = True
     oErr = ErrHandle()
 
     try:
@@ -1433,7 +1474,7 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
                 return oBack
 
             # Get the [Info] object
-            if iSectie == None:
+            if iSectie == None or iSectie == "":
                 oInfo = Info.objects.filter(deel=iDeel, aflnum=iAflevering).first()
             else:
                 oInfo = Info.objects.filter(deel=iDeel, sectie=iSectie, aflnum=iAflevering).first()
@@ -1579,6 +1620,7 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
                 bFirst = True
                 bFirstOut = False
 
+                sVersie = ""
                 sLastLemma = ""     # For speeding up processing
                 sLastLemmaDescr = ""
                 sLastTw = ""
@@ -1599,12 +1641,12 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
                 oTime['db'] = 0     # Time spent in reading and saving database items
                 oTime['entry'] = 0  # Processing entries
                 oTime['save'] = 0   # Time spent in saving
-                oTime['search_L'] = 0 # Time spent in searching (lemma)
-                oTime['search_T'] = 0 # Time spent in searching (trefwoord)
-                oTime['search_Ds'] = 0 # Time spent in searching (description)
-                oTime['search_Dt'] = 0 # Time spent in searching (dialect)
-                oTime['search_LD'] = 0 # Time spent in searching (lemmadescription)
-
+                oTime['search_L'] = 0   # Time spent in searching (lemma)
+                oTime['search_T'] = 0   # Time spent in searching (trefwoord)
+                oTime['search_Ds'] = 0  # Time spent in searching (description)
+                oTime['search_Dt'] = 0  # Time spent in searching (dialect)
+                oTime['search_LD'] = 0  # Time spent in searching (lemmadescription)
+                oTime['search_M'] = 0   # Time spent in searching (mijn)
 
                 # Iterate through the lines of the CSV file
                 while (not bEnd):
@@ -1770,7 +1812,7 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
                                     # Walk all the mijnen for this entry
                                     for sMijn in lMijnen:
                                         # Get the PK for this mijn
-                                        iPkMijn = Mijn.get_item({'naam': sMijn})
+                                        iPkMijn = Mijn.get_item({'naam': sMijn}, oTime)
                                         # Process the PK for EntryMijn
                                         iPkEntryMijn = EntryMijn.get_item({'entry': iPkEntry,
                                                                            'mijn': iPkMijn})
@@ -1798,9 +1840,9 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
                     # Keep track of progress
                     oStatus.skipped = iSkipped
                     oStatus.read = iRead
-                    oStatus.status = "{} (read={:.1f}, db={:.1f}, entry={:.1f}, search L={:.1f}, T={:.1f}, Ds={:.1f}, LD={:.1f}, Dt={:.1f}, save={:.1f})".format(
+                    oStatus.status = "{} (read={:.1f}, db={:.1f}, entry={:.1f}, search (L={:.1f}, T={:.1f}, Ds={:.1f}, LD={:.1f}, Dt={:.1f}, M={:.1f}), save={:.1f})".format(
                         sWorking, oTime['read'], oTime['db'], oTime['entry'],
-                        oTime['search_L'], oTime['search_T'], oTime['search_Ds'], oTime['search_LD'], oTime['search_Dt'], oTime['save'])
+                        oTime['search_L'], oTime['search_T'], oTime['search_Ds'], oTime['search_LD'], oTime['search_Dt'], oTime['search_M'], oTime['save'])
                     oStatus.save()
 
 

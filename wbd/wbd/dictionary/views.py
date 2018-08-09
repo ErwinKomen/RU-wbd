@@ -142,7 +142,7 @@ def get_item_list(lVar, lFun, qs):
             # Add this object to the list of items
             lItem.append(oItem)
     except:
-        oErr.DoError("import_csv_start error")
+        oErr.DoError("get_item_list error")
         lItem = []
 
     # Return the list we have made
@@ -522,9 +522,16 @@ class TrefwoordListView(ListView):
         if self.bUseMijnen:
             # Try to retain the choice for Mijn
             if 'mijn' in initial:
-                context['mijnkeuze'] = int(initial['mijn'])
+                mijn_id = int(initial['mijn'])
+                context['mijnkeuze'] = mijn_id
+                mijn_inst = Mijn.objects.filter(id=mijn_id).first()
+                if mijn_inst == None:
+                    context['mijnnaam'] = ''
+                else:
+                    context['mijnnaam'] = mijn_inst.naam
             else:
                 context['mijnkeuze'] = 0
+                context['mijnnaam'] = ''
         # Process and retain the choice for Aflevering
         if 'aflevering' in initial:
             context['aflkeuze'] = int(initial['aflevering'])
@@ -714,7 +721,7 @@ class TrefwoordListView(ListView):
         # Make sure we apply the filter
         qse = Entry.objects.filter(*lstQ).distinct().select_related().order_by(
             Lower('trefwoord__woord'), 
-            Lower('lemma__gloss'),  
+            'lemma__gloss',  
             Lower('toelichting'),
             Lower('woord'), 
             Lower('dialect__stad'))
