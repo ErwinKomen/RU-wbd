@@ -37,6 +37,8 @@ paginateEntries = 100
 paginateValues = (100, 50, 20, 10, 5, 2, 1, )
 outputColumns = ['begrip', 'trefwoord', 'dialectopgave', 'Kloekecode', 'aflevering', 'bronnenlijst']
 
+THIS_DICTIONARY = "e-WLD"
+
 # General help functions
 def order_queryset_by_sort_order(get, qs, sOrder = 'gloss'):
     """Change the sort-order of the query set, depending on the form field [sortOrder]
@@ -310,6 +312,10 @@ def do_repair_start(request):
         bResult = do_repair_lemma(oRepair)
         if not bResult:
             data['status'] = "error"
+    elif sRepairType == "entrydescr":
+        bResult = do_repair_entrydescr(oRepair)
+        if not bResult:
+            data.status = "error"
 
     # Return this response
     return JsonResponse(data)
@@ -1320,8 +1326,13 @@ class LemmaListView(ListView):
 
         # Check for dialect code (Kloeke)
         if 'dialectCode' in get and get['dialectCode'] != '':
-            val = adapt_search(get['dialectCode'])
-            lstQ.append(Q(entry__dialect__nieuw__iregex=val))
+            val = get['dialectCode']
+            if '*' in val or '[' in val or '?' in val:
+                val = adapt_search(val)
+                lstQ.append(Q(entry__dialect__nieuw__iregex=val))
+            else:
+                # Strive for equality, but disregard case
+                lstQ.append(Q(entry__dialect__nieuw__iexact=val))
             bHasFilter = True
 
         # Check for dialect word, which is a direct member of Entry
@@ -1382,7 +1393,7 @@ class LocationListView(ListView):
     # paginate_by = paginateEntries # paginateSize
     paginate_by = paginateLocations    # Default pagination number SPECIFICALLY for dialects (1)
     entrycount = 0      # Number of items in queryset (whether Entry or Dialect!!)
-    bUseMijnen = False  # Limburg uses mijnen, Brabant not
+    bUseMijnen = False  # Limburg uses mijnen, Brabant not, Gelderland neither
     bWbdApproach = True # Filter using the WBD approach
     bNewOrder = True    # Use the new order (see issue #22 of the RU-wld)
     qEntry = None       # Current queryset as restricted to ENTRY
@@ -1441,7 +1452,6 @@ class LocationListView(ListView):
                 # Reset the time
                 iStart = get_now_time()
 
-
         # Get parameters for the search
         initial = self.request.GET
         search_form = DialectSearchForm(initial)
@@ -1480,10 +1490,18 @@ class LocationListView(ListView):
 
         # Try to retain the choice for Aflevering and Mijn
         if self.bUseMijnen:
+            # Try to retain the choice for Mijn
             if 'mijn' in initial:
-                context['mijnkeuze'] = int(initial['mijn'])
+                mijn_id = int(initial['mijn'])
+                context['mijnkeuze'] = mijn_id
+                mijn_inst = Mijn.objects.filter(id=mijn_id).first()
+                if mijn_inst == None:
+                    context['mijnnaam'] = ''
+                else:
+                    context['mijnnaam'] = mijn_inst.naam
             else:
                 context['mijnkeuze'] = 0
+                context['mijnnaam'] = ''
 
         if 'aflevering' in initial:
             context['aflkeuze'] = int(initial['aflevering'])
@@ -1500,10 +1518,9 @@ class LocationListView(ListView):
             print("LocationListView context part 2: {:.1f}".format( get_now_time() - iStart))
             # Reset the time
             iStart = get_now_time()
-
-
+            
         # Set the title of the application
-        context['title'] = "e-WBD plaatsen"
+        context['title'] = "{} plaatsen".format(THIS_DICTIONARY)
 
         # Get possible user choice of 'strict'
         if 'strict' in initial:
@@ -1567,23 +1584,11 @@ class LocationListView(ListView):
     def get_qafl(self, context):
         """Sort the paginated QS by Dialect/Aflevering and turn into a dict"""
 
-        bMethodQset = False
-
         # REtrieve the correct queryset, as determined by paginate_by
         qs = context['object_list']
-        qsd = []
-
-        if bMethodQset:
-            # Walk through the query set
-            for entry in qs:
-                qsd.append(entry)
-            # Now sort the resulting set
-            qsd = sorted(qsd, key=lambda el: el.dialect.stad + " " + el.get_aflevering())
-            # qsd = sorted(qsd, key=itemgetter('stad', 'afl'))
-        else:
-            qsd = list(qs)
-            # Now sort the resulting set
-            qsd = sorted(qsd, key=lambda el: el.dialect.stad + " " + el.get_aflevering())
+        qsd = list(qs)
+        # Now sort the resulting set
+        qsd = sorted(qsd, key=lambda el: el.dialect.stad + " " + el.get_aflevering())
 
         # Prepare for dialect processing
         lVarsD = ["stad", "afl"]
@@ -1793,7 +1798,7 @@ class DialectListView(ListView):
             context['paginateSize'] = paginateSize
 
         # Set the title of the application
-        context['title'] = "e-WBD dialecten"
+        context['title'] = "{} dialecten".format(THIS_DICTIONARY)
 
         # Return the calculated context
         return context
@@ -1816,37 +1821,7 @@ class DialectListView(ListView):
         # Fix the sort-order
         get['sortOrder'] = 'stad'
 
-        bWbdMethod = True
-        bFasterApproach = True
-
-        method_number = 4
-
-        if method_number == 1:
-            # Create an unordered set of allowed dialects
-            lstQ = []
-            lstQ.append(Q(entry__aflevering__toonbaar=1))
-            dialect_allowed = Dialect.objects.filter(*lstQ).distinct()
-
-            # Time measurement
-            if self.bDoTime:
-                print("DialectListView get_queryset Allowed: {:.1f}".format( get_now_time() - iStart))
-                print("DialectListView query[allowed]: {}".format(dialect_allowed.query))
-                iStart = get_now_time()
-
-            # Start adding other filters
-            lstQ = []
-        elif method_number == 2:
-            lstQ = []
-            # Include only those that have at least one aflevering that is 'toonbaar'
-            lstQ.append(Q(entry__aflevering__toonbaar=True))
-        elif method_number == 3:
-            # Queryset: start out with *ALL* the lemma's
-            qs = Dialect.objects.all()
-        elif method_number == 4:
-            # Get a list of dialects that may be used
-            # qs = Dialect.objects.filter(toonbaar=1)
-            # NO: don't do anything at this point -- do it all later down
-            lstQ = []
+        lstQ = []
 
         # Fine-tuning: search string is the LEMMA
         if 'search' in get and get['search'] != '':
@@ -1858,48 +1833,18 @@ class DialectListView(ListView):
                 query = query | Q(sn__exact=val)
 
             # Apply the filter
-            if bWbdMethod:
-                lstQ.append(query)
-            else:
-                qs = qs.filter(query)
+            lstQ.append(query)
 
         # Check for dialect code (Kloeke)
         if 'nieuw' in get and get['nieuw'] != '':
             val = adapt_search(get['nieuw'])
             query = Q(nieuw__iregex=val)
+            
             # Apply the filter
-            if bWbdMethod:
-                lstQ.append(query)
-            else:
-                qs = qs.filter(query)
+            lstQ.append(query)
 
         # Calculate the final qs
-        if method_number == 1:
-            lstQ.append(Q(id__in=dialect_allowed))
-            qs = Dialect.objects.filter(*lstQ).order_by('stad').distinct()
-        elif method_number == 2:
-            qs = Dialect.objects.filter(*lstQ).order_by(Lower('stad')).distinct()
-        elif method_number == 3:
-            # Make sure we only have distinct values
-            qs = qs.distinct()
-
-            # Sort the queryset by the parameters given
-            qs = order_queryset_by_sort_order(get, qs)
-        elif method_number ==  4:
-            qs = Dialect.objects.exclude(toonbaar=0).filter(*lstQ).order_by('stad').distinct()
-
-        #if bWbdMethod:
-        #    if bFasterApproach:
-        #        lstQ.append(Q(id__in=dialect_allowed))
-        #        qs = Dialect.objects.filter(*lstQ).order_by('stad').distinct()
-        #    else:
-        #        qs = Dialect.objects.filter(*lstQ).order_by(Lower('stad')).distinct()
-        #else:
-        #    # Make sure we only have distinct values
-        #    qs = qs.distinct()
-
-        #    # Sort the queryset by the parameters given
-        #    qs = order_queryset_by_sort_order(get, qs)
+        qs = Dialect.objects.exclude(toonbaar=0).filter(*lstQ).order_by('stad').distinct()
 
         # Time measurement
         if self.bDoTime:
@@ -1916,7 +1861,6 @@ class DialectListView(ListView):
 
         # Return the resulting filtered and sorted queryset
         return qs
-
 
 
 class MijnListView(ListView):
@@ -1952,7 +1896,7 @@ class MijnListView(ListView):
         context['app_prefix'] = APP_PREFIX
 
         # Set the title of the application
-        context['title'] = "e-WBD mijnen"
+        context['title'] = "{} mijnen".format(THIS_DICTIONARY)
 
         # Return the calculated context
         return context
@@ -2023,7 +1967,7 @@ class DeelListView(ListView):
         context['app_prefix'] = APP_PREFIX
 
         # Set the title of the application
-        context['title'] = "e-WBD afleveringen"
+        context['title'] = "{} afleveringen".format(THIS_DICTIONARY)
 
         context['intro_pdf'] = "wbd-1/1967_Brabantse Dialecten Voorlopige inleiding.pdf"
         context['intro_op_drie_pdf'] = "wbd-3/2000_Brabantse Dialecten III Inleiding_Compleet.pdf"

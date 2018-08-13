@@ -268,7 +268,7 @@ table tbody tr:hover {
   color: black !important;
 }
 
-/* Nieuw toegevoegd voor e-WBD */
+/* Nieuw toegevoegd voor e-WBD en ook gebruikt door e-WLD */
 .filter-summary {
   font-family: monospace, serif;
   color: darkblue;
