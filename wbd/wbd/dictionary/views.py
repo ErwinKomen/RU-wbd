@@ -37,7 +37,7 @@ paginateEntries = 100
 paginateValues = (100, 50, 20, 10, 5, 2, 1, )
 outputColumns = ['begrip', 'trefwoord', 'dialectopgave', 'Kloekecode', 'aflevering', 'bronnenlijst']
 
-THIS_DICTIONARY = "e-WLD"
+THIS_DICTIONARY = "e-WBD"
 
 # General help functions
 def order_queryset_by_sort_order(get, qs, sOrder = 'gloss'):
@@ -157,7 +157,7 @@ def home(request):
         request,
         'dictionary/index.html',
         {
-            'title':'e-WBD',
+            'title': THIS_DICTIONARY,
             'year':datetime.now().year,
         }
     )
@@ -169,7 +169,7 @@ def contact(request):
         request,
         'dictionary/contact.html',
         {
-            'title':'e-WBD contact',
+            'title':'{} contact'.format(THIS_DICTIONARY),
             'message':'Henk van den Heuvel (H.vandenHeuvel@Let.ru.nl)',
             'year':datetime.now().year,
         }
@@ -179,7 +179,7 @@ def about(request):
     """Renders the about page."""
     assert isinstance(request, HttpRequest)
     return render( request, 'dictionary/about.html',
-        {   'title':'e-WBD informatie',
+        {   'title':'{} informatie'.format(THIS_DICTIONARY),
             'message':'Radboud Universiteit Nijmegen - Dialectenwoordenboek.',
             'year':datetime.now().year,
         }
@@ -189,12 +189,12 @@ def guide(request):
     """Renders the 'guide' page."""
     assert isinstance(request, HttpRequest)
     return render( request, 'dictionary/guide.html',
-        {   'title':'e-WBD handleiding',
+        {   'title':'{} handleiding'.format(THIS_DICTIONARY),
             'message':'Radboud Universiteit Nijmegen - Dialectenwoordenboek.',
+            'dic_abbr': THIS_DICTIONARY,
             'year':datetime.now().year,
         }
     )
-
 
 def do_repair(request):
     """Renders the REPAIR page."""
@@ -202,14 +202,11 @@ def do_repair(request):
     return render(
         request,
         'dictionary/repair.html',
-        {
-            'title':'e-WBD reparatie',
+        {   'title':'{} reparatie'.format(THIS_DICTIONARY),
             'message':'Radboud Universiteit Nijmegen - Dialectenwoordenboek.',
             'year':datetime.now().year,
         }
     )
-
-
 
 def adapt_search(val):
     # First trim
@@ -452,7 +449,7 @@ class DictionaryDetailView(DetailView):
         context['app_prefix'] = APP_PREFIX
 
         # Set the title of the application
-        context['title'] = "e-WBD detail"
+        context['title'] = "{} detail".format(THIS_DICTIONARY)
 
         # Return the calculated context
         return context
@@ -570,7 +567,7 @@ class TrefwoordListView(ListView):
         context['mijnen'] = [mijn for mijn in Mijn.objects.all().order_by('naam')]
 
         # Set the title of the application
-        context['title'] = "e-WBD trefwoorden"
+        context['title'] = "{} trefwoorden".format(THIS_DICTIONARY)
 
         # If we are in 'strict' mode, we need to deliver the [qlist]
         if self.strict:
@@ -1025,7 +1022,7 @@ class LemmaListView(ListView):
         context['app_prefix'] = APP_PREFIX
 
         # Set the title of the application
-        context['title'] = "e-WBD begrippen"
+        context['title'] = "{} begrippen".format(THIS_DICTIONARY)
 
         # Set the afleveringen that are available
         context['afleveringen'] = [afl for afl in Aflevering.objects.all()]
