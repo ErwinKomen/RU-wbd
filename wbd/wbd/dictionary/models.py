@@ -296,7 +296,14 @@ class Description(models.Model):
     boek = models.TextField("Boekaanduiding", db_index=True, null=True,blank=True)
 
     class Meta:
-        index_together = ['toelichting', 'bronnenlijst', 'boek']
+    class Meta:
+        #index_together = ['toelichting', 'bronnenlijst', 'boek']
+        #index_together = ['toelichting', 'bronnenlijst']
+        indexes = [
+            models.Index(fields=['toelichting', 'bronnenlijst', 'boek'], name='descr_three'),
+            models.Index(fields=['toelichting', 'bronnenlijst'], name='descr_two'),
+            ]
+
 
     def __str__(self):
         return self.bronnenlijst
@@ -1435,8 +1442,8 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
     oBack = {}      # What we return
     sVersie = ""    # The version we are using--this depends on the column names
     sDict = "wbd"   # The dictionary we are working for: wld, wbd, 
-    # bUsdDbaseMijnen = False
-    bUsdDbaseMijnen = True
+    bUsdDbaseMijnen = False
+    # bUsdDbaseMijnen = True
     oErr = ErrHandle()
 
     try:
