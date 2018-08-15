@@ -45,7 +45,6 @@ WSGI_FILE = os.path.abspath(os.path.join(BASE_DIR,"wbd/wsgi.py"))
 
 # publishing on a sub-url
 # NOTE: possibly remove this for the production environment...
-# FORCE_SCRIPT_NAME = "/ru"
 FORCE_SCRIPT_NAME = admin.site.site_url
 
 
@@ -151,7 +150,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Europe/Amsterdam'
 
 USE_I18N = True
 
@@ -170,4 +169,5 @@ if ("/scratch" in WRITABLE_DIR or "ewbd" in APP_PREFIX):
     MEDIA_URL = "/" + APP_PREFIX + "media/"
 
 # STATIC_ROOT = posixpath.join(*(BASE_DIR.split(os.path.sep) + ['static']))
+# The following should be better:
 STATIC_ROOT = os.path.abspath(os.path.join("/", posixpath.join(*(BASE_DIR.split(os.path.sep) + ['static']))))

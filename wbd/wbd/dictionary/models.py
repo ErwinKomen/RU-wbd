@@ -20,7 +20,6 @@ import io
 import codecs
 import html
 import json
-                
 
 
 MAX_IDENTIFIER_LEN = 10
@@ -201,12 +200,18 @@ def partToLine(sVersie, arPart, bDoMijnen):
             # Remove quotation marks everywhere and adapt NULL where needed
             for (k,v) in oBack.items():
                 if oBack[k] != None:
+                    # Remove leading and trailing quotation marks
                     oBack[k] = v.strip('"')
+                    # Remove leading and trailing spaces
                     oBack[k] = oBack[k].strip()
+                    # Remove leading and trailing ['] if it is there (on both sides)
                     if oBack[k].startswith("'") and oBack[k].endswith("'"):
                       oBack[k] = oBack[k].strip("'")
+                    # Change NULL into space
                     if oBack[k] == "NULL":
                         oBack[k] = ""
+                    # Change double "" into single "
+                    oBack[k] = oBack[k].replace('""', '"')
             # Need to treat the Mines??
             if bDoMijnen:
                 # Check for unknown dialect location
@@ -296,7 +301,6 @@ class Description(models.Model):
     boek = models.TextField("Boekaanduiding", db_index=True, null=True,blank=True)
 
     class Meta:
-    class Meta:
         #index_together = ['toelichting', 'bronnenlijst', 'boek']
         #index_together = ['toelichting', 'bronnenlijst']
         indexes = [
@@ -361,7 +365,7 @@ class Description(models.Model):
         """Return the instance described by the options"""
 
         oErr = ErrHandle()
-        bSpeedUp = True
+        bSpeedUp = False
         try:
             # Get the parameters
             bronnenlijst = options['bronnenlijst']
@@ -801,6 +805,10 @@ class Repair(models.Model):
     repairtype = models.CharField("Soort reparatie", blank=False, max_length=MAX_LEMMA_LEN, default="(unknown)")
     # Status of this repair action
     status = models.TextField("Status", blank=False, default="idle")
+
+    def set_status(self, sStatus):
+        self.status = sStatus
+        self.save()
 
 
 class Aflevering(models.Model):
@@ -1933,6 +1941,58 @@ def do_repair_lemma(oRepair):
     # Return positively
     return True
 
+def do_repair_clean(oRepair):
+    """Clean the database from Entry, Lemma, Trefwoord contents"""
+
+    oErr = ErrHandle()
+    try:
+        # Show we are starting
+        oRepair.set_status("Starting up Cleaning of Lemma/Trefwoord/Entry")
+
+        # (1) clean LemmaDescr
+        oRepair.set_status("Step 1: LemmaDescr...")
+        qs = LemmaDescr.objects.all()
+        with transaction.atomic():
+            qs.delete()
+
+        # (2) clean EntryMijn
+        oRepair.set_status("Step 2: EntryMijn...")
+        qs = EntryMijn.objects.all()
+        with transaction.atomic():
+            qs.delete()
+
+        # (3) clean Entry
+        oRepair.set_status("Step 3: Entry...")
+        qs = Entry.objects.all()
+        with transaction.atomic():
+            qs.delete()
+
+        # (4) clean Lemma
+        oRepair.set_status("Step 4: Lemma...")
+        qs = Lemma.objects.all()
+        with transaction.atomic():
+            qs.delete()
+
+        # (5) clean LemmaDescr
+        oRepair.set_status("Step 5: Trefwoord...")
+        qs = Trefwoord.objects.all()
+        with transaction.atomic():
+            qs.delete()
+
+        # (6) clean Dialect
+        oRepair.set_status("Step 6: Dialect...")
+        qs = Dialect.objects.all()
+        with transaction.atomic():
+            qs.delete()
+
+        oRepair.set_status("Cleaning has finished")
+        # Now we are ready
+        return True
+    except:
+        msg = oErr.get_error_message()
+        oRepair.set_status("Error: {}".format(msg))
+        return False
+    
 def do_repair_entrydescr(oRepair):
     """Repair descriptions and the entries that point to them"""
 
