@@ -162,6 +162,15 @@ def isLineOkay(oLine):
 def partToLine(sVersie, arPart, bDoMijnen):
     """Convert an array of values [arPart] into a structure"""
 
+    def get_indexed(arThis, idx):
+        """Get the entry, provided arThis is large enough"""
+        if arThis != None and len(arThis) - 1 >= idx:
+            return arThis[idx]
+        else:
+            return ""
+
+    k = 0
+    v = ""
     try:
         oBack = {}
         # Preposing of all the parts
@@ -171,7 +180,7 @@ def partToLine(sVersie, arPart, bDoMijnen):
             oBack['lemma_toelichting'] = arPart[2]
             oBack['lemma_boek'] = arPart[7]
             oBack['dialect_stad'] = arPart[10]
-            oBack['dialect_nieuw'] = arPart[15]
+            oBack['dialect_nieuw'] = get_indexed(arPart, 15)    # arPart[15]
             oBack['dialect_kloeke'] = None
             oBack['trefwoord_name'] = arPart[3]
             oBack['trefwoord_toelichting'] = ""
@@ -249,6 +258,7 @@ def partToLine(sVersie, arPart, bDoMijnen):
         errHandle.Status("partToLine error info [{}]".format(sVersie))
         for idx, val in enumerate(arPart):
             errHandle.Status("arPart[{}] = [{}]".format(idx, val))
+        errHandle.Status("partToLine: k={} v={}".format(k, v))
         errHandle.DoError("partToLine", True)
         return None
 
@@ -1597,7 +1607,7 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
             if not os.path.isfile(csv_file):
                 lMsg.append("{}/{}/{} file is not existing: {}".format(
                     iDeel, iSectie, iAflevering, csv_file))
-            elif oInfo.processed != None:
+            elif oInfo.processed != None and oInfo.processed != "":
                 # Check if there already is an output file name
                 oErr.Status("Checking the PK of {}/{}/{}".format(iDeel, iSectie, iAflevering))
                 sBaseName = get_basename(iDeel, iSectie, iAflevering)

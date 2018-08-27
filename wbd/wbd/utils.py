@@ -29,10 +29,11 @@ class ErrHandle:
         self.loc_errStack.append(msg)
         # Print the error message for the user
         print("Error: "+msg+"\nSystem:", file=sys.stderr)
-        for nErr in sys.exc_info():
-            if (nErr != None):
-                print(nErr, file=sys.stderr)
-                self.loc_errStack.append(str(nErr))
+        # Get the error message
+        sSysMsg = self.get_error_message()
+        print(sSysMsg, file=sys.stderr)
+        # Add the system error to the stack too
+        self.loc_errStack.append(sSysMsg)
         # Is this a fatal error that requires exiting?
         if (bExit):
             sys.exit(2)
