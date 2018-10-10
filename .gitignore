@@ -285,3 +285,5 @@ ModelManifest.xml
 /wald/wald/dictionary/static/dictionary/scripts/jquery-1.10.2.intellisense.js
 /wald/wald/dictionary/static/dictionary/scripts/bootstrap.min.js
 /wald/wald/dictionary/static/dictionary/scripts/bootstrap.js
+/wald/web.debug.config
+/wald/web.config
