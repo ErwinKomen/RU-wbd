@@ -261,7 +261,6 @@ ModelManifest.xml
 /wald/wald/dictionary/static/dictionary/content/taalkaart-limburg.jpg
 /wald/wald/dictionary/static/dictionary/content/EWBD_800_600_2.jpg
 /wald/wald/dictionary/static/dictionary/content/EWBD_800_300_2.jpg
-*.py
 /wald/django
 /wald/1.11
 /wald/wald/dictionary/static/dictionary/content/bootstrap.css
