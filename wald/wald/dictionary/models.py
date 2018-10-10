@@ -20,6 +20,7 @@ import io
 import codecs
 import html
 import json
+import xml.etree.ElementTree as ET
 
 
 MAX_IDENTIFIER_LEN = 10
@@ -875,22 +876,33 @@ class Aflevering(models.Model):
     class Meta:
         verbose_name_plural = "Afleveringen"
         index_together = ['deel', 'sectie', 'aflnum']
+        ordering = ['deel__nummer', 'sectie', 'aflnum']
 
     def __str__(self):
         return self.naam
 
     def save(self, force_insert = False, force_update = False, using = None, update_fields = None):
-        # Get the original
-        orig = Aflevering.objects.get(pk=self.pk)
-        bToonbaarChanged = (self.toonbaar != orig.toonbaar)
+        # Initialisations
+        bToonbaarChanged = False
+        # See if toonbaar has changed
+        if self.pk != None:
+            orig = Aflevering.objects.get(pk=self.pk)
+            bToonbaarChanged = (self.toonbaar != orig.toonbaar)
+        
+        # Perform the normal save action
         result = super(Aflevering, self).save(force_insert, force_update, using, update_fields)
+
         # Action if Toonbaar has changed
         if bToonbaarChanged:
             # Adapt Lemma, Trefwoord and Dialect instances
             Lemma.change_toonbaar()
             Trefwoord.change_toonbaar()
             Dialect.change_toonbaar()
+        # Return the result of the save action
         return result
+
+    def deelnummer(self):
+        return self.deel.nummer
 
     def get_number(self):
         if self.sectie == None:
@@ -1470,6 +1482,194 @@ class fEntry:
                                       aflevering=item.aflevering))
                 self.pk = item.pk
     
+# ----------------------------------------------------------------------------------
+# Name :    xml_to_fixture
+# Goal :    Convert XML file into a fixtures file
+# History:
+#  10/oct/2018   ERK Created
+# ----------------------------------------------------------------------------------
+def xml_to_fixture(xml_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=False, bUseOld=False):
+    """Process an XML with entry definitions"""
+
+    oBack = {}          # What we return
+    oStatus = None
+    sVersie = ""        # The version we are using--this depends on the column names
+    sDict = "wald"      # The dictionary we are working for: wld, wbd, wald, wgd
+    bUsdDbaseMijnen = False
+    oErr = ErrHandle()
+
+    def get_basename(d, s, a):
+        # Basename: derive from deel/section/aflevering
+        sBaseName = "fixture-d" + str(d)
+        if iSectie != None: sBaseName = sBaseName + "-s" + str(s)
+        sBaseName = sBaseName + "-a" + str(a)
+        return sBaseName
+
+    try:
+        # Retrieve the correct instance of the status object
+        oStatus = Status.objects.filter(id=iStatus).first()
+        oStatus.method = "db"
+        oStatus.set_status("preparing")
+        
+        # Other initialisations
+        oBack['result'] = False
+        if str(iDeel).isnumeric(): iDeel = int(iDeel)
+        if str(iSectie).isnumeric(): iSectie = int(iSectie)
+        if str(iAflevering).isnumeric(): iAflevering = int(iAflevering)
+
+        bDoEverything = (iDeel == 0 and iSectie == 0 and iAflevering == 0)
+        lstInfo = []
+
+        if bDoEverything:
+            # Special method: treat all the files under 'xml_files'
+            for oInfo in Info.objects.all():
+                lstInfo.append(oInfo)
+        else:
+            # Validate: input file exists
+            if not "/" in xml_file and not "\\" in xml_file:
+                xml_file = os.path.abspath( os.path.join(MEDIA_ROOT, "csv_files", xml_file))
+            elif xml_file.startswith("csv_files"):
+                xml_file = os.path.abspath( os.path.join(MEDIA_ROOT, xml_file))
+            if (not os.path.isfile(xml_file)): 
+                oStatus.set_status("error", "Cannot find file " + xml_file)
+                return oBack
+
+            # Get the [Info] object
+            if iSectie == None or iSectie == "":
+                oInfo = Info.objects.filter(deel=iDeel, aflnum=iAflevering).first()
+            else:
+                oInfo = Info.objects.filter(deel=iDeel, sectie=iSectie, aflnum=iAflevering).first()
+            lstInfo.append(oInfo)
+
+        # Start creating an array that will hold the fixture elements
+        arFixture = []
+        iPkLemma = 1        # The PK for each Lemma
+        iPkDescr = 1        # The PK for each Description (lemma-toelichting many-to-many)
+        iPkTrefwoord = 1    # The PK for each Trefwoord
+        iPkDialect = 1      # The PK for each Dialect
+        iPkEntry = 0        # The PK for each Entry
+        iPkAflevering = 1   # The PK for each Aflevering
+        iPkMijn = 1         # The PK for each Mijn
+        iPkEntryMijn = 1    # The PK for each Entry/Mijn
+        iCounter = 0        # Loop counter for progress
+        iRead = 0           # Number read correctly
+        iSkipped = 0        # Number skipped
+
+        # Prepare the entry object
+        oEntry = fEntry()
+
+        # First check the presence of all the 'promised' files
+        lMsg = []
+        for oInfo in lstInfo:
+            # Get the details of this object
+            xml_file = oInfo.csv_file.path
+            iDeel = oInfo.deel
+            iSectie = oInfo.sectie
+            iAflevering = oInfo.aflnum
+            if not os.path.isfile(xml_file):
+                lMsg.append("{}/{}/{} file is not existing: {}".format(
+                    iDeel, iSectie, iAflevering, xml_file))
+            elif oInfo.processed != None and oInfo.processed != "":
+                # Check if there already is an output file name
+                oErr.Status("Checking the PK of {}/{}/{}".format(iDeel, iSectie, iAflevering))
+                sBaseName = get_basename(iDeel, iSectie, iAflevering)
+                output_file = os.path.join(MEDIA_ROOT ,sBaseName + ".json")
+                if os.path.isfile(output_file):
+                    oErr.Status("Reading from file {}".format(output_file))
+                    # Read the file as a JSON object
+                    fl_out = io.open(output_file, "r", encoding='utf-8')   
+                    lFix = json.load(fl_out)                 
+                    # Find the highest (=last) 
+                    size = len(lFix)
+                    pk_last = lFix[size-1]['pk']
+                    if pk_last > iPkEntry:
+                        oErr.Status("Found last_pk to be {}".format(pk_last))
+                        iPkEntry = pk_last + 1
+
+        # Any messages?
+        if len(lMsg) > 0:
+            sMsg = "\n".join(lMsg)
+            oStatus.set_status("error", sMsg)
+            oBack['result'] = False
+            oBack['msg'] = sMsg
+            oErr.Status(sMsg)
+            return oBack
+
+         # Initialization of 'last' items
+        descr_this = None
+               
+        # Process all the objects in [lstInfo]
+        for oInfo in lstInfo:
+            # Get the details of this object
+            xml_file = oInfo.csv_file.path
+            iDeel = oInfo.deel
+            iSectie = oInfo.sectie
+            iAflevering = oInfo.aflnum
+            sProcessed = ""
+            if oInfo.processed != None:
+                sProcessed = oInfo.processed
+
+            # Determine whether we will process this item or not
+            bDoThisItem = (sProcessed == "" and (iDeel>0 or iSectie>0 or iAflevering>0))
+
+            if bDoThisItem:
+                # Make sure 'NONE' sectie is turned into an empty string
+                if iSectie == None: iSectie = ""
+
+                iRead = 0           # Number read correctly
+                iSkipped = 0        # Number skipped
+
+                sWorking = "working {}/{}/{}".format(iDeel, iSectie, iAflevering)
+                oStatus.set_status(sWorking)
+                oErr.Status(sWorking)
+
+                # Create an output file writer
+                # Basename: derive from deel/section/aflevering
+                sBaseName = get_basename(iDeel, iSectie, iAflevering)
+                output_file = os.path.join(MEDIA_ROOT ,sBaseName + ".json")
+                skip_file = os.path.join(MEDIA_ROOT, sBaseName + ".skip")
+                oFix = FixOut(output_file)
+                oSkip = FixSkip(skip_file)
+
+                # get a Aflevering number
+                if str(iDeel).isnumeric(): iDeel = int(iDeel)
+                if str(iSectie).isnumeric(): iSectie = int(iSectie)
+                if str(iAflevering).isnumeric(): iAflevering = int(iAflevering)
+                lstQ = []
+                lstQ.append(Q(deel__nummer=iDeel))
+                lstQ.append(Q(aflnum=iAflevering))
+                if iSectie != None and iSectie != "":
+                    lstQ.append(Q(sectie=iSectie))
+                oAfl = Aflevering.objects.filter(*lstQ).first()
+                iPkAflevering = oAfl.pk
+
+                ## Create a good parser
+                #parser = ET.XMLParser()
+                #parser.parser.UseForeignDTD(True)
+                #etree = ET.ElementTree()
+
+                # Now read the XML as an object
+                tree = ET.parse(xml_file)
+                root = tree.getroot()
+                # Top level: lemma
+                for aggrkeyw in root.iter('formrepresentation_aggregatedkeyword'):
+                    sLemma = aggrkeyw.get('text')
+                    # Next level: trefwoord
+                    for senselemma in aggrkeyw.findall('senselemma'):
+                        sTrefwoord = senselemma.get('text')
+
+                # Process the XML hierarchically: 
+                
+
+        # Return what we found
+        return oBack
+    except:
+        if oStatus != None:
+            oStatus.set_status("error")
+        sMsg = oErr.get_error_message()
+        oErr.DoError("xml_to_fixture", True)
+        return oBack
+
 
 # ----------------------------------------------------------------------------------
 # Name :    csv_to_fixture

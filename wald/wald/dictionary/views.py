@@ -380,8 +380,11 @@ def import_csv_start(request):
         iStatus = oStatus.id
         # oCsvImport['status'] = "starting"
 
-        # Call the process
-        oResult = csv_to_fixture(sFile, iDeel, iSectie, iAflnum, iStatus, bUseDbase = bUseDbase, bUseOld = True)
+        # Call the process - depending on the file ending
+        if ".xml" in sFile:
+            oResult = xml_to_fixture(sFile, iDeel, iSectie, iAflnum, iStatus, bUseDbase = bUseDbase, bUseOld = True)
+        else:
+            oResult = csv_to_fixture(sFile, iDeel, iSectie, iAflnum, iStatus, bUseDbase = bUseDbase, bUseOld = True)
         if oResult == None or oResult['result'] == False:
             data['status'] = 'error'
 
