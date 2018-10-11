@@ -307,13 +307,14 @@ def get_help(field):
 class Description(models.Model):
     """Description for a lemma"""
 
+    # [0-1] toelichting
     toelichting = models.TextField("Omschrijving van het lemma", blank=True)
+    # [0-1] bronnenlijst
     bronnenlijst = models.TextField("Bronnenlijst bij het lemma", db_index=True, blank=True)
+    # [0-1] boek
     boek = models.TextField("Boekaanduiding", db_index=True, null=True,blank=True)
 
     class Meta:
-        #index_together = ['toelichting', 'bronnenlijst', 'boek']
-        #index_together = ['toelichting', 'bronnenlijst']
         indexes = [
             models.Index(fields=['toelichting', 'bronnenlijst', 'boek'], name='descr_three'),
             models.Index(fields=['toelichting', 'bronnenlijst'], name='descr_two'),
@@ -1643,20 +1644,67 @@ def xml_to_fixture(xml_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
                 oAfl = Aflevering.objects.filter(*lstQ).first()
                 iPkAflevering = oAfl.pk
 
-                ## Create a good parser
-                #parser = ET.XMLParser()
-                #parser.parser.UseForeignDTD(True)
-                #etree = ET.ElementTree()
+                # Speed-up storages
+                sLastLemma = ""    
+                sLastLemmaDescr = ""
+                sLastTw = ""
+                sLastTwToel = ""
+                # Instances
+                lemma_this = None
+
+                # Time measurements: keep track of time used in different parts
+                oTime = {}
+                oTime['read'] = 0   # time to read the XML file
+                oTime['db'] = 0     # Time spent in reading and saving database items
+                oTime['entry'] = 0  # Processing entries
+                oTime['save'] = 0   # Time spent in saving
+                oTime['search_L'] = 0   # Time spent in searching (lemma)
+                oTime['search_T'] = 0   # Time spent in searching (trefwoord)
+                oTime['search_Ds'] = 0  # Time spent in searching (description)
+                oTime['search_Dt'] = 0  # Time spent in searching (dialect)
+                oTime['search_LD'] = 0  # Time spent in searching (lemmadescription)
+                oTime['search_M'] = 0   # Time spent in searching (mijn)
 
                 # Now read the XML as an object
+                iStarttime = get_now_time()
                 tree = ET.parse(xml_file)
                 root = tree.getroot()
-                # Top level: lemma
+                oTime['read'] = get_now_time() - iStarttime
+                iStartTime = get_now_time()
+
+                # Top level: super-lemma
                 for aggrkeyw in root.iter('formrepresentation_aggregatedkeyword'):
-                    sLemma = aggrkeyw.get('text')
-                    # Next level: trefwoord
+                    # Get the semantic domain
+                    sDomein = aggrkeyw.get('text')
+
+                    # Next level: lemma
                     for senselemma in aggrkeyw.findall('senselemma'):
-                        sTrefwoord = senselemma.get('text')
+                        # Get the lemma
+                        sLemma = senselemma.get('text')                     
+                        # Not sure what to do with this
+                        sSenseLemmaId = senselemma.get('Sense_lemma_id')    
+                        # Make sure we have a pointer to the correct lemma
+                        if sLemma != sLastLemma:
+                            lemma_this = Lemma.get_instance({'gloss': sLemma}, oTime)
+                            sLastLemma = sLemma
+
+                        # Next level: trefwoord
+                        for formkeyword in senselemma.findall('formkeyword'):
+                            # Get the keyword = trefwoord
+                            sTrefwoord = formkeyword.get('text')
+
+                            # Next level: dialect entries
+                            for dialectform in formkeyword.findall("formrepresentation_dialectform"):
+                                # Get the entry
+                                sEntry = dialectform.get('text')
+
+                                # Get all the locations where this entry is used
+                                for location in dialectform.findall("Location"):
+                                    # Determine any sourcebook definition (there can be only one)
+                                    sLocComment = ""
+                                    for sourcebookdef in location.findall("definitionsourcebook"):
+                                        sLocComment = sourcebookdef.get('definitionsourcebook')
+                                    # Process the combination of Entry/Comment/Trefwoord/Lemma/Domain
 
                 # Process the XML hierarchically: 
                 
