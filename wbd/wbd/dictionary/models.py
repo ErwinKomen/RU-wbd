@@ -1517,7 +1517,7 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
 
         if bDoEverything:
             # Special method: treat all the files under 'csv_files'
-            for oInfo in Info.objects.all():
+            for oInfo in Info.objects.all().order_by('deel', 'sectie', 'aflnum'):
                 lstInfo.append(oInfo)
         else:
             # Validate: input file exists
@@ -1735,10 +1735,15 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
                     if (strLine != ""):
                         # Split the line into parts
                         arPart = strLine.split('\t')
-                        # Convert the array of values to a structure
-                        oLine = partToLine(sVersie, arPart, bDoMijnen)
-                        # Check if this line contains 'valid' data:
-                        iValid = isLineOkay(oLine)
+                        # Sanity check (Note: '7' is arbitrarily)
+                        if len(arPart) < 7:
+                            # Line is too short, so cannot be taken into consideration
+                            iValid = 0
+                        else:
+                            # Convert the array of values to a structure
+                            oLine = partToLine(sVersie, arPart, bDoMijnen)
+                            # Check if this line contains 'valid' data:
+                            iValid = isLineOkay(oLine)
                         # IF this is the first line or an empty line, then skip
                         if bFirst:
                             # Get the version from cell 0, line 0
@@ -1746,7 +1751,7 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
                             # Check if the line starts correctly
                             if sVersie != 'Lemmanummer' and sVersie != "lemma.name":
                                 # The first line does not start correctly -- return false
-                                oErr.DoError("csv_to_fixture: cannot process version [{}]".format(sVersie))
+                                oErr.DoError("csv_to_fixture: cannot process version [{}] line=[{}], [{}]".format(sVersie, arPart[0], arPart[1]))
                                 return oBack
                             # Indicate that the first item has been had
                             bFirst = False
