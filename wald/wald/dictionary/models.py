@@ -161,7 +161,11 @@ def isLineOkay(oLine):
 #  12/dec/2016   ERK Created
 # ----------------------------------------------------------------------------------
 def partToLine(sVersie, arPart, bDoMijnen):
-    """Convert an array of values [arPart] into a structure"""
+    """Convert an array of values [arPart] into a structure
+    
+    Assume that [recordId] is the first field name!!
+    (Nov/12/2018)
+    """
 
     def get_indexed(arThis, idx):
         """Get the entry, provided arThis is large enough"""
@@ -172,35 +176,36 @@ def partToLine(sVersie, arPart, bDoMijnen):
 
     k = 0
     v = ""
+    offset = 1      # Needed because of [recordId] being first field
     try:
         oBack = {}
         # Preposing of all the parts
         if sVersie == "Lemmanummer":
-            oBack['lemma_name'] = arPart[1]
-            oBack['lemma_bronnenlijst'] = arPart[6]
-            oBack['lemma_toelichting'] = arPart[2]
-            oBack['lemma_boek'] = arPart[7]
-            oBack['dialect_stad'] = arPart[10]
-            oBack['dialect_nieuw'] = get_indexed(arPart, 15)    # arPart[15]
-            oBack['dialect_kloeke'] = None
-            oBack['trefwoord_name'] = arPart[3]
-            oBack['trefwoord_toelichting'] = ""
-            oBack['dialectopgave_name'] = arPart[5]
-            oBack['dialectopgave_toelichting'] = arPart[14]
+            oBack['lemma_name'] = arPart[1+offset]             # 1
+            oBack['lemma_bronnenlijst'] = arPart[6+offset]     # 6
+            oBack['lemma_toelichting'] = arPart[2+offset]      # 2
+            oBack['lemma_boek'] = arPart[7+offset]             # 7
+            oBack['dialect_stad'] = arPart[10+offset]          # 10
+            oBack['dialect_nieuw'] = get_indexed(arPart, 15+offset)    # 15 arPart[15]
+            oBack['dialect_kloeke'] = None              # none
+            oBack['trefwoord_name'] = arPart[3+offset]         # 3
+            oBack['trefwoord_toelichting'] = ""         # empty
+            oBack['dialectopgave_name'] = arPart[5+offset]     # 5
+            oBack['dialectopgave_toelichting'] = arPart[14+offset]     # 14
             oBack['dialectopgave_kloeketoelichting'] = ""         # See WLD issue #22
         elif sVersie == "lemma.name":
-            oBack['lemma_name'] = arPart[0]
-            oBack['lemma_bronnenlijst'] = arPart[2]
-            oBack['lemma_toelichting'] = arPart[1]
-            oBack['lemma_boek'] = ""
-            oBack['dialect_stad'] = arPart[9]
-            oBack['dialect_nieuw'] = arPart[8]
-            oBack['dialect_kloeke'] = arPart[7]         # OLD KloekeCode
-            oBack['trefwoord_name'] = arPart[3]
-            oBack['trefwoord_toelichting'] = arPart[4]
-            oBack['dialectopgave_name'] = arPart[5]
-            oBack['dialectopgave_toelichting'] = arPart[6]
-            oBack['dialectopgave_kloeketoelichting'] = arPart[10]   # See WLD issue #22
+            oBack['lemma_name'] = arPart[0+offset]             # 0
+            oBack['lemma_bronnenlijst'] = arPart[2+offset]     # 2
+            oBack['lemma_toelichting'] = arPart[1+offset]      # 1
+            oBack['lemma_boek'] = ""                    # empty
+            oBack['dialect_stad'] = arPart[9+offset]           # 9
+            oBack['dialect_nieuw'] = arPart[8+offset]          # 8
+            oBack['dialect_kloeke'] = arPart[7+offset]         # 7 - OLD KloekeCode
+            oBack['trefwoord_name'] = arPart[3+offset]         # 3
+            oBack['trefwoord_toelichting'] = arPart[4+offset]  # 4
+            oBack['dialectopgave_name'] = arPart[5+offset]     # 5
+            oBack['dialectopgave_toelichting'] = arPart[6+offset]  # 6
+            oBack['dialectopgave_kloeketoelichting'] = arPart[10+offset]   # 10 - See WLD issue #22
             # NOTE: part II-5 also contains the names of the mines in [10]
 
         if sVersie != "":
@@ -792,6 +797,9 @@ class Info(models.Model):
     skipped = models.IntegerField("Overgeslagen", blank=False, default=0)
     # Het bestand dat ge-upload wordt
     csv_file = models.FileField(upload_to="csv_files/")
+
+    class Meta:
+        ordering = ['deel', 'sectie', 'aflnum']
 
     def reset_item(self):
         # Reset the 'Processed' comment
@@ -1989,7 +1997,7 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
                         # IF this is the first line or an empty line, then skip
                         if bFirst:
                             # Get the version from cell 0, line 0
-                            sVersie = arPart[0]
+                            sVersie = arPart[1]     # Assume that [recordId] is the first field!!
                             # Check if the line starts correctly
                             if sVersie != 'Lemmanummer' and sVersie != "lemma.name":
                                 # The first line does not start correctly -- return false
