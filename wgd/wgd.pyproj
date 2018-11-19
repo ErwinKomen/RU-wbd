@@ -1,0 +1,188 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+  <PropertyGroup>
+    <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
+    <Name>wgd</Name>
+    <RootNamespace>wgd</RootNamespace>
+    <InterpreterId>{fa2f7d1e-00ed-49ea-9692-0bad8d50817d}</InterpreterId>
+    <InterpreterVersion>3.5</InterpreterVersion>
+    <WebBrowserPort>6502</WebBrowserPort>
+  </PropertyGroup>
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>83e78210-cb49-432c-b609-02982bd30970</ProjectGuid>
+    <ProjectHome>.</ProjectHome>
+    <ProjectTypeGuids>{5F0BE9CA-D677-4A4D-8806-6076C0FAAD37};{349c5851-65df-11da-9384-00065b846f21};{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
+    <StartupFile>manage.py</StartupFile>
+    <SearchPath>
+    </SearchPath>
+    <WorkingDirectory>.</WorkingDirectory>
+    <LaunchProvider>Web launcher</LaunchProvider>
+    <DjangoSettingsModule>wgd.settings</DjangoSettingsModule>
+    <OutputPath>.</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <DebugSymbols>true</DebugSymbols>
+    <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <DebugSymbols>true</DebugSymbols>
+    <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="manage.py" />
+    <Compile Include="wgd\dictionary\admin.py" />
+    <Compile Include="wgd\dictionary\adminviews.py" />
+    <Compile Include="wgd\dictionary\apps.py" />
+    <Compile Include="wgd\dictionary\fixtures\management\commands\permissions.py" />
+    <Compile Include="wgd\dictionary\fixtures\management\commands\__init__.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="wgd\dictionary\fixtures\management\__init__.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="wgd\dictionary\forms.py" />
+    <Compile Include="wgd\dictionary\migrations\__init__.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="wgd\dictionary\models.py" />
+    <Compile Include="wgd\dictionary\tests.py" />
+    <Compile Include="wgd\dictionary\views.py" />
+    <Compile Include="wgd\dictionary\__init__.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="wgd\utils.py" />
+    <Compile Include="wgd\__init__.py" />
+    <Compile Include="wgd\settings.py" />
+    <Compile Include="wgd\urls.py" />
+    <Compile Include="wgd\wsgi.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="requirements.txt" />
+    <Content Include="wgd\dictionary\static\dictionary\content\boeken-wgd.jpg" />
+    <Content Include="wgd\dictionary\static\dictionary\content\bootstrap.css" />
+    <Content Include="wgd\dictionary\static\dictionary\content\bootstrap.min.css" />
+    <Content Include="wgd\dictionary\static\dictionary\content\site.css" />
+    <Content Include="wgd\dictionary\static\dictionary\content\taalkaart-wgd.jpg" />
+    <Content Include="wgd\dictionary\static\dictionary\fonts\glyphicons-halflings-regular.eot" />
+    <Content Include="wgd\dictionary\static\dictionary\fonts\glyphicons-halflings-regular.svg" />
+    <Content Include="wgd\dictionary\static\dictionary\fonts\glyphicons-halflings-regular.ttf" />
+    <Content Include="wgd\dictionary\static\dictionary\fonts\glyphicons-halflings-regular.woff" />
+    <None Include="wgd\dictionary\static\dictionary\scripts\_references.js" />
+    <Content Include="wgd\dictionary\static\dictionary\scripts\bootstrap.js" />
+    <Content Include="wgd\dictionary\static\dictionary\scripts\bootstrap.min.js" />
+    <Content Include="wgd\dictionary\static\dictionary\scripts\diadict.js" />
+    <Content Include="wgd\dictionary\static\dictionary\scripts\gtrack.js" />
+    <None Include="wgd\dictionary\static\dictionary\scripts\jquery.validate-vsdoc.js" />
+    <None Include="wgd\dictionary\static\dictionary\scripts\jquery-1.10.2.intellisense.js" />
+    <Content Include="wgd\dictionary\static\dictionary\scripts\jquery-1.10.2.js" />
+    <Content Include="wgd\dictionary\static\dictionary\scripts\jquery-1.10.2.min.js" />
+    <Content Include="wgd\dictionary\static\dictionary\scripts\jquery-1.10.2.min.map" />
+    <Content Include="wgd\dictionary\static\dictionary\scripts\jquery.validate.js" />
+    <Content Include="wgd\dictionary\static\dictionary\scripts\jquery.validate.min.js" />
+    <Content Include="wgd\dictionary\static\dictionary\scripts\jquery.validate.unobtrusive.js" />
+    <Content Include="wgd\dictionary\static\dictionary\scripts\jquery.validate.unobtrusive.min.js" />
+    <Content Include="wgd\dictionary\static\dictionary\scripts\modernizr-2.6.2.js" />
+    <Content Include="wgd\dictionary\static\dictionary\scripts\respond.js" />
+    <Content Include="wgd\dictionary\static\dictionary\scripts\respond.min.js" />
+    <Content Include="wgd\dictionary\templates\dictionary\about.html" />
+    <Content Include="wgd\dictionary\templates\dictionary\admin_entry_list.html" />
+    <Content Include="wgd\dictionary\templates\dictionary\aflevering_list.html" />
+    <Content Include="wgd\dictionary\templates\dictionary\contact.html" />
+    <Content Include="wgd\dictionary\templates\dictionary\dialectviewing.html" />
+    <Content Include="wgd\dictionary\templates\dictionary\dialect_check.html" />
+    <Content Include="wgd\dictionary\templates\dictionary\dialect_list.html" />
+    <Content Include="wgd\dictionary\templates\dictionary\guide.html" />
+    <Content Include="wgd\dictionary\templates\dictionary\import_csv.html" />
+    <Content Include="wgd\dictionary\templates\dictionary\index.html" />
+    <Content Include="wgd\dictionary\templates\dictionary\layout.html" />
+    <Content Include="wgd\dictionary\templates\dictionary\lemma_list.html" />
+    <Content Include="wgd\dictionary\templates\dictionary\lemma_list_oview.html" />
+    <Content Include="wgd\dictionary\templates\dictionary\location_list.html" />
+    <Content Include="wgd\dictionary\templates\dictionary\login.html" />
+    <Content Include="wgd\dictionary\templates\dictionary\mijn_list.html" />
+    <Content Include="wgd\dictionary\templates\dictionary\output.xml" />
+    <Content Include="wgd\dictionary\templates\dictionary\pagination.html" />
+    <Content Include="wgd\dictionary\templates\dictionary\pagination_post.html" />
+    <Content Include="wgd\dictionary\templates\dictionary\repair.html" />
+    <Content Include="wgd\dictionary\templates\dictionary\robots.txt" />
+    <Content Include="wgd\dictionary\templates\dictionary\topnav.html" />
+    <Content Include="wgd\dictionary\templates\dictionary\trefwoord_list.html" />
+    <Content Include="wgd\templates\admin\base.html" />
+    <Content Include="wgd\templates\admin\base_site.html" />
+    <Content Include="wgd\templates\admin\dictionary\info\change_form.html" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="wgd\" />
+    <Folder Include="wgd\dictionary\" />
+    <Folder Include="wgd\dictionary\fixtures\" />
+    <Folder Include="wgd\dictionary\fixtures\management\" />
+    <Folder Include="wgd\dictionary\fixtures\management\commands\" />
+    <Folder Include="wgd\dictionary\migrations\" />
+    <Folder Include="wgd\dictionary\static\dictionary\" />
+    <Folder Include="wgd\dictionary\static\dictionary\content\" />
+    <Folder Include="wgd\dictionary\static\dictionary\fonts\" />
+    <Folder Include="wgd\dictionary\static\dictionary\scripts\" />
+    <Folder Include="wgd\dictionary\templates\" />
+    <Folder Include="wgd\dictionary\static\" />
+    <Folder Include="wgd\dictionary\templates\dictionary\" />
+    <Folder Include="wgd\templates\" />
+    <Folder Include="wgd\templates\admin\" />
+    <Folder Include="wgd\templates\admin\dictionary\" />
+    <Folder Include="wgd\templates\admin\dictionary\info\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Interpreter Include="..\..\..\..\..\env\diadict\">
+      <Id>{fa2f7d1e-00ed-49ea-9692-0bad8d50817d}</Id>
+      <BaseInterpreter>{2af0f10d-7135-4994-9156-5d01c9c11b7e}</BaseInterpreter>
+      <Version>3.5</Version>
+      <Description>diadict (Python 3.5)</Description>
+      <InterpreterPath>Scripts\python.exe</InterpreterPath>
+      <WindowsInterpreterPath>Scripts\pythonw.exe</WindowsInterpreterPath>
+      <LibraryPath>Lib\</LibraryPath>
+      <PathEnvironmentVariable>PYTHONPATH</PathEnvironmentVariable>
+      <Architecture>X86</Architecture>
+    </Interpreter>
+  </ItemGroup>
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.Django.targets" />
+  <!-- Specify pre- and post-build commands in the BeforeBuild and 
+       AfterBuild targets below. -->
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  <ProjectExtensions>
+    <VisualStudio>
+      <FlavorProperties GUID="{349c5851-65df-11da-9384-00065b846f21}">
+        <WebProjectProperties>
+          <AutoAssignPort>True</AutoAssignPort>
+          <UseCustomServer>True</UseCustomServer>
+          <CustomServerUrl>http://localhost</CustomServerUrl>
+          <SaveServerSettingsInUserFile>False</SaveServerSettingsInUserFile>
+        </WebProjectProperties>
+      </FlavorProperties>
+      <FlavorProperties GUID="{349c5851-65df-11da-9384-00065b846f21}" User="">
+        <WebProjectProperties>
+          <StartPageUrl>
+          </StartPageUrl>
+          <StartAction>CurrentPage</StartAction>
+          <AspNetDebugging>True</AspNetDebugging>
+          <SilverlightDebugging>False</SilverlightDebugging>
+          <NativeDebugging>False</NativeDebugging>
+          <SQLDebugging>False</SQLDebugging>
+          <ExternalProgram>
+          </ExternalProgram>
+          <StartExternalURL>
+          </StartExternalURL>
+          <StartCmdLineArguments>
+          </StartCmdLineArguments>
+          <StartWorkingDirectory>
+          </StartWorkingDirectory>
+          <EnableENC>False</EnableENC>
+          <AlwaysStartWebServerOnDebug>False</AlwaysStartWebServerOnDebug>
+        </WebProjectProperties>
+      </FlavorProperties>
+    </VisualStudio>
+  </ProjectExtensions>
+</Project>

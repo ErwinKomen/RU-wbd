@@ -1,7 +1,7 @@
-"""Models for the wbd records.
+"""Models for the wgd records.
 
-The wbd is the "Dictionary of Limburg Dialects".
-Each wbd entry has a gloss, a definition and a number of variants in different dialects.
+The wgd is the "Dictionary of Limburg Dialects".
+Each wgd entry has a gloss, a definition and a number of variants in different dialects.
 The dialects are identified by locations, and the locations are indicated by a 'Kloekecode'.
 
 """
@@ -12,8 +12,8 @@ from django.db import models
 from django.db.models import Q
 from datetime import datetime
 import time
-from wbd.settings import APP_PREFIX, MEDIA_ROOT
-from wbd.utils import *
+from wgd.settings import APP_PREFIX, MEDIA_ROOT
+from wgd.utils import *
 import os, os.path
 import sys
 import io
@@ -909,7 +909,7 @@ class Aflevering(models.Model):
 
     def get_pdf(self):
         # sPdf =  "{}/static/dictionary/content/pdf{}/{}".format(APP_PREFIX, self.deel.nummer,self.naam)
-        sPdf =  "wbd-{}/{}".format(self.deel.nummer,self.naam)
+        sPdf =  "wgd-{}/{}".format(self.deel.nummer,self.naam)
         return sPdf
 
     def get_pk(self):
@@ -1483,7 +1483,7 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
 
     oBack = {}      # What we return
     sVersie = ""    # The version we are using--this depends on the column names
-    sDict = "wbd"   # The dictionary we are working for: wld, wbd, 
+    sDict = "wgd"   # The dictionary we are working for: wld, wbd, wgd
     bUsdDbaseMijnen = False
     # bUsdDbaseMijnen = True
     oErr = ErrHandle()
@@ -1694,13 +1694,13 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
                 sLastTw = ""
                 sLastTwToel = ""
 
-                # The use of 'mijnen' depends on the dictionary we are working for (wld, wbd)
+                # The use of 'mijnen' depends on the dictionary we are working for (wld, wbd, wgd)
                 lMijnen = []
                 if sDict == "wld":
                     # The WLD uses mijnen in 2/5
-                    bDoMijnen = (iDeel == 2 and iAflevering == 5)   # Treat 'Mijn' for wbd-II-5
+                    bDoMijnen = (iDeel == 2 and iAflevering == 5)   # Treat 'Mijn' for wld-II-5
                 else:
-                    # The WBD doesn't have any mijnen
+                    # The WGD doesn't have any mijnen
                     bDoMijnen = False
 
                 # Time measurements: keep track of time used in different parts

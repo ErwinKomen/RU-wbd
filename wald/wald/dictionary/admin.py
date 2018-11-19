@@ -3,7 +3,7 @@ from django import forms
 from django.core import serializers
 from django.contrib.contenttypes.models import ContentType
 from django.forms import TextInput
-from wbd.dictionary.models import *
+from wald.dictionary.models import *
 import logging
 
 MAX_IDENTIFIER_LEN = 10
@@ -64,7 +64,7 @@ class AfleveringAdmin(admin.ModelAdmin):
     fieldsets = ( ('Editable', {'fields': ('naam', 'deel', 'sectie', 'aflnum', 'inleiding', 'toonbaar', 'jaar', 'auteurs',
                                            'afltitel', 'sectietitel', 'plaats', 'toelichting')}),
                 )
-    list_display = ['deel', 'sectie', 'aflnum', 'naam', 'inleiding', 'toonbaar']
+    list_display = ['deelnummer', 'deel', 'sectie', 'aflnum', 'naam', 'inleiding', 'toonbaar']
 
 
 def reset_infos(modeladmin, request, qs):

@@ -3,7 +3,7 @@ from django import forms
 from django.core import serializers
 from django.contrib.contenttypes.models import ContentType
 from django.forms import TextInput
-from wbd.dictionary.models import *
+from wgd.dictionary.models import *
 import logging
 
 MAX_IDENTIFIER_LEN = 10
