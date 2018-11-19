@@ -286,3 +286,6 @@ ModelManifest.xml
 /wald/wald/dictionary/static/dictionary/scripts/bootstrap.js
 /wald/web.debug.config
 /wald/web.config
+/wgd/wgd/dictionary/migrations
+/wgd/wgd/dictionary/static/dictionary/content/boeken-wgd.jpg
+/wgd/wgd/dictionary/static/dictionary/content/taalkaart-wgd.jpg
