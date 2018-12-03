@@ -89,7 +89,8 @@ class AfleveringAdmin(admin.ModelAdmin):
     fieldsets = ( ('Editable', {'fields': ('naam', 'deel', 'sectie', 'aflnum', 'inleiding', 'toonbaar', 'jaar', 'auteurs',
                                            'afltitel', 'sectietitel', 'plaats', 'toelichting')}),
                 )
-    list_display = ['deel', 'sectie', 'aflnum', 'naam', 'inleiding', 'toonbaar']
+    list_display = ['id', 'deel', 'sectie', 'aflnum', 'naam', 'inleiding', 'toonbaar']
+    ordering = ['deel__nummer', 'sectie', 'aflnum']
 
 
 def reset_infos(modeladmin, request, qs):

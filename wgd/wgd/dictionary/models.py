@@ -234,6 +234,9 @@ def isNullOrEmptyOrInt(arPart, lstColumn):
 def isLineOkay(oLine):
     
     try:
+        # Validate
+        if oLine == None:
+            return -1
         # Define which items need to be checked
         lCheck = ['lemma_name', 'trefwoord_name', 'dialectopgave_name', 'dialect_stad', 'dialect_nieuw']
         iIdx = 0
@@ -252,7 +255,7 @@ def isLineOkay(oLine):
     except:
         sMsg = errHandle.get_error_message()
         errHandle.DoError("isLineOkay", True)
-        return 0
+        return -1
 
 
 # ----------------------------------------------------------------------------------
@@ -1709,6 +1712,9 @@ class WgdVelProcessor(Processor):
                 for k,v in oBack.items():
                     if v == None:
                         oBack[k] = ""
+                    else:
+                        # make sure we only have STRING variables
+                        oBack[k] = str(v)
             # Return what was found
             return oBack
         except:
@@ -1717,12 +1723,16 @@ class WgdVelProcessor(Processor):
             return None
 
     def is_valid(self):
-        if self.row < self.frow: return False
-        if self.oRow == None: return False
-        cell = self.oRow[0]
-        bValid = (cell.value != None and cell.value != "")
-        return bValid
-
+        try:
+            if self.row < self.frow: return False
+            if self.oRow == None: return False
+            cell = self.oRow[0]
+            bValid = (cell.value != None and cell.value != "")
+            return bValid
+        except:
+            msg = self.oErr.get_error_message()
+            self.oErr.DoError("Processor.line() error")
+            return False
 
 class WgdRivProcessor(Processor):
     """Specify how WGD-Rivierengebied input should be processed"""
@@ -1760,24 +1770,34 @@ class WgdRivProcessor(Processor):
                 oBack['opmerking'] = oCells[10+offset]              # 10 (Opmerkingen studass)
                 oBack['subvraag'] = oCells[1+offset]                # 1 (subvraagletter -- for RIVIERENGEBIED)
 
-                # Some additional adaptations
-                oBack['dialect_nieuw'] = oBack['dialect_nieuw'].replace(" ", "")
                 # Make sure NONE getr replaced by ""
                 for k,v in oBack.items():
                     if v == None:
                         oBack[k] = ""
+                    else:
+                        # make sure we only have STRING variables
+                        oBack[k] = str(v)
+
+                # Some additional adaptations
+                oBack['dialect_nieuw'] = oBack['dialect_nieuw'].replace(" ", "")
             # Return what was found
             return oBack
         except:
             msg = self.oErr.get_error_message()
             self.oErr.DoError("read_row error")
-            return None
+            return {}
 
     def is_valid(self):
-        if self.row < self.frow: return False
-        cell = self.oRow[0]
-        bValid = (cell.value != None and cell.value != "")
-        return bValid
+        try:
+            if self.row < self.frow: return False
+            if self.oRow == None: return False
+            cell = self.oRow[0]
+            bValid = (cell.value != None and cell.value != "")
+            return bValid
+        except:
+            msg = self.oErr.get_error_message()
+            self.oErr.DoError("Processor.line() error")
+            return False
 
 
     
