@@ -1622,16 +1622,22 @@ class Processor():
         return oBack
 
     def next_row(self):
-        if self.type == "excel":
-            # Get the next row in an Excel file
-            self.oRow = next(self.oRows)
-        elif self.type.startswith("csv"):
-            # Go to the next row of a CSV file
-            pass
-        # Make sure the row counter is adapted
-        self.row += 1
-        # Return the object of this row
-        return self.oRow
+        try:
+            if self.type == "excel":
+                # Get the next row in an Excel file
+                self.oRow = next(self.oRows, None)
+            elif self.type.startswith("csv"):
+                # Go to the next row of a CSV file
+                pass
+            # Make sure the row counter is adapted
+            self.row += 1
+            # Return the object of this row
+            return self.oRow
+        except:
+            msg = self.oErr.get_error_message()
+            self.oErr.DoError("Processor.next_row() error")
+
+            return None
 
     def is_valid(self):
         """Check if current row is valid"""
@@ -1712,6 +1718,7 @@ class WgdVelProcessor(Processor):
 
     def is_valid(self):
         if self.row < self.frow: return False
+        if self.oRow == None: return False
         cell = self.oRow[0]
         bValid = (cell.value != None and cell.value != "")
         return bValid
