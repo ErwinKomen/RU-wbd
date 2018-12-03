@@ -14,6 +14,9 @@ from datetime import datetime
 import time
 from wgd.settings import APP_PREFIX, MEDIA_ROOT
 from wgd.utils import *
+import openpyxl
+from openpyxl import Workbook
+from openpyxl.utils.cell import get_column_letter
 import os, os.path
 import sys
 import io
@@ -25,7 +28,7 @@ import json
 MAX_IDENTIFIER_LEN = 10
 MAX_LEMMA_LEN = 100
 MAX_TITEL_LEN = 255
-# oCsvImport = {'read': 0, 'skipped': 0, 'status': 'idle', 'method': 'none'}
+ENTRY_INDICT = "entry.inwoordenboek"
 
 
 # ============================= LOCAL CLASSES ======================================
@@ -36,6 +39,7 @@ class FieldChoice(models.Model):
     field = models.CharField(max_length=50)
     english_name = models.CharField(max_length=50)
     dutch_name = models.CharField(max_length=50)
+    abbr = models.CharField(max_length=20, default='-')
     machine_value = models.IntegerField(help_text="The actual numeric value stored in the database. Created automatically.")
 
     def __str__(self):
@@ -52,18 +56,88 @@ def build_choice_list(field):
     """Create a list of choice-tuples"""
 
     choice_list = [];
+    unique_list = [];   # Check for uniqueness
 
     try:
         # check if there are any options at all
         if FieldChoice.objects == None:
             # Take a default list
             choice_list = [('0','-'),('1','N/A')]
+            unique_list = [('0','-'),('1','N/A')]
         else:
+            if maybe_empty:
+                choice_list = [('0','-')]
             for choice in FieldChoice.objects.filter(field__iexact=field):
-                choice_list.append((str(choice.machine_value),choice.english_name));
+                # Default
+                sEngName = ""
+                # Any special position??
+                if position==None:
+                    sEngName = choice.english_name
+                elif position=='before':
+                    # We only need to take into account anything before a ":" sign
+                    sEngName = choice.english_name.split(':',1)[0]
+                elif position=='after':
+                    if subcat!=None:
+                        arName = choice.english_name.partition(':')
+                        if len(arName)>1 and arName[0]==subcat:
+                            sEngName = arName[2]
+
+                # Sanity check
+                if sEngName != "" and not sEngName in unique_list:
+                    # Add it to the REAL list
+                    choice_list.append((str(choice.machine_value),sEngName));
+                    # Add it to the list that checks for uniqueness
+                    unique_list.append(sEngName)
 
             choice_list = sorted(choice_list,key=lambda x: x[1]);
     except:
+        print("Unexpected error:", sys.exc_info()[0])
+        choice_list = [('0','-'),('1','N/A')];
+
+    # Signbank returns: [('0','-'),('1','N/A')] + choice_list
+    # We do not use defaults
+    return choice_list;
+
+def build_abbr_list(field, position=None, subcat=None, maybe_empty=False):
+    """Create a list of choice-tuples"""
+
+    choice_list = [];
+    unique_list = [];   # Check for uniqueness
+
+    try:
+        # check if there are any options at all
+        if FieldChoice.objects == None:
+            # Take a default list
+            choice_list = [('0','-'),('1','N/A')]
+            unique_list = [('0','-'),('1','N/A')]
+        else:
+            if maybe_empty:
+                choice_list = [('0','-')]
+            for choice in FieldChoice.objects.filter(field__iexact=field):
+                # Default
+                sEngName = ""
+                # Any special position??
+                if position==None:
+                    sEngName = choice.english_name
+                elif position=='before':
+                    # We only need to take into account anything before a ":" sign
+                    sEngName = choice.english_name.split(':',1)[0]
+                elif position=='after':
+                    if subcat!=None:
+                        arName = choice.english_name.partition(':')
+                        if len(arName)>1 and arName[0]==subcat:
+                            sEngName = arName[2]
+
+                # Sanity check
+                if sEngName != "" and not sEngName in unique_list:
+                    # Add it to the REAL list
+                    choice_list.append((str(choice.abbr),sEngName));
+                    # Add it to the list that checks for uniqueness
+                    unique_list.append(sEngName)
+
+            choice_list = sorted(choice_list,key=lambda x: x[1]);
+    except:
+        print("Unexpected error:", sys.exc_info()[0])
         choice_list = [('0','-'),('1','N/A')];
 
     # Signbank returns: [('0','-'),('1','N/A')] + choice_list
@@ -80,6 +154,32 @@ def choice_english(field, num):
         return result_list[0].english_name
     except:
         return "(empty)"
+
+def choice_value(field, term):
+    """Get the numerical value of the field with the indicated English name"""
+
+    try:
+        result_list = FieldChoice.objects.filter(field__iexact=field).filter(english_name__iexact=term)
+        if result_list == None or result_list.count() == 0:
+            # Try looking at abbreviation
+            result_list = FieldChoice.objects.filter(field__iexact=field).filter(abbr__iexact=term)
+        if result_list == None:
+            return -1
+        else:
+            return result_list[0].machine_value
+    except:
+        return -1
+
+def choice_abbreviation(field, num):
+    """Get the abbreviation of the field with the indicated machine_number"""
+
+    try:
+        result_list = FieldChoice.objects.filter(field__iexact=field).filter(machine_value=num)
+        if (result_list == None):
+            return "{}_{}".format(field, num)
+        return result_list[0].abbr
+    except:
+        return "-"
 
 def m2m_combi(items):
     if items == None:
@@ -132,6 +232,7 @@ def isNullOrEmptyOrInt(arPart, lstColumn):
     return 0
 
 def isLineOkay(oLine):
+    
     try:
         # Define which items need to be checked
         lCheck = ['lemma_name', 'trefwoord_name', 'dialectopgave_name', 'dialect_stad', 'dialect_nieuw']
@@ -149,6 +250,7 @@ def isLineOkay(oLine):
         # When everything has been checked and there is no indication, return false
         return 0
     except:
+        sMsg = errHandle.get_error_message()
         errHandle.DoError("isLineOkay", True)
         return 0
 
@@ -881,10 +983,16 @@ class Aflevering(models.Model):
         return self.naam
 
     def save(self, force_insert = False, force_update = False, using = None, update_fields = None):
-        # Get the original
-        orig = Aflevering.objects.get(pk=self.pk)
-        bToonbaarChanged = (self.toonbaar != orig.toonbaar)
+        # Initialisations
+        bToonbaarChanged = False
+        # See if toonbaar has changed
+        if self.pk != None:
+            orig = Aflevering.objects.get(pk=self.pk)
+            bToonbaarChanged = (self.toonbaar != orig.toonbaar)
+        
+        # Perform the normal save action
         result = super(Aflevering, self).save(force_insert, force_update, using, update_fields)
+
         # Action if Toonbaar has changed
         if bToonbaarChanged:
             # Adapt Lemma, Trefwoord and Dialect instances
@@ -1044,6 +1152,16 @@ class Entry(models.Model):
     toelichting = models.TextField("Toelichting", db_index=True, blank=True)
     # See WLD issue #22
     kloeketoelichting = models.TextField("Toelichting bij dialectopgave voor een bepaalde kloekelocatie", blank=True)
+
+    # ============ FIELDS SPECIFICALLY FOR WGD ================================
+    # [0-1] Optional subvraagletter
+    subvraag = models.CharField("Subvraagletter", blank=True, max_length=MAX_LEMMA_LEN)
+    # [1] Entry appears in the published book or not
+    inwoordenboek = models.CharField("In gepubliceerd woordenboek", choices=build_abbr_list(ENTRY_INDICT), 
+                        db_index = True, max_length=5, help_text=get_help(ENTRY_INDICT), default="true")
+    # [0-1] Optional remark of student assistant
+    opmerking = models.TextField("Opmerking student-assistent(e)", blank=True)
+    # =========================================================================
 
     def get_trefwoord_woord(self):
         return self.trefwoord.woord + '_' + self.woord
@@ -1470,7 +1588,553 @@ class fEntry:
                                       trefwoord=item.trefwoord, 
                                       aflevering=item.aflevering))
                 self.pk = item.pk
+
+
+class Processor():
+    """How to process an Excel (or CSV) file that contains entries"""
+
+    frow = 2                # First row to be processed
+    offset = 0              # Column number offset
+    row = 0                 # Current row
+    cols = 10               # Number of columns to be read
+    oErr = ErrHandle()      # Error handling
+    ws = None               # The worksheet
+    oRow = None             # The cells of one row
+    type = "excel"          # The type of object we have: 'excel', 'csv_a', 'csv_b'
+
+    def __init__(self, sFile):
+        # Open the workbook
+        wb = openpyxl.load_workbook(sFile, read_only=True)
+        # Access the default worksheet
+        self.ws = wb.get_active_sheet()
+        # Start an iterator for the rows
+        self.oRows = iter(self.ws)
+        self.row = 1
+        # Skip rows until we are at the point where the first row starts
+        while self.row < self.frow:
+            next(self.oRows)
+            self.row += 1
+
+    def partToLine(self):
+        """Convert the contents of the current self.oRow into an object"""
+        oBack = {}
+        # User should supply its own code; this is just a starter
+        return oBack
+
+    def next_row(self):
+        if self.type == "excel":
+            # Get the next row in an Excel file
+            self.oRow = next(self.oRows)
+        elif self.type.startswith("csv"):
+            # Go to the next row of a CSV file
+            pass
+        # Make sure the row counter is adapted
+        self.row += 1
+        # Return the object of this row
+        return self.oRow
+
+    def is_valid(self):
+        """Check if current row is valid"""
+        return True
+
+    def line(self):
+        """Return a string representation of myself"""
+
+        sBack = ""
+        try:
+            if self.type == "excel":
+                # Put the values into an array
+                lCells = [cell.value for cell in self.oRow]
+                for idx, value in enumerate(lCells):
+                    if value == None:
+                        lCells[idx] = ""
+                    else:
+                        lCells[idx] = str(lCells[idx])
+                sBack = "\t".join(lCells)
+            else:
+                # TODO: define how this works for a CSV
+                pass
+        except:
+            msg = self.oErr.get_error_message()
+            self.oErr.DoError("Processor.line() error")
+
+        return sBack
+
+
+class WgdVelProcessor(Processor):
+    """Specify how WGD-Veluwe input should be processed"""
+
+    offset = 1  # The first record is used for 'recordId'
+
+    def partToLine(self):
+        """Convert the contents of the current self.oRow into an object"""
+
+        oBack = {}
+        try:
+            # Put the values into an array
+            oCells = [cell.value for cell in self.oRow]
+            # Double check: is this row valid?
+            if oCells[0] != None and oCells[0] != "":
+                offset = self.offset
+                # The row is valid: create the object
+                oBack['lemma_name'] = oCells[4+offset]              # 4 (lemmatitel)
+                oBack['lemma_bronnenlijst'] = ""                    # Not applicable
+                oBack['lemma_toelichting'] = "{}: {}".format(       # 0 (vraagnummer) +
+                    oCells[0+offset], oCells[1+offset])             # 1 (tekst van de vraag)
+                oBack['lemma_boek'] = ""                            # Not applicable
+                oBack['dialect_stad'] = oCells[6+offset]            # 6 (called 'bron')
+                oBack['dialect_nieuw'] = oCells[5+offset]           # 5 (kloeke-code)
+                oBack['dialect_kloeke'] = ""                        # empty
+                oBack['trefwoord_name'] = oCells[2+offset]          # 2 (standaardspelling)
+                oBack['trefwoord_toelichting'] = ""                 # empty
+                oBack['dialectopgave_name'] = oCells[3+offset]      # 3 (dialectwoord)
+                oBack['dialectopgave_toelichting'] = ""             # empty
+                oBack['dialectopgave_kloeketoelichting'] = ""       # empty
+                # UNUSED: field 8 - lijstnummer
+
+                # Fields specific to WGD
+                oBack['inwoordenboek'] = oCells[9+offset]           # 9  (In woordenboek j/n)
+                oBack['opmerking'] = oCells[10+offset]              # 10 (Opmerkingen studass)
+                oBack['subvraag'] = ""                              # Empty for VELUWE
+
+                # Some additional adaptations
+                oBack['dialect_nieuw'] = oBack['dialect_nieuw'].replace(" ", "")
+                # Make sure NONE getr replaced by ""
+                for k,v in oBack.items():
+                    if v == None:
+                        oBack[k] = ""
+            # Return what was found
+            return oBack
+        except:
+            msg = errHandle.get_error_message()
+            self.oErr.DoError("read_row error")
+            return None
+
+    def is_valid(self):
+        if self.row < self.frow: return False
+        cell = self.oRow[0]
+        bValid = (cell.value != None and cell.value != "")
+        return bValid
+
+
+class WgdRivProcessor(Processor):
+    """Specify how WGD-Rivierengebied input should be processed"""
+
+    offset = 1  # The first record is used for 'recordId'
+
+    def partToLine(self):
+        """Convert the contents of the current self.oRow into an object"""
+
+        oBack = {}
+        try:
+            # Put the values into an array
+            oCells = [cell.value for cell in self.oRow]
+            # Double check: is this row valid?
+            if oCells[0] != None and oCells[0] != "":
+                offset = self.offset
+                # The row is valid: create the object
+                oBack['lemma_name'] = oCells[5+offset]              # 5 (lemmatitel)
+                oBack['lemma_bronnenlijst'] = ""                    # Not applicable
+                oBack['lemma_toelichting'] = "{}: {}".format(       # 0 (vraagnummer) +
+                    oCells[0+offset], oCells[2+offset])             # 2 (tekst van de vraag)
+                oBack['lemma_boek'] = ""                            # Not applicable
+                oBack['dialect_stad'] = oCells[7+offset]            # 7 (called 'bron')
+                oBack['dialect_nieuw'] = oCells[6+offset]           # 6 (kloeke-code)
+                oBack['dialect_kloeke'] = None                      # none
+                oBack['trefwoord_name'] = oCells[4+offset]          # 4 (standaardspelling)
+                oBack['trefwoord_toelichting'] = ""                 # empty
+                oBack['dialectopgave_name'] = oCells[3+offset]      # 3 (dialectwoord)
+                oBack['dialectopgave_toelichting'] = ""             # empty
+                oBack['dialectopgave_kloeketoelichting'] = ""       # empty
+                # UNUSED: field 9 - lijstnummer, field 10 - Nederlands woord
+
+                # Fields specific to WGD
+                oBack['inwoordenboek'] = oCells[11+offset]          # 11  (In woordenboek j/n)
+                oBack['opmerking'] = oCells[10+offset]              # 10 (Opmerkingen studass)
+                oBack['subvraag'] = oCells[1+offset]                # 1 (subvraagletter -- for RIVIERENGEBIED)
+
+                # Some additional adaptations
+                oBack['dialect_nieuw'] = oBack['dialect_nieuw'].replace(" ", "")
+                # Make sure NONE getr replaced by ""
+                for k,v in oBack.items():
+                    if v == None:
+                        oBack[k] = ""
+            # Return what was found
+            return oBack
+        except:
+            msg = self.oErr.get_error_message()
+            self.oErr.DoError("read_row error")
+            return None
+
+    def is_valid(self):
+        if self.row < self.frow: return False
+        cell = self.oRow[0]
+        bValid = (cell.value != None and cell.value != "")
+        return bValid
+
+
     
+# ----------------------------------------------------------------------------------
+# Name :    excel_to_fixture
+# Goal :    Convert XML file into a fixtures file
+# History:
+#  10/oct/2018   ERK Created
+# ----------------------------------------------------------------------------------
+def excel_to_fixture(xlsx_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=False, bUseOld=False):
+    """Process an EXCEL file with entry definitions"""
+
+    oBack = {}          # What we return
+    oStatus = None
+    sVersie = ""        # The version we are using--this depends on the column names
+    sDict = "wald"      # The dictionary we are working for: wld, wbd, wald, wgd
+    bUsdDbaseMijnen = False
+    oErr = ErrHandle()
+
+    def get_basename(d, s, a):
+        # Basename: derive from deel/section/aflevering
+        sBaseName = "fixture-d" + str(d)
+        if iSectie != None: sBaseName = sBaseName + "-s" + str(s)
+        sBaseName = sBaseName + "-a" + str(a)
+        return sBaseName
+
+    try:
+        # Retrieve the correct instance of the status object
+        oStatus = Status.objects.filter(id=iStatus).first()
+        oStatus.method = "db"
+        oStatus.set_status("preparing")
+        
+        # Other initialisations
+        oBack['result'] = False
+        if str(iDeel).isnumeric(): iDeel = int(iDeel)
+        if str(iSectie).isnumeric(): iSectie = int(iSectie)
+        if str(iAflevering).isnumeric(): iAflevering = int(iAflevering)
+
+        bDoEverything = (iDeel == 0 and iSectie == 0 and iAflevering == 0)
+        lstInfo = []
+
+        if bDoEverything:
+            # Special method: treat all the files under 'xlsx_files'
+            for oInfo in Info.objects.all():
+                lstInfo.append(oInfo)
+        else:
+            # Validate: input file exists
+            if not "/" in xlsx_file and not "\\" in xlsx_file:
+                xlsx_file = os.path.abspath( os.path.join(MEDIA_ROOT, "csv_files", xlsx_file))
+            elif xlsx_file.startswith("csv_files"):
+                xlsx_file = os.path.abspath( os.path.join(MEDIA_ROOT, xlsx_file))
+            if (not os.path.isfile(xlsx_file)): 
+                oStatus.set_status("error", "Cannot find file " + xlsx_file)
+                return oBack
+
+            # Get the [Info] object
+            if iSectie == None or iSectie == "":
+                oInfo = Info.objects.filter(deel=iDeel, aflnum=iAflevering).first()
+            else:
+                oInfo = Info.objects.filter(deel=iDeel, sectie=iSectie, aflnum=iAflevering).first()
+            lstInfo.append(oInfo)
+
+        # Start creating an array that will hold the fixture elements
+        arFixture = []
+        iPkLemma = 1        # The PK for each Lemma
+        iPkDescr = 1        # The PK for each Description (lemma-toelichting many-to-many)
+        iPkTrefwoord = 1    # The PK for each Trefwoord
+        iPkDialect = 1      # The PK for each Dialect
+        iPkEntry = 0        # The PK for each Entry
+        iPkAflevering = 1   # The PK for each Aflevering
+        iPkMijn = 1         # The PK for each Mijn
+        iPkEntryMijn = 1    # The PK for each Entry/Mijn
+        iCounter = 0        # Loop counter for progress
+        iRead = 0           # Number read correctly
+        iSkipped = 0        # Number skipped
+
+        # Prepare the entry object
+        oEntry = fEntry()
+
+        # First check the presence of all the 'promised' files
+        lMsg = []
+        for oInfo in lstInfo:
+            # Get the details of this object
+            xlsx_file = oInfo.csv_file.path
+            iDeel = oInfo.deel
+            iSectie = oInfo.sectie
+            iAflevering = oInfo.aflnum
+            if not os.path.isfile(xlsx_file):
+                lMsg.append("{}/{}/{} file is not existing: {}".format(
+                    iDeel, iSectie, iAflevering, xlsx_file))
+            elif oInfo.processed != None and oInfo.processed != "":
+                # Check if there already is an output file name
+                oErr.Status("Checking the PK of {}/{}/{}".format(iDeel, iSectie, iAflevering))
+                sBaseName = get_basename(iDeel, iSectie, iAflevering)
+                output_file = os.path.join(MEDIA_ROOT ,sBaseName + ".json")
+                if os.path.isfile(output_file):
+                    oErr.Status("Reading from file {}".format(output_file))
+                    # Read the file as a JSON object
+                    fl_out = io.open(output_file, "r", encoding='utf-8')   
+                    lFix = json.load(fl_out)                 
+                    # Find the highest (=last) 
+                    size = len(lFix)
+                    pk_last = lFix[size-1]['pk']
+                    if pk_last > iPkEntry:
+                        oErr.Status("Found last_pk to be {}".format(pk_last))
+                        iPkEntry = pk_last + 1
+
+        # Any messages?
+        if len(lMsg) > 0:
+            sMsg = "\n".join(lMsg)
+            oStatus.set_status("error", sMsg)
+            oBack['result'] = False
+            oBack['msg'] = sMsg
+            oErr.Status(sMsg)
+            return oBack
+
+         # Initialization of 'last' items
+        descr_this = None
+               
+        # Process all the objects in [lstInfo]
+        for oInfo in lstInfo:
+            # Get the details of this object
+            xlsx_file = oInfo.csv_file.path
+            iDeel = oInfo.deel
+            iSectie = oInfo.sectie
+            iAflevering = oInfo.aflnum
+            sProcessed = ""
+            if oInfo.processed != None:
+                sProcessed = oInfo.processed
+
+            # Determine whether we will process this item or not
+            bDoThisItem = (sProcessed == "" and (iDeel>0 or iSectie>0 or iAflevering>0))
+
+            if bDoThisItem:
+                # Make sure 'NONE' sectie is turned into an empty string
+                if iSectie == None: iSectie = ""
+
+                iRead = 0           # Number read correctly
+                iSkipped = 0        # Number skipped
+
+                sWorking = "working {}/{}/{}".format(iDeel, iSectie, iAflevering)
+                oStatus.set_status(sWorking)
+                oErr.Status(sWorking)
+
+                # Create an output file writer
+                # Basename: derive from deel/section/aflevering
+                sBaseName = get_basename(iDeel, iSectie, iAflevering)
+                output_file = os.path.join(MEDIA_ROOT ,sBaseName + ".json")
+                skip_file = os.path.join(MEDIA_ROOT, sBaseName + ".skip")
+                oFix = FixOut(output_file)
+                oSkip = FixSkip(skip_file)
+
+                # get a Aflevering number
+                if str(iDeel).isnumeric(): iDeel = int(iDeel)
+                if str(iSectie).isnumeric(): iSectie = int(iSectie)
+                if str(iAflevering).isnumeric(): iAflevering = int(iAflevering)
+                lstQ = []
+                lstQ.append(Q(deel__nummer=iDeel))
+                lstQ.append(Q(aflnum=iAflevering))
+                if iSectie != None and iSectie != "":
+                    lstQ.append(Q(sectie=iSectie))
+                oAfl = Aflevering.objects.filter(*lstQ).first()
+                iPkAflevering = oAfl.pk
+
+                # Initialisations
+                bEnd = False
+                bFirst = True
+
+                # Speed-up storages
+                sLastLemma = ""    
+                sLastLemmaDescr = ""
+                sLastTw = ""
+                sLastTwToel = ""
+                # Instances
+                lemma_this = None
+
+                # The use of 'mijnen' depends on the dictionary we are working for (wld, wbd)
+                lMijnen = []
+                if sDict == "wld":
+                    # The WLD uses mijnen in 2/5
+                    bDoMijnen = (iDeel == 2 and iAflevering == 5)   # Treat 'Mijn' for wbd-II-5
+                else:
+                    # The WBD, WGD, WALD do NOT have any mijnen
+                    bDoMijnen = False
+
+                # Time measurements: keep track of time used in different parts
+                oTime = {}
+                oTime['read'] = 0   # time to read the XML file
+                oTime['db'] = 0     # Time spent in reading and saving database items
+                oTime['entry'] = 0  # Processing entries
+                oTime['save'] = 0   # Time spent in saving
+                oTime['search_L'] = 0   # Time spent in searching (lemma)
+                oTime['search_T'] = 0   # Time spent in searching (trefwoord)
+                oTime['search_Ds'] = 0  # Time spent in searching (description)
+                oTime['search_Dt'] = 0  # Time spent in searching (dialect)
+                oTime['search_LD'] = 0  # Time spent in searching (lemmadescription)
+                oTime['search_M'] = 0   # Time spent in searching (mijn)
+
+                # Now read the EXCEL as an object
+                iStarttime = get_now_time()
+                # Open the Excel file
+                if iDeel <= 3:
+                    # Rivierengebied = 1, 2, 3
+                    oProc = WgdRivProcessor(xlsx_file)
+                else:
+                    # Veluwe = 4, 5, 6
+                    oProc = WgdVelProcessor(xlsx_file)
+                oTime['read'] = get_now_time() - iStarttime
+                iStartTime = get_now_time()
+
+                # Iterate through all the rows
+                while not bEnd:
+                    # Read the row
+                    oRow = oProc.next_row()
+                    # Check if row is valid
+                    if not oProc.is_valid():
+                        bEnd = True
+                        break
+                    # Get the row number
+                    row = oProc.row
+                    # Perform part-to-line
+                    oLine = oProc.partToLine()
+                    # Check if this line contains 'valid' data:
+                    iValid = isLineOkay(oLine)
+                    # IF this is the first line or an empty line, then skip
+                    if iValid == 0:
+                        # Assuming this 'part' is entering an ENTRY
+
+                        # Make sure we got TREFWOORD correctly
+                        sTrefWoord = oLine['trefwoord_name']
+
+                        if bDoMijnen and 'mijn_list' in oLine:
+                            lMijnen = oLine['mijn_list']
+
+                        # Try to do all of this within one actual transation
+                        iStarttime = get_now_time()
+                        with transaction.atomic():
+                            # Find out which lemma this is
+                            sLemma = oLine['lemma_name']
+                            if sLemma != sLastLemma:
+                                lemma_this = Lemma.get_instance({'gloss': sLemma}, oTime)
+                                sLastLemma = sLemma
+
+                            # Find out which lemma-description this is
+                            descr_this = Description.get_instance({'bronnenlijst': oLine['lemma_bronnenlijst'],
+                                                                'toelichting': oLine['lemma_toelichting'], 
+                                                                'boek': oLine['lemma_boek']}, descr_this, oTime)
+
+                            # We do need the PKs of the lemma and the description
+                            iPkLemma = lemma_this.pk
+                            iPkDescr = descr_this.pk
+
+                            # Add the [iPkDescr] to the LemmaDescr--but only if it is not already there
+                            iPkLemmaDescr = LemmaDescr.get_item({'lemma': lemma_this,
+                                                                    'description': descr_this}, oTime)
+
+                            # Find out which dialect this is
+                            if oLine['dialect_kloeke'] != None and oLine['dialect_kloeke'] != "":
+                                iPkDialect = Dialect.get_item({'stad': oLine['dialect_stad'], 
+                                                                'nieuw': oLine['dialect_nieuw'],
+                                                                'code': oLine['dialect_kloeke']}, oTime)
+                                # Note: removed 'dialect_toelichting' in accordance with issue #22 of WLD
+                            else:
+                                iPkDialect = Dialect.get_item({'stad': oLine['dialect_stad'], 
+                                                                'nieuw': oLine['dialect_nieuw']}, oTime)
+
+                            # Find out which trefwoord this is
+                            sTwToel = oLine['trefwoord_toelichting']
+                            if sTwToel == None or sTwToel == "":
+                                if sLastTwToel != "" or sLastTw != sTrefWoord:
+                                    iPkTrefwoord = Trefwoord.get_item({'woord': sTrefWoord}, oTime)
+                                    sLastTw = sTrefWoord
+                                    sLastTwToel = ""
+                            else:
+                                if sLastTw != sTrefWoord or sLastTwToel != sTwToel:
+                                    iPkTrefwoord = Trefwoord.get_item({'woord': sTrefWoord,
+                                                                    'toelichting': sTwToel}, oTime)
+                                    sLastTw = sTrefWoord
+                                    sLastTwToel = sTwToel
+                        oTime['db'] += get_now_time() - iStarttime
+
+                        # Check validity
+                        if iPkDescr < 0 or iPkLemma < 0 or iPkLemmaDescr < 0 or iPkDialect < 0 or iPkTrefwoord < 0:
+                            # Something has gone wrong: we cannot continue
+                            oStatus.set_status("error")
+                            errHandle.DoError("csv_to_fixture has a negative index", True)
+                            return oBack
+
+                        # Process the ENTRY
+                        sDialectWoord = oLine['dialectopgave_name']
+                        # WGD-specific
+                        sSubvraag = oLine['subvraag']
+                        sInWoordenboek = "true" if oLine['inwoordenboek'] == "ja" else "false"
+                        sComment = oLine['opmerking']
+                        # Make sure that I use my OWN continuous [pk] for Entry
+                        iPkEntry += 1
+                        # Do *NOT* use the Entry PK that is returned 
+                        iStarttime = get_now_time()
+                        iDummy = oFix.get_pk(oEntry, "dictionary.entry", False,
+                                                pk=iPkEntry,
+                                                woord=sDialectWoord,
+                                                toelichting=oLine['dialectopgave_toelichting'],
+                                                kloeketoelichting=oLine['dialectopgave_kloeketoelichting'],
+                                                lemma=iPkLemma,
+                                                descr=iPkDescr,     # This is the Description that in principle is valid for the whole lemma, but not in practice
+                                                dialect=iPkDialect,
+                                                trefwoord=iPkTrefwoord,
+                                                subvraag=sSubvraag,
+                                                inwoordenboek=sInWoordenboek,
+                                                opmerking=sComment,
+                                                aflevering=iPkAflevering)
+                        oTime['entry'] += get_now_time() - iStarttime
+
+                        if bDoMijnen:
+                            # Walk all the mijnen for this entry
+                            for sMijn in lMijnen:
+                                # Get the PK for this mijn
+                                iPkMijn = Mijn.get_item({'naam': sMijn}, oTime)
+                                # Process the PK for EntryMijn
+                                iPkEntryMijn = EntryMijn.get_item({'entry': iPkEntry,
+                                                                    'mijn': iPkMijn})
+
+                        iRead += 1
+                    else:
+                        # This line is being skipped
+                        oSkip.append(oProc.line())
+                        iSkipped += 1
+                        sIdx = 'line-' + str(iValid)
+                        if not sIdx in oBack:
+                            oBack[sIdx] = 0
+                        oBack[sIdx] +=1
+                    # Keep track of progress
+                    oStatus.skipped = iSkipped
+                    oStatus.read = iRead
+                    oStatus.status = "{} (read={:.1f}, db={:.1f}, entry={:.1f}, search (L={:.1f}, T={:.1f}, Ds={:.1f}, LD={:.1f}, Dt={:.1f}, M={:.1f}), save={:.1f})".format(
+                        sWorking, oTime['read'], oTime['db'], oTime['entry'],
+                        oTime['search_L'], oTime['search_T'], oTime['search_Ds'], oTime['search_LD'], oTime['search_Dt'], oTime['search_M'], oTime['save'])
+                    oStatus.save()
+
+
+                # Close the skip file
+                oSkip.close()
+
+                # Finish the JSON array that contains the fixtures
+                oFix.close()
+
+                # Note the results for this info object
+                oInfo.read = iRead
+                oInfo.skipped = iSkipped
+                oInfo.processed = "Processed at {:%d/%b/%Y %H:%M:%S}".format(datetime.now())
+                oInfo.save()
+
+        # return positively
+        oBack['result'] = True
+        oBack['skipped'] = iSkipped
+        oBack['read'] = iRead
+        oStatus.set_status("done")
+        return oBack
+    except:
+        if oStatus != None:
+            oStatus.set_status("error")
+        sMsg = oErr.get_error_message()
+        oErr.DoError("excel_to_fixture", True)
+        return oBack
 
 # ----------------------------------------------------------------------------------
 # Name :    csv_to_fixture

@@ -1052,8 +1052,6 @@ class Entry(models.Model):
     dialect = models.ForeignKey(Dialect, db_index=True, blank=False)
     # Trefwoord: obligatory
     trefwoord = models.ForeignKey(Trefwoord, db_index=True, blank=False)
-    # Mijn [0-1]
-    # mijn = models.ForeignKey(Mijn, blank = True, null=True)
     # Mijn [0-n]
     mijnlijst = models.ManyToManyField(Mijn, db_index=True, through='EntryMijn')
     # Aflevering [1]

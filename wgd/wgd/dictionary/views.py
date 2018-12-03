@@ -382,7 +382,8 @@ def import_csv_start(request):
         # oCsvImport['status'] = "starting"
 
         # Call the process
-        oResult = csv_to_fixture(sFile, iDeel, iSectie, iAflnum, iStatus, bUseDbase = bUseDbase, bUseOld = True)
+        # WGD: use EXCEL_to_fixture instead of CSV_to_fixture
+        oResult = excel_to_fixture(sFile, iDeel, iSectie, iAflnum, iStatus, bUseDbase = bUseDbase, bUseOld = True)
         if oResult == None or oResult['result'] == False:
             data['status'] = 'error'
 
