@@ -1603,7 +1603,19 @@ class Processor():
     oErr = ErrHandle()      # Error handling
     ws = None               # The worksheet
     oRow = None             # The cells of one row
+    oCol = {}               # Mapping of column name to number
     type = "excel"          # The type of object we have: 'excel', 'csv_a', 'csv_b'
+    col_lemma = -1          # Lemmatitel
+    col_vraagn = -1         # vraagnummer
+    col_vraagt = -1         # tekst van de vraag
+    col_bron = -1           # bron
+    col_kloeke = -1         # kloeke-code
+    col_stand = -1          # standaardspelling
+    col_dialw = -1          # dialectwoord
+    col_indict = -1         # in woordenboek
+    col_opmst = -1          # opmerking studentassistent / Inge
+    col_opm = -1            # opmerkingen
+    col_subvr = -1          # subvraagletter
 
     def __init__(self, sFile):
         # Open the workbook
@@ -1615,8 +1627,59 @@ class Processor():
         self.row = 1
         # Skip rows until we are at the point where the first row starts
         while self.row < self.frow:
-            next(self.oRows)
+            oRow = next(self.oRows)
+            if self.row == 1:
+                # This is the top row that contains the column names
+                self.process_col_names(oRow)
             self.row += 1
+
+    def process_col_names(self, oRow):
+        """Map the column names to the column numbers
+        
+        This method makes sure that self.oCol has at least these fields:
+            recordid, vraagnummer, vraagtekst, dialectwoord,
+            standaardspelling, lemmatitel, kloeke-code, bron, opmerkingen,
+            lijstnummer, woordenboek, studass
+        Optional fields are:
+            subvraagletter
+            nederlands
+        """
+
+        try:
+            lNames = [cell.value for cell in oRow]
+
+            for idx, col_name in enumerate(lNames):
+                # Sanity check
+                if col_name != None:
+                    # Make sure we are working with lower case
+                    col_name = col_name.lower()
+                    if "tekst v.d." in col_name or "tekst van de" in col_name:
+                        self.oCol["vraagtekst"] = idx
+                    elif "woordenboek" in col_name:
+                        self.oCol["inwoordenboek"] = idx
+                    elif " inge" in col_name or "studass" in col_name:
+                        self.oCol["studass"] = idx
+                    elif "nederlands" in col_name:
+                        self.oCol["nederlands"] = idx
+                    else:
+                        self.oCol[col_name] = idx
+            # Now extract the needed elements from oCol
+            self.col_lemma = self.oCol['lemmatitel']
+            self.col_vraagn = self.oCol['vraagnummer']
+            self.col_vraagt = self.oCol['vraagtekst']
+            self.col_bron = self.oCol['bron']
+            self.col_kloeke = self.oCol['kloeke-code']
+            self.col_stand = self.oCol['standaardspelling']
+            self.col_dialw = self.oCol['dialectwoord']
+            self.col_indict = self.oCol['inwoordenboek']
+            self.col_opm = self.oCol['opmerkingen']
+            if 'studass' in self.oCol:
+                self.col_opmst = self.oCol['studass']
+            if 'subvraagletter' in self.oCol:
+                self.col_subvr = self.oCol['subvraagletter']
+        except:
+            msg = self.oErr.get_error_message()
+            self.oErr.DoError("Processor.process_col_names() error")
 
     def partToLine(self):
         """Convert the contents of the current self.oRow into an object"""
@@ -1670,10 +1733,12 @@ class Processor():
         return sBack
 
 
-class WgdVelProcessor(Processor):
-    """Specify how WGD-Veluwe input should be processed"""
-
-    offset = 1  # The first record is used for 'recordId'
+class WgdProcessor(Processor):
+    """Specify how WGD input should be processed
+    
+    This class relies on column names having been correctly identified \
+    by the process_col_names() method of Processor.
+    """
 
     def partToLine(self):
         """Convert the contents of the current self.oRow into an object"""
@@ -1686,35 +1751,41 @@ class WgdVelProcessor(Processor):
             if oCells[0] != None and oCells[0] != "":
                 offset = self.offset
                 # The row is valid: create the object
-                oBack['lemma_name'] = oCells[4+offset]              # 4 (lemmatitel)
+                oBack['lemma_name'] = oCells[self.col_lemma]        # (lemmatitel)
                 oBack['lemma_bronnenlijst'] = ""                    # Not applicable
-                oBack['lemma_toelichting'] = "{}: {}".format(       # 0 (vraagnummer) +
-                    oCells[0+offset], oCells[1+offset])             # 1 (tekst van de vraag)
+                oBack['lemma_toelichting'] = "{}: {}".format(       
+                    oCells[self.col_vraagn],                        # (vraagnummer) +
+                    oCells[self.col_vraagt])                        # (tekst van de vraag)
                 oBack['lemma_boek'] = ""                            # Not applicable
-                oBack['dialect_stad'] = oCells[6+offset]            # 6 (called 'bron')
-                oBack['dialect_nieuw'] = oCells[5+offset]           # 5 (kloeke-code)
+                oBack['dialect_stad'] = oCells[self.col_bron]       # (called 'bron')
+                oBack['dialect_nieuw'] = oCells[self.col_kloeke]    # (kloeke-code)
                 oBack['dialect_kloeke'] = ""                        # empty
-                oBack['trefwoord_name'] = oCells[2+offset]          # 2 (standaardspelling)
+                oBack['trefwoord_name'] = oCells[self.col_stand]    # (standaardspelling)
                 oBack['trefwoord_toelichting'] = ""                 # empty
-                oBack['dialectopgave_name'] = oCells[3+offset]      # 3 (dialectwoord)
-                oBack['dialectopgave_toelichting'] = ""             # empty
+                oBack['dialectopgave_name'] = oCells[self.col_dialw]        # (dialectwoord)
+                oBack['dialectopgave_toelichting'] = oCells[self.col_opm]   # (opmerkingen)
                 oBack['dialectopgave_kloeketoelichting'] = ""       # empty
                 # UNUSED: field 8 - lijstnummer
 
                 # Fields specific to WGD
-                oBack['inwoordenboek'] = oCells[9+offset]           # 9  (In woordenboek j/n)
-                oBack['opmerking'] = oCells[10+offset]              # 10 (Opmerkingen studass)
-                oBack['subvraag'] = ""                              # Empty for VELUWE
+                oBack['inwoordenboek'] = oCells[self.col_indict]    # (In woordenboek j/n)
+                oBack['opmerking'] = ""
+                oBack['subvraag'] = ""
+                if self.col_opmst > 0:
+                    oBack['opmerking'] = oCells[self.col_opmst]     # (Opmerkingen studass)
+                if self.col_subvr > 0:
+                    oBack['subvraag'] = oCells[self.col_subvr]      # (subvraagletter; empty for VELUWE)
 
-                # Some additional adaptations
-                oBack['dialect_nieuw'] = oBack['dialect_nieuw'].replace(" ", "")
-                # Make sure NONE getr replaced by ""
+                # Make sure NONE gets replaced by ""
                 for k,v in oBack.items():
                     if v == None:
                         oBack[k] = ""
                     else:
                         # make sure we only have STRING variables
                         oBack[k] = str(v)
+
+                # Some additional adaptations
+                oBack['dialect_nieuw'] = oBack['dialect_nieuw'].replace(" ", "")
             # Return what was found
             return oBack
         except:
@@ -1734,73 +1805,8 @@ class WgdVelProcessor(Processor):
             self.oErr.DoError("Processor.line() error")
             return False
 
-class WgdRivProcessor(Processor):
-    """Specify how WGD-Rivierengebied input should be processed"""
 
-    offset = 1  # The first record is used for 'recordId'
-
-    def partToLine(self):
-        """Convert the contents of the current self.oRow into an object"""
-
-        oBack = {}
-        try:
-            # Put the values into an array
-            oCells = [cell.value for cell in self.oRow]
-            # Double check: is this row valid?
-            if oCells[0] != None and oCells[0] != "":
-                offset = self.offset
-                # The row is valid: create the object
-                oBack['lemma_name'] = oCells[5+offset]              # 5 (lemmatitel)
-                oBack['lemma_bronnenlijst'] = ""                    # Not applicable
-                oBack['lemma_toelichting'] = "{}: {}".format(       # 0 (vraagnummer) +
-                    oCells[0+offset], oCells[2+offset])             # 2 (tekst van de vraag)
-                oBack['lemma_boek'] = ""                            # Not applicable
-                oBack['dialect_stad'] = oCells[7+offset]            # 7 (called 'bron')
-                oBack['dialect_nieuw'] = oCells[6+offset]           # 6 (kloeke-code)
-                oBack['dialect_kloeke'] = None                      # none
-                oBack['trefwoord_name'] = oCells[4+offset]          # 4 (standaardspelling)
-                oBack['trefwoord_toelichting'] = ""                 # empty
-                oBack['dialectopgave_name'] = oCells[3+offset]      # 3 (dialectwoord)
-                oBack['dialectopgave_toelichting'] = ""             # empty
-                oBack['dialectopgave_kloeketoelichting'] = ""       # empty
-                # UNUSED: field 9 - lijstnummer, field 10 - Nederlands woord
-
-                # Fields specific to WGD
-                oBack['inwoordenboek'] = oCells[11+offset]          # 11  (In woordenboek j/n)
-                oBack['opmerking'] = oCells[10+offset]              # 10 (Opmerkingen studass)
-                oBack['subvraag'] = oCells[1+offset]                # 1 (subvraagletter -- for RIVIERENGEBIED)
-
-                # Make sure NONE getr replaced by ""
-                for k,v in oBack.items():
-                    if v == None:
-                        oBack[k] = ""
-                    else:
-                        # make sure we only have STRING variables
-                        oBack[k] = str(v)
-
-                # Some additional adaptations
-                oBack['dialect_nieuw'] = oBack['dialect_nieuw'].replace(" ", "")
-            # Return what was found
-            return oBack
-        except:
-            msg = self.oErr.get_error_message()
-            self.oErr.DoError("read_row error")
-            return {}
-
-    def is_valid(self):
-        try:
-            if self.row < self.frow: return False
-            if self.oRow == None: return False
-            cell = self.oRow[0]
-            bValid = (cell.value != None and cell.value != "")
-            return bValid
-        except:
-            msg = self.oErr.get_error_message()
-            self.oErr.DoError("Processor.line() error")
-            return False
-
-
-    
+   
 # ----------------------------------------------------------------------------------
 # Name :    excel_to_fixture
 # Goal :    Convert XML file into a fixtures file
@@ -1999,12 +2005,7 @@ def excel_to_fixture(xlsx_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=
                 # Now read the EXCEL as an object
                 iStarttime = get_now_time()
                 # Open the Excel file
-                if iDeel <= 3:
-                    # Rivierengebied = 1, 2, 3
-                    oProc = WgdRivProcessor(xlsx_file)
-                else:
-                    # Veluwe = 4, 5, 6
-                    oProc = WgdVelProcessor(xlsx_file)
+                oProc = WgdProcessor(xlsx_file)
                 oTime['read'] = get_now_time() - iStarttime
                 iStartTime = get_now_time()
 
