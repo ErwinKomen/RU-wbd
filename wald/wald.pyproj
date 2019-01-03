@@ -46,6 +46,9 @@
     <Compile Include="wald\dictionary\fixtures\management\__init__.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="wald\dictionary\migrations\0003_dialect_streek.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="wald\dictionary\migrations\__init__.py" />
     <Compile Include="wald\dictionary\models.py" />
     <Compile Include="wald\dictionary\adminviews.py">

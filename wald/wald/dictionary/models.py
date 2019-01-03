@@ -433,6 +433,8 @@ class Lemma(models.Model):
     # toelichting = models.TextField("Omschrijving van het lemma", blank=True)
     # bronnenlijst = models.TextField("Bronnenlijst bij dit lemma", db_index=True, blank=True)
     # boek = models.TextField("Boekaanduiding", db_index=True, null=True,blank=True)
+    # [0-1] Optional @Sense_lemma_id attribute
+    sense = models.CharField("Sense lemma id", db_index=True, blank=True, max_length=MAX_LEMMA_LEN)
     lmdescr = models.ManyToManyField(Description, through='LemmaDescr')
     # A field that indicates this item may be showed
     toonbaar = models.BooleanField("Mag getoond worden", blank=False, default=True)
@@ -495,8 +497,12 @@ class Lemma(models.Model):
 
             # see if we get one value back
             if qItem == None:
+                # Possibly get the sense
+                sense = ""
+                if "sense" in options:
+                    sense = options['sense']
                 if oTime != None: iStart = get_now_time()
-                qItem = Lemma(gloss=gloss)
+                qItem = Lemma(gloss=gloss, sense=sense)
                 qItem.save()
                 if oTime != None: oTime['save'] += get_now_time() - iStart
 
@@ -603,6 +609,7 @@ class Dialect(models.Model):
     stad = models.CharField("Dialectlocatie", db_index=True, blank=False, max_length=MAX_LEMMA_LEN, default="(unknown)")
     code = models.CharField("Plaatscode (Kloeke)", blank=False, max_length=6, default="xxxxxx")
     nieuw = models.CharField("Plaatscode (Nieuwe Kloeke)", db_index=True, blank=False, max_length=6, default="xxxxxx")
+    streek = models.CharField("Streek", db_index=True, blank=False, max_length=MAX_LEMMA_LEN, default="(unknown)")
     # A field that indicates this item may be showed
     toonbaar = models.BooleanField("Mag getoond worden", blank=False, default=True)
     # Note: removed 'dialect_toelichting' in accordance with issue #22 of WLD
@@ -632,10 +639,14 @@ class Dialect(models.Model):
             # Get the parameters
             stad = self['stad']
             nieuw = self['nieuw']
+            streek = self['streek']
+            # Adatp for non-present kloeke-code (German places)
+            if nieuw == None: nieuw = "0_{}".format(Dialect.objects.count())
             # Try find an existing item
             lstQ = []
             lstQ.append(Q(stad__iexact=stad))
             lstQ.append(Q(nieuw__iexact=nieuw))
+            # N.B: streek is not needed to find the unique dialect
 
             if oTime != None: iStart = get_now_time()
             qItem = Dialect.objects.filter(*lstQ).first()
@@ -645,7 +656,7 @@ class Dialect(models.Model):
             if qItem == None:
                 # add a new Dialect object
                 if oTime != None: iStart = get_now_time()
-                qItem = Dialect(stad=stad, nieuw=nieuw, code='-')
+                qItem = Dialect(stad=stad, nieuw=nieuw, code='-', streek=streek)
                 qItem.save()
                 if oTime != None: oTime['save'] += get_now_time() - iStart
             # Get the pk of the first hit
@@ -1567,13 +1578,17 @@ def xml_to_fixture(xml_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
 
         # First check the presence of all the 'promised' files
         lMsg = []
+        bAllowEmptyXml = True       # TODO: set this to FALSE for production!!!
         for oInfo in lstInfo:
             # Get the details of this object
-            xml_file = oInfo.csv_file.path
+            try:
+                xml_file = oInfo.csv_file.path
+            except:
+                xml_file = ""
             iDeel = oInfo.deel
             iSectie = oInfo.sectie
             iAflevering = oInfo.aflnum
-            if not os.path.isfile(xml_file):
+            if not os.path.isfile(xml_file) and not bAllowEmptyXml:
                 lMsg.append("{}/{}/{} file is not existing: {}".format(
                     iDeel, iSectie, iAflevering, xml_file))
             elif oInfo.processed != None and oInfo.processed != "":
@@ -1608,7 +1623,10 @@ def xml_to_fixture(xml_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
         # Process all the objects in [lstInfo]
         for oInfo in lstInfo:
             # Get the details of this object
-            xml_file = oInfo.csv_file.path
+            try:
+                xml_file = oInfo.csv_file.path
+            except:
+                xml_file = ""
             iDeel = oInfo.deel
             iSectie = oInfo.sectie
             iAflevering = oInfo.aflnum
@@ -1617,7 +1635,7 @@ def xml_to_fixture(xml_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
                 sProcessed = oInfo.processed
 
             # Determine whether we will process this item or not
-            bDoThisItem = (sProcessed == "" and (iDeel>0 or iSectie>0 or iAflevering>0))
+            bDoThisItem = (xml_file != "" and sProcessed == "" and (iDeel>0 or iSectie>0 or iAflevering>0))
 
             if bDoThisItem:
                 # Make sure 'NONE' sectie is turned into an empty string
@@ -1657,6 +1675,8 @@ def xml_to_fixture(xml_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
                 sLastTwToel = ""
                 # Instances
                 lemma_this = None
+                trefwoord_this = None
+                descr_this = None
 
                 # Time measurements: keep track of time used in different parts
                 oTime = {}
@@ -1691,30 +1711,113 @@ def xml_to_fixture(xml_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
                         sSenseLemmaId = senselemma.get('Sense_lemma_id')    
                         # Make sure we have a pointer to the correct lemma
                         if sLemma != sLastLemma:
-                            lemma_this = Lemma.get_instance({'gloss': sLemma}, oTime)
+                            lemma_this = Lemma.get_instance({'gloss': sLemma, 'sense': sSenseLemmaId}, oTime)
                             sLastLemma = sLemma
+
+                        # Find out which lemma-description this is
+                        sToelichting = ""
+                        for comment in senselemma.findall('contextcomment'):
+                            if sToelichting != "": sToelichting += " // " 
+                            sToelichting += comment.text.strip()
+                        descr_this = Description.get_instance({'bronnenlijst': "", 'boek': "",
+                                                            'toelichting': sToelichting}, descr_this, oTime)
+
+                        # We do need the PKs of the lemma and the description
+                        iPkLemma = lemma_this.pk
+                        iPkDescr = descr_this.pk
+
+                        # Add the [iPkDescr] to the LemmaDescr--but only if it is not already there
+                        iPkLemmaDescr = LemmaDescr.get_item({'lemma': lemma_this,
+                                                                'description': descr_this}, oTime)
+
+                        # Find all the <contextexample> items, which are indexed by their 'locationkloeke'
+                        examples = {}
+                        for example in senselemma.findall('contextexample'):
+                            # There should be only one location attached to a context example
+                            for loc in example.findall('Location'):
+                                sKloeke = loc.get("locationkloeke")
+                            examples[sKloeke] = example.text.strip()
 
                         # Next level: trefwoord
                         for formkeyword in senselemma.findall('formkeyword'):
                             # Get the keyword = trefwoord
                             sTrefwoord = formkeyword.get('text')
+                            # Process this keyword
+                            if sTrefwoord != sLastTw:
+                                iPkTrefwoord = Trefwoord.get_item({'woord': sTrefwoord}, oTime)
+                                sLastTw = sTrefwoord
 
                             # Next level: dialect entries
                             for dialectform in formkeyword.findall("formrepresentation_dialectform"):
                                 # Get the entry
-                                sEntry = dialectform.get('text')
+                                sDialectWoord = dialectform.get('text')
 
                                 # Get all the locations where this entry is used
                                 for location in dialectform.findall("Location"):
+                                    # Get the dialect index
+                                    sKloekeId = location.get('locationkloeke')
+                                    iPkDialect = Dialect.get_item({'stad': location.get('locationplace'),
+                                                                   'streek': location.get('locationarea'), 
+                                                                   'nieuw': sKloekeId}, oTime)
+
                                     # Determine any sourcebook definition (there can be only one)
                                     sLocComment = ""
                                     for sourcebookdef in location.findall("definitionsourcebook"):
                                         sLocComment = sourcebookdef.get('definitionsourcebook')
-                                    # Process the combination of Entry/Comment/Trefwoord/Lemma/Domain
 
-                # Process the XML hierarchically: 
+                                    # Check if this particular location has an example
+                                    sExample = ""
+                                    if sKloekeId in examples:
+                                        sExample = examples[sKloekeId]
+
+                                    # Check validity
+                                    if iPkDescr < 0 or iPkLemma < 0 or iPkLemmaDescr < 0 or iPkDialect < 0 or iPkTrefwoord < 0:
+                                        # Something has gone wrong: we cannot continue
+                                        oStatus.set_status("error")
+                                        errHandle.DoError("xml_to_fixture has a negative index", True)
+                                        return oBack
+                                    # Make sure that I use my OWN continuous [pk] for Entry
+                                    iPkEntry += 1
+                                    # Do *NOT* use the Entry PK that is returned 
+                                    iStarttime = get_now_time()
+                                    iDummy = oFix.get_pk(oEntry, "dictionary.entry", False,
+                                                           pk=iPkEntry,
+                                                           woord=sDialectWoord,
+                                                           toelichting=sExample,
+                                                           kloeketoelichting=sLocComment,
+                                                           lemma=iPkLemma,
+                                                           descr=iPkDescr,     # This is the Description that in principle is valid for the whole lemma, but not in practice
+                                                           dialect=iPkDialect,
+                                                           trefwoord=iPkTrefwoord,
+                                                           aflevering=iPkAflevering)
+                                    oTime['entry'] += get_now_time() - iStarttime
+                                    iRead += 1
                 
+                        # Keep track of progress
+                        oStatus.skipped = iSkipped
+                        oStatus.read = iRead
+                        oStatus.status = "{} (read={:.1f}, db={:.1f}, entry={:.1f}, search (L={:.1f}, T={:.1f}, Ds={:.1f}, LD={:.1f}, Dt={:.1f}, M={:.1f}), save={:.1f})".format(
+                            sWorking, oTime['read'], oTime['db'], oTime['entry'],
+                            oTime['search_L'], oTime['search_T'], oTime['search_Ds'], oTime['search_LD'], oTime['search_Dt'], oTime['search_M'], oTime['save'])
+                        oStatus.save()
 
+                # Close the skip file
+                oSkip.close()
+
+                # Finish the JSON array that contains the fixtures
+                oFix.close()
+
+                # Note the results for this info object
+                oInfo.read = iRead
+                oInfo.skipped = iSkipped
+                oInfo.processed = "Processed at {:%d/%b/%Y %H:%M:%S}".format(datetime.now())
+                oInfo.save()
+
+        # return positively
+        oBack['result'] = True
+        oBack['skipped'] = iSkipped
+        oBack['read'] = iRead
+        oStatus.set_status("done")
         # Return what we found
         return oBack
     except:
