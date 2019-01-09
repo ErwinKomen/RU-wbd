@@ -65,6 +65,7 @@
     <Content Include="wgd\dictionary\static\dictionary\content\bootstrap.min.css" />
     <Content Include="wgd\dictionary\static\dictionary\content\site.css" />
     <Content Include="wgd\dictionary\static\dictionary\content\taalkaart-wgd-large.jpg" />
+    <Content Include="wgd\dictionary\static\dictionary\content\taalkaart-wgd-plaatsen.jpg" />
     <Content Include="wgd\dictionary\static\dictionary\content\taalkaart-wgd.jpg" />
     <Content Include="wgd\dictionary\static\dictionary\fonts\glyphicons-halflings-regular.eot" />
     <Content Include="wgd\dictionary\static\dictionary\fonts\glyphicons-halflings-regular.svg" />

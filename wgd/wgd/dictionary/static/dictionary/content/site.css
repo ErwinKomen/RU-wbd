@@ -290,6 +290,15 @@ table tbody tr:hover {
     -webkit-animation: spin2 .7s infinite linear;
 }
 
+.highlight {
+  background-color: yellow;
+}
+.highlight:hover {
+  background-color:lightyellow;
+  color: darkred;
+  font-weight: bold;
+}
+
 
 @-webkit-keyframes spin2 {
     from { -webkit-transform: rotate(0deg);}
