@@ -23,6 +23,7 @@ import io
 import codecs
 import html
 import json
+import csv
 
 
 MAX_IDENTIFIER_LEN = 10
@@ -407,6 +408,116 @@ def get_help(field):
         help_text = "Sorry, no help available for " + field
 
     return help_text
+
+
+class Kloeke(models.Model):
+    """An overview of all the Kloeke codes and the places they belong to"""
+
+    # [1] The kloeke code itself
+    code = models.CharField("Kloekecode", blank=False, max_length=MAX_IDENTIFIER_LEN, default = "-")
+    # [1] The main city/village this refers to
+    stad = models.CharField("Dialectlocatie", blank=False, max_length=MAX_LEMMA_LEN, default="(unknown)")
+    # [0-1] First alternative
+    alt1 = models.CharField("Alternatief 1", blank=True, null=True,max_length=MAX_LEMMA_LEN)
+    # [0-1] Second alternative
+    alt2 = models.CharField("Alternatief 1", blank=True, null=True,max_length=MAX_LEMMA_LEN)
+    # [1] Number of other entries with the same code
+    numcode = models.IntegerField("Zelfde code", default=0)
+    # [1] Number of other entries with the same stad
+    numstad = models.IntegerField("Zelfde stad", default=0)
+
+    def __str__(self):
+        return self.code
+
+    def readcodes(fName, oRepair):
+        """Read the codes from the indicated file name"""
+
+        oBack = {}
+        oErr = ErrHandle()
+        count_add = 0
+        count_new = 0
+        try:
+            # Check existence of file
+            if not os.path.exists(fName) or not os.path.isfile(fName):
+                oBack['status'] = "error"
+                oBack['msg'] = "Cannot find file [{}]".format(fName)
+            # Read the file
+            with io.open(fName, "r", encoding="utf-8-sig") as f:
+                reader = csv.reader(f, delimiter='\t')
+                lKloeke = list(reader)
+            # Now walk the list...
+            bFirst = True
+            # with transaction.atomic():
+            for oKloeke in lKloeke:
+                if bFirst:
+                    bFirst = False
+                else:
+                    # Get the parts
+                    code = oKloeke[0]
+                    stad = oKloeke[1]
+                    alt1 = oKloeke[2]
+                    alt2 = oKloeke[3]
+                    # Obligatory non-empty CODE and STAD
+                    if code != "" and stad != "":
+                        # Check if the combination exists
+                        instance = Kloeke.objects.filter(code=code, stad=stad).first()
+                        if instance == None:
+                            # First attempt
+                            instance = Kloeke(code=code, stad=stad)
+                            if alt1 != "": instance.alt1 = alt1
+                            if alt2 != "": instance.alt2 = alt2
+                            instance.save()
+                            count_new += 1
+                            oRepair.set_status("New {}, corrected {}".format(count_new, count_add))
+                        else:
+                            # may be some corrections
+                            bNeedSaving = False
+                            if instance.alt1 != alt1 and not (instance.alt1 == None and alt1 == ""):
+                                instance.alt1 = alt1
+                                bNeedSaving = True
+                            if instance.alt2 != alt2 and not (instance.alt1 == None and alt1 == ""):
+                                instance.alt2 = alt2
+                                bNeedSaving = True
+                            if instance.alt1 == "":
+                                # Change into None
+                                instance.alt1 = None
+                                bNeedSaving = True
+                            if instance.alt2 == "":
+                                # Change into None
+                                instance.alt2 = None
+                                bNeedSaving = True
+                            if bNeedSaving:
+                                instance.save()
+                                count_add += 1
+                                oRepair.set_status("New {}, corrected {}".format(count_new, count_add))
+
+            # Second part: count the number of times a city/code occurs
+            for instance in Kloeke.objects.all():
+                # Count 'code' and 'stad'
+                code = instance.code
+                stad = instance.stad
+                count_code = Kloeke.objects.filter(code=code).count()
+                count_stad = Kloeke.objects.filter(stad=stad).count()
+                bNeedSaving = False
+                # Check if this needs adding
+                if instance.numcode != count_code:
+                    instance.numcode = count_code
+                    bNeedSaving = True
+                if instance.numstad != count_stad:
+                    instance.numstad = count_stad
+                    bNeedSaving = True
+                if bNeedSaving:
+                    instance.save()
+                    oRepair.set_status("Adjusting count of {} / {}".format(code, stad))
+
+            # Success
+            oBack['status'] = "ok"
+            oBack['msg'] = "Finished. New {}, corrected {}".format(count_new, count_add)
+        except:
+            oBack['status'] = "error"
+            oBack['msg'] = oErr.get_error_message()
+        # Return what we have
+        return oBack
 
 
 class Description(models.Model):
@@ -2639,6 +2750,37 @@ def csv_to_fixture(csv_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
         oStatus.save()
         errHandle.DoError("csv_to_fixture", True)
         return oBack
+
+
+def do_repair_kloeke(oRepair):
+    """Upload kloeke-to-city definitions from TSV"""
+
+    # The name of the file
+    KLOEKE_FILE = "kloekecodes.tsv"
+
+    oErr = ErrHandle()
+    try:
+        # Show we are starting
+        oRepair.set_status("Starting up reading Kloeke code TSV")
+
+        # Combine the file name
+        fName = os.path.abspath(os.path.join(MEDIA_ROOT, KLOEKE_FILE))
+        oBack = Kloeke.readcodes(fName, oRepair)
+
+        # Check if there is an error
+        if oBack == None or 'status' not in oBack or oBack['status'] != "ok":
+            return False
+
+        # Indicate we are ready
+        oRepair.set_status("finished")
+
+        # Return positively
+        return True
+    except:
+        msg = oErr.get_error_message()
+        oRepair.set_status("Error: {}".format(msg))
+        return False
+
 
 
 # ----------------------------------------------------------------------------------

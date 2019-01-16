@@ -312,11 +312,15 @@ def do_repair_start(request):
     elif sRepairType == "entrydescr":
         bResult = do_repair_entrydescr(oRepair)
         if not bResult:
-            data.status = "error"
+            data['status'] = "error"
     elif sRepairType == "clean":
         bResult = do_repair_clean(oRepair)
         if not bResult:
-            data.status = "error"
+            data['status'] = "error"
+    elif sRepairType == "kloeke":
+        bResult = do_repair_kloeke(oRepair)
+        if not bResult:
+            data['status'] = "error"
 
     # Return this response
     return JsonResponse(data)

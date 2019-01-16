@@ -68,6 +68,29 @@
     </div>
   </div>
 
+  <h3>Inlezen van Kloeke-Stad tabel (in principe eenmalig)</h3>
+  <div class="row">
+    Met deze actie wordt de tabel 'Kloeke' ingelezen. 
+    In deze tabel staat de vertaling van kloekecode naar stad (en evt alternatieve benamingen voor de stad).
+    Wanneer deze actie wordt uitgevoerd terwijl de tabel al gevuld is, worden de definities bekeken en waar nodig aangepast.
+    Er wordt met deze actie <b>geen</b> code verwijderd.
+  </div>
+
+  <div class="row"><div>&nbsp;</div></div>
+
+  <div class="row">
+    <div class="col-md-3">
+      <span><a id="repair_start_kloeke" class="btn btn-primary" 
+          repair-start="{% url 'repair_start' %}?repairtype=kloeke" 
+          repair-progress="{% url 'repair_progress' %}?repairtype=kloeke" 
+          onclick="repair_start('kloeke')">Kloekecodes laden</a>
+      </span>
+    </div>
+    <div id="repair_progress_kloeke" class="col-md-9">
+      <!-- This is where the progress will be reported -->
+    </div>
+  </div>
+
 </div>
 
 

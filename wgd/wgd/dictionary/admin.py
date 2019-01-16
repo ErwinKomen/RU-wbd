@@ -116,6 +116,17 @@ class InfoAdmin(admin.ModelAdmin):
     list_filter = ['deel', 'sectie']
 
 
+class KloekeAdmin(admin.ModelAdmin):
+    #list_display = ['code', 'stad', 'alt1', 'alt2']
+    #search_fields = ['code', 'stad', 'alt1', 'alt2']
+    #ordering = ['stad', 'code']
+
+    list_display = ['code', 'stad', 'alt1', 'alt2', 'numcode', 'numstad']
+    search_fields = ['code', 'stad', 'alt1', 'alt2']
+    ordering = ['-numstad', 'stad', 'code']
+    list_filter = ['numcode', 'numstad']
+
+
 # -- Components of an entry
 admin.site.register(Lemma, LemmaAdmin)
 admin.site.register(Dialect, DialectAdmin)
@@ -133,3 +144,4 @@ admin.site.register(Entry, EntryAdmin)
 
 # -- Other
 admin.site.register(FieldChoice, FieldChoiceAdmin)
+admin.site.register(Kloeke, KloekeAdmin)
