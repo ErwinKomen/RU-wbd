@@ -50,6 +50,7 @@ urlpatterns = [
     url(r'^dialects', DialectListView.as_view(), name='dialects'),
     url(r'^dialect/search/$', DialectListView.as_view(), name='dialectsearch'),
     url(r'^dialect/check/$', DialectCheckView.as_view(), name='dialectcheck'),
+    url(r'^kloeke/search/$', KloekeListView.as_view(), name='kloekecodes'),
     url(r'^locations', LocationListView.as_view(), name='locations'),
     url(r'^location/search/$', LocationListView.as_view(), name='locationsearch'),
     url(r'^mines', MijnListView.as_view(), name='mines'),

@@ -98,6 +98,7 @@
     <Content Include="wgd\dictionary\templates\dictionary\guide.html" />
     <Content Include="wgd\dictionary\templates\dictionary\import_csv.html" />
     <Content Include="wgd\dictionary\templates\dictionary\index.html" />
+    <Content Include="wgd\dictionary\templates\dictionary\kloeke_list.html" />
     <Content Include="wgd\dictionary\templates\dictionary\layout.html" />
     <Content Include="wgd\dictionary\templates\dictionary\lemma_list.html" />
     <Content Include="wgd\dictionary\templates\dictionary\lemma_list_oview.html" />

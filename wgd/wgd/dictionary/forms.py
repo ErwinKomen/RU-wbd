@@ -5,7 +5,7 @@ Definition of forms.
 from django import forms
 from django.contrib.auth.forms import AuthenticationForm
 from django.utils.translation import ugettext_lazy as _
-from wgd.dictionary.models import Entry, Lemma, Dialect, Mijn, Trefwoord
+from wgd.dictionary.models import Entry, Lemma, Dialect, Mijn, Trefwoord, Kloeke
 
 DIALECT_CHOICES = (
         ('code', 'Nieuwe Kloekecode'),
@@ -105,6 +105,18 @@ class DialectSearchForm(forms.ModelForm):
 
         model = Dialect
         fields = ('stad', 'code', 'nieuw')
+
+
+class KloekeSearchForm(forms.ModelForm):
+
+    sortOrder = forms.CharField(label=_("Sort Order"), initial="stad")
+
+    class Meta:
+
+        ATTRS_FOR_FORMS = {'class': 'form-control'};
+
+        model = Kloeke
+        fields = ('code', 'stad')
 
 
 class MijnSearchForm(forms.ModelForm):
