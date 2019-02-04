@@ -19,7 +19,7 @@
 
   {% for deel in object_list %}
     <p><b>
-      <span>Woordenboek van de Brabantse dialecten, Deel {{deel.nummer}}.</span>
+      <span>Woordenboek van de Gelderse dialecten, Deel {{deel.nummer}}.</span>
       <span class="deel">{{deel.titel}}</span>
     </b></p>
 
@@ -45,7 +45,9 @@
           </i>
           <span class="citation-publication">, {{deze.plaats}} {{deze.jaar}}.</span>
           {% endspaceless %}
+          {% if deze.get_pdf %}
           <span class="citation-pdf">(<a href="/{{app_prefix}}static/dictionary/content/pdf/{{deze.get_pdf}}">pdf</a>)</span>
+          {% endif %}
         {% endfor %}
       </p>
     {% endfor %}

@@ -12,7 +12,7 @@ from django.db import models
 from django.db.models import Q
 from datetime import datetime
 import time
-from wgd.settings import APP_PREFIX, MEDIA_ROOT
+from wgd.settings import APP_PREFIX, MEDIA_ROOT, STATIC_ROOT
 from wgd.utils import *
 import openpyxl
 from openpyxl import Workbook
@@ -1130,8 +1130,15 @@ class Aflevering(models.Model):
         return sSum
 
     def get_pdf(self):
-        # sPdf =  "{}/static/dictionary/content/pdf{}/{}".format(APP_PREFIX, self.deel.nummer,self.naam)
+        # Construct the name of the file itself
         sPdf =  "wgd-{}/{}".format(self.deel.nummer,self.naam)
+        # See where it should be
+        sFile = os.path.abspath(os.path.join(STATIC_ROOT, "dictionary/content/pdf", sPdf))
+        # Check if it is there
+        if not os.path.exists(sFile):
+            ErrHandle.Status(None, "get_pdf cannot find: {}".format(sFile))
+            # It doesn't exists, so return NONE
+            sPdf = ""
         return sPdf
 
     def get_pk(self):
