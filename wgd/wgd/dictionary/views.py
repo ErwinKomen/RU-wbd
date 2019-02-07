@@ -4,6 +4,7 @@ Definition of views.
 
 from django.views.generic.detail import DetailView
 from django.views.generic.list import ListView, View
+from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import get_object_or_404, render
 from django.http import HttpRequest, HttpResponse
 from django.core.urlresolvers import reverse
@@ -486,6 +487,66 @@ def import_csv_progress(request):
 
     # Return where we are
     return JsonResponse(data)
+
+@csrf_exempt
+def kloeke_plaats(request):
+    """Given a kloeke-code, return its associated plaats"""
+
+    # Initialisations
+    oErr = ErrHandle()
+    qd = request.POST
+    code = qd.get('code', '')
+    stad = qd.get('stad', '')
+    data = {'status': 'ok', 'html': '', 'result': ''}
+
+    # Only react to POST requests
+    if request.method == "POST":
+        # Check whether code or plaats have been supplied
+        if code == "" and stad == "":
+            data['status'] = 'error'
+            data['html'] = 'Supply either [code] or [plaats]'
+        elif code != "":
+            # Convert from code to stad
+            qs = Kloeke.objects.filter(code__iexact=code)
+            len = qs.count()
+            if len == 0:
+                lastchar = code[-1:]
+                if lastchar.isdigit():
+                    # Try again, but now with a wildcard
+                    qs = Kloeke.objects.filter(code__startswith=code)
+                    len = qs.count()
+                    if len == 1:
+                        lRes = [x.stad for x in qs]
+                        result = {'count': len, 'list': lRes}
+                        data['result'] = result
+                    else:
+                        data['status'] = 'error'
+                        data['html'] = 'Cannot find code {}'.format(code)
+                else:
+                    data['status'] = 'error'
+                    data['html'] = 'Cannot find code {}'.format(code)
+            else:
+                lRes = [x.stad for x in qs]
+                result = {'count': len, 'list': lRes}
+                data['result'] = result
+        else:
+            # Convert from stad to code
+            qs = Kloeke.objects.filter(stad__iexact=stad)
+            len = qs.count()
+            if len ==0:
+                data['status'] = 'error'
+                data['html'] = 'Cannot find stad {}'.format(stad)
+            else:
+                lRes = [x.code for x in qs]
+                result = {'count': len, 'list': lRes}
+                data['result'] = result
+    else:
+        data['status'] = 'error'
+        data['html'] = 'Only POST requests are treated'
+
+    # Return the information
+    return JsonResponse(data)
+
 
 
 class DictionaryDetailView(DetailView):

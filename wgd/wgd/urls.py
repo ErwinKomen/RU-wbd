@@ -39,6 +39,7 @@ urlpatterns = [
     url(r'^about', wgd.dictionary.views.about, name='about'),
     url(r'^guide', wgd.dictionary.views.guide, name='guide'),
     url(r'^robots.txt', TemplateView.as_view(template_name='dictionary/robots.txt', content_type='text/plain')),
+    url(r'^api/kloeke$', wgd.dictionary.views.kloeke_plaats, name='kloeke_plaats'),
     url(r'^delen', DeelListView.as_view(), name='delen'),
     url(r'^definitions$', RedirectView.as_view(url='/'+pfx+'admin/'), name='definitions'),
     url(r'^entries$', RedirectView.as_view(url='/'+pfx+'admin/dictionary/entry/'), name='entries'),
