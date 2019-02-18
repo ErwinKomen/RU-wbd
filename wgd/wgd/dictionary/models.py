@@ -417,6 +417,8 @@ class Kloeke(models.Model):
     code = models.CharField("Kloekecode", blank=False, max_length=MAX_IDENTIFIER_LEN, default = "-")
     # [1] The main city/village this refers to
     stad = models.CharField("Dialectlocatie", blank=False, max_length=MAX_LEMMA_LEN, default="(unknown)")
+    # [0-1] Old KLOEKE code
+    oud = models.CharField("Oude code", blank=True, null=True,max_length=MAX_IDENTIFIER_LEN)
     # [0-1] First alternative
     alt1 = models.CharField("Alternatief 1", blank=True, null=True,max_length=MAX_LEMMA_LEN)
     # [0-1] Second alternative
@@ -430,7 +432,10 @@ class Kloeke(models.Model):
         return self.code
 
     def readcodes(fName, oRepair):
-        """Read the codes from the indicated file name"""
+        """Read the codes from the indicated file name
+        
+        NOTE: this does *NOT* yet read the OUD field
+        """
 
         oBack = {}
         oErr = ErrHandle()

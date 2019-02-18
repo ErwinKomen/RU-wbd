@@ -97,13 +97,16 @@
           </div>
       </div>
       <table class="table table-hover">
-        <thead><tr><th class="hidden">id</th><th>Kloekecode</th><th>Plaats</th><th>Zelfde code</th><th>Zelfde stad</th></tr></thead>
+        <thead><tr><th class="hidden">id</th><th>Kloekecode</th><th>(Oud)</th><th>Plaats</th><th>Zelfde code</th><th>Zelfde stad</th></tr></thead>
         <tbody>
         {% for kloeke in object_list %}
           <tr class="dict-entry">
             <td class="hidden"> {{ kloeke.id }}</td>
             <td>
               <span class="dialect-nieuw kloekecode">{{kloeke.code}}</span>
+            </td>
+            <td>
+              <span class="dialect-old kloekecode">{{kloeke.oud}}</span>
             </td>
             <td>
               <span class="dialect-stad"><a href="{% url 'lemmasearch' %}?dialectCity={{kloeke.stad|urlencode}}">{{kloeke.stad}}</a></span>

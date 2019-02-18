@@ -490,12 +490,15 @@ def import_csv_progress(request):
 
 @csrf_exempt
 def kloeke_plaats(request):
-    """Given a kloeke-code, return its associated plaats"""
+    """Given a kloeke-code, return its associated plaats
+    
+    Or: give a plaats, return its code
+    """
 
     # Initialisations
     oErr = ErrHandle()
     qd = request.POST
-    code = qd.get('code', '')
+    code = qd.get('code', '')   # This is interpreted as 'code' or 'oud'
     stad = qd.get('stad', '')
     data = {'status': 'ok', 'html': '', 'result': ''}
 
@@ -506,8 +509,8 @@ def kloeke_plaats(request):
             data['status'] = 'error'
             data['html'] = 'Supply either [code] or [plaats]'
         elif code != "":
-            # Convert from code to stad
-            qs = Kloeke.objects.filter(code__iexact=code)
+            # Convert from code (or 'oud') to stad
+            qs = Kloeke.objects.filter(Q(code__iexact=code) | Q(oud__iexact=code))
             len = qs.count()
             if len == 0:
                 lastchar = code[-1:]
@@ -516,7 +519,7 @@ def kloeke_plaats(request):
                     qs = Kloeke.objects.filter(code__startswith=code)
                     len = qs.count()
                     if len == 1:
-                        lRes = [x.stad for x in qs]
+                        lRes = [{'stad': x.stad, 'code': x.code} for x in qs]
                         result = {'count': len, 'list': lRes}
                         data['result'] = result
                     else:
@@ -526,7 +529,7 @@ def kloeke_plaats(request):
                     data['status'] = 'error'
                     data['html'] = 'Cannot find code {}'.format(code)
             else:
-                lRes = [x.stad for x in qs]
+                lRes = [{'stad': x.stad, 'code': x.code} for x in qs]
                 result = {'count': len, 'list': lRes}
                 data['result'] = result
         else:
@@ -537,7 +540,7 @@ def kloeke_plaats(request):
                 data['status'] = 'error'
                 data['html'] = 'Cannot find stad {}'.format(stad)
             else:
-                lRes = [x.code for x in qs]
+                lRes = [{'stad': x.stad, 'code': x.code} for x in qs]
                 result = {'count': len, 'list': lRes}
                 data['result'] = result
     else:

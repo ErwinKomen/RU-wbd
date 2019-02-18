@@ -132,6 +132,8 @@ def process_excel_kloeke(oArgs):
     c_kloeke_corr = -1    # Column containing the correction
     c_plaats = -1         # Column containing the original stad
     c_plaats_corr = -1    # Column containing the corrected stad
+    lCache = []           # Keep track of the last N 
+    cache_size = 10       # Max cache size
 
     try:
         # Recover the arguments
@@ -189,73 +191,102 @@ def process_excel_kloeke(oArgs):
                 # Show where we are
                 errHandle.Status("row {}: stad=[{}] code=[{}]".format(row, stad, kloeke))
 
-                # Remove spaces
-                #kloeke = kloeke.replace(" ", "")
+                # Check if this is in the cache
+                bFound = False
+                for item in lCache:
+                    if item['stad'] == stad and item['kloeke'] == kloeke:
+                        # Get it out of the cache
+                        bSkip = False
+                        stad = item['stad_corr']
+                        kloeke = item['kloeke_corr']
+                        bFound = True
+                        break
+                if not bFound:
+                    item = {'stad': stad, 'kloeke': kloeke}
+                    # Format should be: <capital letter>$ <digit><digit><digit> [<lower case letter>]
+                    k_first = ""
+                    k_last = ""
+                    k_number = ""
+                    bFirst = True
+                    for letter in kloeke:
+                        if bFirst and letter != " " and not letter.isdigit():
+                            k_first = k_first + letter
+                        elif letter != " ":
+                            bFirst = False
+                            if  letter.isdigit():
+                                k_number = k_number + letter
+                    # Get the last one
+                    if not letter.isdigit():
+                        k_last = letter
+                    # Reconstruct:
+                    # errHandle.Status("first=[{}] number=[{}] last=[{}]".format(k_first, k_number, k_last))
+                    kloeke = "{}{:03d}{}".format(k_first, int(k_number), k_last)
 
-                # Format should be: <capital letter> <digit><digit><digit> [<lower case letter>]
-                k_first = ""
-                k_last = ""
-                k_number = ""
-                for letter in kloeke:
-                    if k_first =="":
-                        k_first = letter
-                    elif letter != " " and letter.isdigit():
-                        k_number = k_number + letter
-                # Get the last one
-                if not letter.isdigit():
-                    k_last = letter
-                # Reconstruct:
-                kloeke = "{}{:03d}{}".format(k_first, int(k_number), k_last)
+                    bSkip = False
+                    g_stad = ""
+                    g_code = ""
 
-                bSkip = False
-                g_stad = ""
-                g_code = ""
+                    # Find the correct 'kloeke' code for this stad
+                    oCode = get_kloeke({'stad': stad})
+                    if oCode['status'] != "error" and oCode['count'] == 1:
+                        g_code = oCode['result']['code']
 
-                # Find the correct 'kloeke' code for this stad
-                oCode = get_kloeke({'stad': stad})
-                if oCode['status'] != "error" and oCode['count'] == 1:
-                    g_code = oCode['result']
-
-                if g_code != "" and g_code.startswith(kloeke):
-                    # The kloeke we have needs to be slightly emended
-                    kloeke = g_code
-                else:
-                    # Look further
-
-                    oStad = get_kloeke({'code': kloeke})
-                    if oStad['status'] == "error" or oStad['count'] > 1:
-                        # No need to stop, but just be aware
-                        g_stad = ""
+                    if g_code != "" and g_code.startswith(kloeke):
+                        # The kloeke we have needs to be slightly emended
+                        kloeke = g_code
                     else:
-                        g_stad = oStad['result']
+                        # Look further
 
-                    if bSkip:
-                        # there was an error with this term, so continue
-                        kloeke = "(error)"
-                        stad = "(error)"
-                    else:
-
-                        if g_stad == "":
-                            # No city has been found -- Try converting from city to kloeke
-                            oCode = get_kloeke({'stad': stad})
-                            if oCode['status'] == "error":
-                                # We cannot find any correspondence...
-                                kloeke = "(none)"
-                                stad = "(none)"
-                            else:
-                                # Set the correct code
-                                kloeke = oCode['result']
+                        oStad = get_kloeke({'code': kloeke})
+                        if oStad['status'] == "error" or oStad['count'] > 1:
+                            # No need to stop, but just be aware
+                            g_stad = ""
                         else:
-                            # Found a city
-                            if g_stad.lower() == stad.lower():
-                                # everything is in order - no adaptation is needed
-                                pass
-                            elif g_stad.lower() in stad.lower() or stad.lower() in g_stad.lower():
-                                # This is as good as good: but we need to adapt the city to the one belonging to the kloeke
-                                stad = g_stad
+                            g_stad = oStad['result']['stad']
+                            # Also get a possibly adapted code
+                            g_code = oStad['result']['code']
+                        if bSkip:
+                            # there was an error with this term, so continue
+                            kloeke = "(error)"
+                            stad = "(error)"
+                        else:
+
+                            if g_stad == "":
+                                # No city has been found -- Try converting from city to kloeke
+                                oCode = get_kloeke({'stad': stad})
+                                if oCode['status'] == "error":
+                                    # We cannot find any correspondence...
+                                    kloeke = "(none)"
+                                    stad = "(none)"
+                                else:
+                                    # Set the correct code
+                                    kloeke = oCode['result']
                             else:
-                                # The code points to a different city -- get the correct code
-                                pass
+                                # Found a city
+                                if g_stad.lower() == stad.lower():
+                                    # everything is in order - no adaptation is needed
+                                    # Accept where kloeke is not equal to g_code and the latter is not empty
+                                    if g_code != "" and kloeke != g_code:
+                                        kloeke = g_code
+                                elif g_stad.lower() in stad.lower() or stad.lower() in g_stad.lower():
+                                    # This is as good as good: but we need to adapt the city to the one belonging to the kloeke
+                                    stad = g_stad
+                                    # If kloeke is not equal to g_code and the latter is not empty
+                                    if g_code != "" and kloeke != g_code:
+                                        kloeke = g_code
+                                else:
+                                    # The code points to a different city -- get the correct code
+                                    stad = "(none)"
+                                    kloeke = "(none)"
+
+                    # Add what we have found to the cache
+                    item['stad_corr'] = stad
+                    item['kloeke_corr'] = kloeke
+                    if len(lCache) > cache_size:
+                        # Remove one element from the cache
+                        lCache.pop(0)
+                    # Append item to the cache
+                    lCache.append(item)
 
                 # Add the new values into the Excel
                 if not bSkip:
