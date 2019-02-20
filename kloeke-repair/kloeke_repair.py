@@ -185,16 +185,17 @@ def process_excel_kloeke(oArgs):
                 lCells = [cell.value for cell in oRow]
                 # Other wise we make an initial attempt to correct the plaats and the kloeke
                 stad = lCells[c_plaats]
+                kloeke_code = lCells[c_kloeke_code]
 
                 # Make sure there is something here
-                if stad != None and stad != "":
+                if stad != None and stad != "" and not isinstance(stad, int) and kloeke_code != None and kloeke_code != "" and not isinstance(kloeke_code, int):
                     # repair the stad name
                     arStad = stad.split("/")
                     # Just take the first part before any slash
                     stad = arStad[0].strip()
 
                     # Get the original kloeke code
-                    kloeke = lCells[c_kloeke_code].strip()
+                    kloeke = kloeke_code.strip()
 
                     # Show where we are
                     errHandle.Status("row {}: stad=[{}] code=[{}]".format(row, stad, kloeke))
