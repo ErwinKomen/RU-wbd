@@ -502,6 +502,10 @@ def kloeke_plaats(request):
     stad = qd.get('stad', '')
     data = {'status': 'ok', 'html': '', 'result': ''}
 
+    # Make sure stad and code are without leading/trailing spaces
+    stad = stad.strip()
+    code = code.strip()
+
     # Only react to POST requests
     if request.method == "POST":
         # Check whether code or plaats have been supplied
