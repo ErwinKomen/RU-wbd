@@ -137,6 +137,67 @@ def process_excel_kloeke(oArgs):
     lCache = []           # Keep track of the last N 
     cache_size = 10       # Max cache size
 
+    stad_repair = [
+        {'src': 'Aalst',        'stad': 'Aalst',                'kloeke': 'K108a'},
+        {'src': 'Alphen',       'stad': 'Alphen',               'kloeke': 'K194p'},
+        {'src': 'Balgoy',       'stad': 'Balgoij',              'kloeke': 'L108p'},
+        {'src': 'Beesd',        'stad': 'Beesd',                'kloeke': 'K077p'},
+        {'src': 'Beneden-Leeuwen', 'stad': 'Leeuwen',           'kloeke': 'L053p'},
+        {'src': 'Boven-Leeuwen', 'stad': 'Leeuwen',             'kloeke': 'L053p'},
+        {'src': 'Bruchem',      'stad': 'Bruchem',              'kloeke': 'K119a'},
+        {'src': 'Bruchum',      'stad': 'Bruchem',              'kloeke': 'K119a'},
+        {'src': 'Doornenburg',  'stad': 'Doornenburg',          'kloeke': 'L076p'},
+        {'src': 'Doornenburg/Huissen', 'stad': 'Doornenburg',   'kloeke': 'L076p'},
+        {'src': 'Dreuemel',     'stad': 'Dreumel',              'kloeke': 'L047p'},
+        {'src': 'Ewijk/Winssen', 'stad': 'Ewijk',               'kloeke': 'L064p'},
+        {'src': 'Echteld',      'stad': 'Echteld',              'kloeke': 'L049p'},
+        {'src': 'Gendt',        'stad': 'Gendt',                'kloeke': 'L070p'},
+        {'src': 'Groesbeek',    'stad': 'Groesbeek',            'kloeke': 'L119p'},
+        {'src': 'Huissen',      'stad': 'Huissen',              'kloeke': 'L026p'},
+        {'src': 'Ingen',        'stad': 'Ingen',                'kloeke': 'L005p'},
+        {'src': 'Leerbroek',    'stad': 'Leerbroek',            'kloeke': 'K072p'},
+        {'src': 'Maurik',       'stad': 'Maurik',               'kloeke': 'L003p'},
+        {'src': 'Millingen',    'stad': 'Millingen aan de Rijn', 'kloeke': 'L075p'},
+        {'src': 'Millingen a/d Rijn',    'stad': 'Millingen aan de Rijn', 'kloeke': 'L075p'},
+        {'src': 'Ochten',       'stad': 'Ochten',               'kloeke': 'L051p'},
+        {'src': 'Ooy',          'stad': 'Ooij',                 'kloeke': 'L033a'},
+        {'src': 'Ophemert',     'stad': 'Ophemert',             'kloeke': 'L046p'},
+        {'src': 'Opheusden',    'stad': 'Opheusden',            'kloeke': 'L013p'},
+        {'src': 'Puiflijk/Deest', 'stad': 'Puiflijk',           'kloeke': 'L054b'},
+        {'src': 'Spijk',        'stad': 'Spijk',                'kloeke': 'L080a'},
+        {'src': 'Tiel',         'stad': 'Tiel',                 'kloeke': 'L144p'},
+        {'src': 'Tricht',       'stad': 'Tricht',               'kloeke': 'K079a'},
+        {'src': 'Varik',        'stad': 'Varik',                'kloeke': 'L087p'},
+        {'src': 'Wychen',       'stad': 'Wijchen',              'kloeke': 'L016p'},
+        {'src': 'Zoelmond',     'stad': 'Zoelmond',             'kloeke': 'K040a'},
+        {'src': 'åpeldoorn', 'stad': 'Apeldoorn', 'kloeke': 'F151p'},
+        {'src': 'Bunschoten-Spakenburg', 'stad': 'Bunschoten', 'kloeke': 'F139p'},
+        {'src': 'Deelen', 'stad': 'Woeste Hoeve', 'kloeke': 'F173a'},
+        {'src': 'Emst', 'stad': 'Emst', 'kloeke': 'F129b'},
+        {'src': 'Epe', 'stad': 'Epe', 'kloeke': 'F112p'},
+        {'src': 'F 153', 'stad': 'Ugchelen', 'kloeke': 'F153p'},
+        {'src': 'Garderen', 'stad': 'Garderen', 'kloeke': 'F145p'},
+        {'src': 'Hattem', 'stad': 'Hattem', 'kloeke': 'F103p'},
+        {'src': 'Hattemerbroek/Wezep', 'stad': 'Hattemerbroek', 'kloeke': 'F103a'},
+        {'src': 'Heerde', 'stad': 'Heerde', 'kloeke': 'F113p'},
+        {'src': 'Hoenderloo', 'stad': 'Hoenderloo', 'kloeke': 'F173p'},
+        {'src': 'Lieren', 'stad': 'Klarenbeek', 'kloeke': 'F157a'},
+        {'src': 'Lunteren', 'stad': 'Lunteren', 'kloeke': 'F171p'},
+        {'src': 'Nunspeet', 'stad': 'Nunspeet', 'kloeke': 'F111p'},
+        {'src': 'Oene', 'stad': 'Oene', 'kloeke': 'F115p'},
+        {'src': 'Speuld', 'stad': 'Speuld', 'kloeke': 'F125p'},
+        {'src': 'Speult', 'stad': 'Speuld', 'kloeke': 'F125p'},
+        {'src': 'Terwolde', 'stad': 'Terwolde', 'kloeke': 'F131p'},
+        {'src': 'Twello', 'stad': 'Twello', 'kloeke': 'F155p'},
+        {'src': 'Ufchelen', 'stad': 'Ugchelen', 'kloeke': 'F153p'},
+        {'src': 'Vaassen', 'stad': 'Vaassen', 'kloeke': 'F129p'},
+        {'src': 'Vaassen/Epe', 'stad': 'Vaassen', 'kloeke': 'F129p'},
+        {'src': 'Veendaal', 'stad': 'Veenendaal', 'kloeke': 'F191p'},
+        {'src': 'Voorst', 'stad': 'Voorst', 'kloeke': 'F158p'},
+        {'src': 'Wapenv eld', 'stad': 'Wapenveld', 'kloeke': 'F104p'},
+        {'src': 'Wapenveld', 'stad': 'Wapenveld', 'kloeke': 'F104p'}
+        ]
+
     try:
         # Recover the arguments
         if "input" in oArgs: flInput = oArgs["input"]
@@ -193,6 +254,7 @@ def process_excel_kloeke(oArgs):
                     arStad = stad.split("/")
                     # Just take the first part before any slash
                     stad = arStad[0].strip()
+                    stad_save = stad
 
                     # Get the original kloeke code
                     kloeke = kloeke_code.strip()
@@ -287,6 +349,13 @@ def process_excel_kloeke(oArgs):
                                         # The code points to a different city -- get the correct code
                                         stad = "(none)"
                                         kloeke = "(none)"
+                                # Double check none/none situations
+                                if stad == "(none)" and kloeke == "(none)":
+                                    for oAttempt in stad_repair:
+                                        if oAttempt['src'] == stad_save:
+                                            stad = oAttempt['stad']
+                                            kloeke = oAttempt['kloeke']
+                                            break
 
                         # Add what we have found to the cache
                         item['stad_corr'] = stad
