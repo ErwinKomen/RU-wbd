@@ -260,7 +260,7 @@ def process_excel_kloeke(oArgs):
                     # repair the stad name
                     arStad = stad.split("/")
                     # Double check to see if the second part is a number or not
-                    if len(arStad) > 0 and re_number.match(arStad[1]):
+                    if len(arStad) > 1 and re_number.match(arStad[1]):
                         # Second part is a number
                         # Just take the first part before any slash
                         stad = arStad[0].strip()
