@@ -5,7 +5,7 @@ This version created by Erwin R. Komen
 Date: 7/feb/2019
 """
 import sys, getopt, os.path, importlib
-import os, sys
+import os, sys, re
 import util, csv, json
 import requests
 import openpyxl
@@ -136,6 +136,7 @@ def process_excel_kloeke(oArgs):
     c_plaats_corr = -1    # Column containing the corrected stad
     lCache = []           # Keep track of the last N 
     cache_size = 10       # Max cache size
+    re_number = re.compile("^[0-9]+$")
 
     stad_repair = [
         {'src': 'Aalst',        'stad': 'Aalst',                'kloeke': 'K108a'},
@@ -258,8 +259,14 @@ def process_excel_kloeke(oArgs):
                 if stad != None and stad != "" and not isinstance(stad, int) and kloeke_code != None and kloeke_code != "" and not isinstance(kloeke_code, int):
                     # repair the stad name
                     arStad = stad.split("/")
-                    # Just take the first part before any slash
-                    stad = arStad[0].strip()
+                    # Double check to see if the second part is a number or not
+                    if len(arStad) > 0 and re_number.match(arStad[1]):
+                        # Second part is a number
+                        # Just take the first part before any slash
+                        stad = arStad[0].strip()
+                    else:
+                        # Stad remains what it is
+                        stad = stad.strip()
                     stad_save = stad
 
                     # Get the original kloeke code
