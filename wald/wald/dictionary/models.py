@@ -309,6 +309,40 @@ def get_help(field):
     return help_text
 
 
+class Information(models.Model):
+    """Specific information that needs to be kept in the database"""
+
+    # [1] The key under which this piece of information resides
+    name = models.CharField("Key name", max_length=255)
+    # [0-1] The value for this piece of information
+    kvalue = models.TextField("Key value", default = "", null=True, blank=True)
+
+    class Meta:
+        verbose_name_plural = "Information Items"
+
+    def __str__(self):
+        return self.name
+
+    def get_kvalue(name):
+        info = Information.objects.filter(name=name).first()
+        if info == None:
+            return ''
+        else:
+            return info.kvalue
+
+    def set_kvalue(name, value):
+        info = Information.objects.filter(name=name).first()
+        if info == None:
+            info = Information(name=name)
+            info.save()
+        info.kvalue = value
+        info.save()
+        return True
+
+    def save(self, force_insert = False, force_update = False, using = None, update_fields = None):
+        return super(Information, self).save(force_insert, force_update, using, update_fields)
+
+
 class Description(models.Model):
     """Description for a lemma"""
 
@@ -635,22 +669,35 @@ class Dialect(models.Model):
 
     def get_item(self, oTime = None):
         oErr = ErrHandle()
+        lstQ = []
         try:
             # Get the parameters
             stad = self['stad']
             nieuw = self['nieuw']
             streek = self['streek']
-            # Adatp for non-present kloeke-code (German places)
-            if nieuw == None: nieuw = "0_{}".format(Dialect.objects.count())
-            # Try find an existing item
-            lstQ = []
-            lstQ.append(Q(stad__iexact=stad))
-            lstQ.append(Q(nieuw__iexact=nieuw))
-            # N.B: streek is not needed to find the unique dialect
+            # Adapt for non-present kloeke-code (German places)
+            if nieuw == None: 
+                # Look for the combination of stad/streek
+                lstQ.append(Q(stad__iexact=stad))
+                lstQ.append(Q(streek__iexact=streek))
 
-            if oTime != None: iStart = get_now_time()
-            qItem = Dialect.objects.filter(*lstQ).first()
-            if oTime != None: oTime['search_Dt'] += get_now_time() - iStart
+                if oTime != None: iStart = get_now_time()
+                qItem = Dialect.objects.filter(*lstQ).first()
+                if oTime != None: oTime['search_Dt'] += get_now_time() - iStart
+
+                if qItem == None:
+                    # This is a completely new combination
+                    highest_id = Dialect.objects.all().order_by('id').last()
+                    nieuw = "0_{}".format(highest_id + 1)
+            else:
+                # Try find an existing item
+                lstQ.append(Q(stad__iexact=stad))
+                lstQ.append(Q(nieuw__iexact=nieuw))
+                # N.B: streek is not needed to find the unique dialect
+
+                if oTime != None: iStart = get_now_time()
+                qItem = Dialect.objects.filter(*lstQ).first()
+                if oTime != None: oTime['search_Dt'] += get_now_time() - iStart
 
             # see if we get one value back
             if qItem == None:
