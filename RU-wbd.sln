@@ -5,6 +5,10 @@ VisualStudioVersion = 14.0.25123.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "wbd", "wbd\wbd.pyproj", "{A6C3239A-BCAF-4905-97FF-9F3D22AA4223}"
 EndProject
+Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "wald", "wald\wald.pyproj", "{5CFDDD00-42D9-490F-842D-71CCE5D772DA}"
+EndProject
+Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "wgd", "wgd\wgd.pyproj", "{83E78210-CB49-432C-B609-02982BD30970}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +19,14 @@ Global
 		{A6C3239A-BCAF-4905-97FF-9F3D22AA4223}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A6C3239A-BCAF-4905-97FF-9F3D22AA4223}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A6C3239A-BCAF-4905-97FF-9F3D22AA4223}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5CFDDD00-42D9-490F-842D-71CCE5D772DA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5CFDDD00-42D9-490F-842D-71CCE5D772DA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5CFDDD00-42D9-490F-842D-71CCE5D772DA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5CFDDD00-42D9-490F-842D-71CCE5D772DA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{83E78210-CB49-432C-B609-02982BD30970}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{83E78210-CB49-432C-B609-02982BD30970}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{83E78210-CB49-432C-B609-02982BD30970}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{83E78210-CB49-432C-B609-02982BD30970}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
