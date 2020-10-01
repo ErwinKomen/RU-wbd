@@ -332,6 +332,14 @@ function repair_handle(sRepairType, json) {
       window.clearInterval(oRepairTimer);
       // Leave the routine, and don't return anymore
       return;
+    case "done":
+    case "finished":
+      // Show we are ready
+      $("#repair_progress_" + sRepairType).html("Ready repairing: " + sRepairType);
+      // Stop the progress calling
+      window.clearInterval(oRepairTimer);
+      // Leave the routine, and don't return anymore
+      return;
     default:
       // Default action is to show the status
       $("#repair_progress_" + sRepairType).html(json.status);

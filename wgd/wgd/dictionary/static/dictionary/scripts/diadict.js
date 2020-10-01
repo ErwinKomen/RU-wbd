@@ -332,6 +332,14 @@ function repair_handle(sRepairType, json) {
       window.clearInterval(oRepairTimer);
       // Leave the routine, and don't return anymore
       return;
+    case "done":
+    case "finished":
+      // Show we are ready
+      $("#repair_progress_" + sRepairType).html("Ready repairing: " + sRepairType);
+      // Stop the progress calling
+      window.clearInterval(oRepairTimer);
+      // Leave the routine, and don't return anymore
+      return;
     default:
       // Default action is to show the status
       $("#repair_progress_" + sRepairType).html(json.status);
@@ -513,3 +521,79 @@ function set_search(sId) {
         errMsg("set_search", ex);
     }
 }
+
+/**
+  * result_download
+  *   Trigger creating and downloading a result CSV / XLSX / JSON
+  *
+  */
+function post_download(elStart) {
+  var ajaxurl = "",
+      contentid = null,
+      response = null,
+      frm = null,
+      el = null,
+      sHtml = "",
+      oBack = null,
+      dtype = "",
+      sMsg = "",
+      data = [];
+
+  try {
+    // Clear the errors
+    errClear();
+
+    // obligatory parameter: ajaxurl
+    ajaxurl = $(elStart).attr("ajaxurl");
+    contentid = $(elStart).attr("contentid");
+
+    // Gather the information
+    frm = $(elStart).closest(".container-small").find("form");
+    if (frm.length === 0) {
+      frm = $(elStart).closest("td").find("form");
+      if (frm.length === 0) {
+        frm = $(elStart).closest(".body-content").find("form");
+        if (frm.length === 0) {
+          frm = $(elStart).closest(".container-large.body-content").find("form");
+        }
+      }
+    }
+    // Check what we have
+    if (frm === null || frm.length === 0) {
+      // Didn't find the form
+      errMsg("post_download: could not find form");
+    } else {
+      // Make sure we take only the first matching form
+      frm = frm.first();
+    }
+    // Set the 'action; attribute in the form
+    frm.attr("action", ajaxurl);
+    // Make sure we do a POST
+    frm.attr("method", "POST");
+
+    // Get the download type and put it in the <input>
+    dtype = $(elStart).attr("downloadtype");
+    $(frm).find("#downloadtype").val(dtype);
+
+    // Do we have a contentid?
+    if (contentid !== undefined && contentid !== null && contentid !== "") {
+      // Process download data
+      switch (dtype) {
+        default:
+          // TODO: add error message here
+          return;
+      }
+    } else {
+      // Do a plain submit of the form
+      oBack = frm.submit();
+    }
+
+    // Check on what has been returned
+    if (oBack !== null) {
+
+    }
+  } catch (ex) {
+    errMsg("post_download", ex);
+  }
+}
+

@@ -24,6 +24,7 @@ import fnmatch
 import csv
 import codecs
 import copy
+import sys
 from wald.dictionary.models import *
 from wald.dictionary.forms import *
 from wald.settings import APP_PREFIX, WSGI_FILE
@@ -311,11 +312,11 @@ def do_repair_start(request):
     elif sRepairType == "entrydescr":
         bResult = do_repair_entrydescr(oRepair)
         if not bResult:
-            data.status = "error"
+            data['status'] = "error"
     elif sRepairType == "clean":
         bResult = do_repair_clean(oRepair)
         if not bResult:
-            data.status = "error"
+            data['status'] = "error"
 
     # Return this response
     return JsonResponse(data)
@@ -1813,8 +1814,52 @@ class DialectListView(ListView):
         Paginate by specified value in querystring, or use default class property value.
         """
         return self.request.GET.get('paginate_by', self.paginate_by)
+
+    def initialize(self):
+        # Check if "Rhede" has been processed
+        if Information.get_kvalue("rhede") != "done":
+            adapt_dialect = []
+            # Look for dialects that have the same name+streek, but multiple identifiers
+            for dialect in Dialect.objects.all():
+                stad = dialect.stad
+                streek = dialect.streek
+                count = Dialect.objects.filter(stad=stad, streek=streek).count()
+                if count > 1:
+                    bFound = False
+                    for adaptation in adapt_dialect:
+                        if stad == adaptation['stad'] and streek == adaptation['streek']:
+                            bFound = True
+                            break
+                    if not bFound:
+                        obj = Dialect.objects.filter(stad=stad, streek=streek).first()
+                        all = [x.id for x in Dialect.objects.filter(stad=stad, streek=streek).all() if x.id != obj.id]
+                        oAdapt = dict(stad=stad, streek=streek, obj=obj, all=all)
+                        adapt_dialect.append(oAdapt)
+            # Go through all the adaptations that need doing
+            for adaptation in adapt_dialect:
+                stad = adaptation['stad']
+                streek = adaptation['streek']
+                obj = adaptation['obj']
+                all = adaptation['all']
+                # Visit all entries with a dialect like this
+                entries = Entry.objects.filter(dialect__id__in=all).values('id')
+                with transaction.atomic():
+                    for entry in Entry.objects.filter(id__in=entries):
+                        entry.dialect = obj
+                        entry.save()
+                        print("done entry #{}".format(entry.id), file=sys.stderr)
+            # Remove the superfluous dialects
+            Dialect.objects.filter(id__in=all).delete()
+
+
+            # Set the information value to 'done'
+            Information.set_kvalue("rhede", "done")
+        return None
         
     def get_queryset(self):
+        # Initializations
+        self.initialize()
+
         # Measure how long it takes
         if self.bDoTime: iStart = get_now_time()
 

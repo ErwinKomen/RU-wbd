@@ -86,9 +86,9 @@
     <Content Include="wbd\dictionary\static\dictionary\content\boeken-wbd.jpg" />
     <Content Include="wbd\dictionary\static\dictionary\content\bootstrap.css" />
     <Content Include="wbd\dictionary\static\dictionary\content\bootstrap.min.css" />
+    <Content Include="wbd\dictionary\static\dictionary\content\taalkaart-ewbd.jpg" />
     <Content Include="wbd\dictionary\static\dictionary\content\taalkaart-wbd-750.jpg" />
     <Content Include="wbd\dictionary\static\dictionary\content\taalkaart-wbd.jpg" />
-    <Content Include="wbd\dictionary\static\dictionary\content\taalkaart-wbd.png" />
     <Content Include="wbd\dictionary\static\dictionary\content\site.css" />
     <Content Include="wbd\dictionary\static\dictionary\content\taalkaart-limburg.jpg" />
     <Content Include="wbd\dictionary\static\dictionary\fonts\glyphicons-halflings-regular.eot" />

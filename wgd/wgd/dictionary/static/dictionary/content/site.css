@@ -290,6 +290,15 @@ table tbody tr:hover {
     -webkit-animation: spin2 .7s infinite linear;
 }
 
+.highlight {
+  background-color: yellow;
+}
+.highlight:hover {
+  background-color:lightyellow;
+  color: darkred;
+  font-weight: bold;
+}
+
 
 @-webkit-keyframes spin2 {
     from { -webkit-transform: rotate(0deg);}
@@ -319,3 +328,11 @@ body > div > footer a {
   z-index: 1000;
 }
 
+.kloekecode {
+    padding: 2px 4px;
+    font-size: 90%;
+    color: saddlebrown;
+    white-space: nowrap;
+    background-color: #f9f2f4;
+    border-radius: 4px;
+}

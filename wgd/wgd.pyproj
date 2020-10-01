@@ -64,6 +64,8 @@
     <Content Include="wgd\dictionary\static\dictionary\content\bootstrap.css" />
     <Content Include="wgd\dictionary\static\dictionary\content\bootstrap.min.css" />
     <Content Include="wgd\dictionary\static\dictionary\content\site.css" />
+    <Content Include="wgd\dictionary\static\dictionary\content\taalkaart-wgd-large.jpg" />
+    <Content Include="wgd\dictionary\static\dictionary\content\taalkaart-wgd-plaatsen.jpg" />
     <Content Include="wgd\dictionary\static\dictionary\content\taalkaart-wgd.jpg" />
     <Content Include="wgd\dictionary\static\dictionary\fonts\glyphicons-halflings-regular.eot" />
     <Content Include="wgd\dictionary\static\dictionary\fonts\glyphicons-halflings-regular.svg" />
@@ -96,6 +98,7 @@
     <Content Include="wgd\dictionary\templates\dictionary\guide.html" />
     <Content Include="wgd\dictionary\templates\dictionary\import_csv.html" />
     <Content Include="wgd\dictionary\templates\dictionary\index.html" />
+    <Content Include="wgd\dictionary\templates\dictionary\kloeke_list.html" />
     <Content Include="wgd\dictionary\templates\dictionary\layout.html" />
     <Content Include="wgd\dictionary\templates\dictionary\lemma_list.html" />
     <Content Include="wgd\dictionary\templates\dictionary\lemma_list_oview.html" />

@@ -4,6 +4,7 @@ Definition of views.
 
 from django.views.generic.detail import DetailView
 from django.views.generic.list import ListView, View
+from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import get_object_or_404, render
 from django.http import HttpRequest, HttpResponse
 from django.core.urlresolvers import reverse
@@ -17,6 +18,7 @@ from datetime import datetime
 from xml.dom import minidom
 from operator import itemgetter
 import xml.etree.ElementTree as ET
+
 import os
 import operator
 import re
@@ -24,6 +26,10 @@ import fnmatch
 import csv
 import codecs
 import copy
+import openpyxl
+from openpyxl.utils.cell import get_column_letter
+from io import StringIO
+
 from wgd.dictionary.models import *
 from wgd.dictionary.forms import *
 #from wgd.dictionary.adminviews import order_queryset_by_sort_order
@@ -149,6 +155,43 @@ def get_item_list(lVar, lFun, qs):
 
     # Return the list we have made
     return lItem
+
+def csv_to_excel(sCsvData, response):
+    """Convert CSV data to an Excel worksheet"""
+
+    # Start workbook
+    wb = openpyxl.Workbook()
+    ws = wb.get_active_sheet()
+    ws.title="Data"
+
+    # Start accessing the string data 
+    f = StringIO(sCsvData)
+    reader = csv.reader(f, delimiter=",")
+
+    # Read the header cells and make a header row in the worksheet
+    headers = next(reader)
+    for col_num in range(len(headers)):
+        c = ws.cell(row=1, column=col_num+1)
+        c.value = headers[col_num]
+        c.font = openpyxl.styles.Font(bold=True)
+        # Set width to a fixed size
+        ws.column_dimensions[get_column_letter(col_num+1)].width = 5.0        
+
+    row_num = 1
+    lCsv = []
+    for row in reader:
+        # Keep track of the EXCEL row we are in
+        row_num += 1
+        # Walk the elements in the data row
+        # oRow = {}
+        for idx, cell in enumerate(row):
+            c = ws.cell(row=row_num, column=idx+1)
+            c.value = row[idx]
+            c.alignment = openpyxl.styles.Alignment(wrap_text=False)
+    # Save the result in the response
+    wb.save(response)
+    return response
+
 
 def home(request):
     """Renders the home page."""
@@ -312,11 +355,15 @@ def do_repair_start(request):
     elif sRepairType == "entrydescr":
         bResult = do_repair_entrydescr(oRepair)
         if not bResult:
-            data.status = "error"
+            data['status'] = "error"
     elif sRepairType == "clean":
         bResult = do_repair_clean(oRepair)
         if not bResult:
-            data.status = "error"
+            data['status'] = "error"
+    elif sRepairType == "kloeke":
+        bResult = do_repair_kloeke(oRepair)
+        if not bResult:
+            data['status'] = "error"
 
     # Return this response
     return JsonResponse(data)
@@ -382,7 +429,8 @@ def import_csv_start(request):
         # oCsvImport['status'] = "starting"
 
         # Call the process
-        oResult = csv_to_fixture(sFile, iDeel, iSectie, iAflnum, iStatus, bUseDbase = bUseDbase, bUseOld = True)
+        # WGD: use EXCEL_to_fixture instead of CSV_to_fixture
+        oResult = excel_to_fixture(sFile, iDeel, iSectie, iAflnum, iStatus, bUseDbase = bUseDbase, bUseOld = True)
         if oResult == None or oResult['result'] == False:
             data['status'] = 'error'
 
@@ -439,6 +487,73 @@ def import_csv_progress(request):
 
     # Return where we are
     return JsonResponse(data)
+
+@csrf_exempt
+def kloeke_plaats(request):
+    """Given a kloeke-code, return its associated plaats
+    
+    Or: give a plaats, return its code
+    """
+
+    # Initialisations
+    oErr = ErrHandle()
+    qd = request.POST
+    code = qd.get('code', '')   # This is interpreted as 'code' or 'oud'
+    stad = qd.get('stad', '')
+    data = {'status': 'ok', 'html': '', 'result': ''}
+
+    # Make sure stad and code are without leading/trailing spaces
+    stad = stad.strip()
+    code = code.strip()
+
+    # Only react to POST requests
+    if request.method == "POST":
+        # Check whether code or plaats have been supplied
+        if code == "" and stad == "":
+            data['status'] = 'error'
+            data['html'] = 'Supply either [code] or [plaats]'
+        elif code != "":
+            # Convert from code (or 'oud') to stad
+            qs = Kloeke.objects.filter(Q(code__iexact=code) | Q(oud__iexact=code))
+            len = qs.count()
+            if len == 0:
+                lastchar = code[-1:]
+                if lastchar.isdigit():
+                    # Try again, but now with a wildcard
+                    qs = Kloeke.objects.filter(code__startswith=code)
+                    len = qs.count()
+                    if len == 1:
+                        lRes = [{'stad': x.stad, 'code': x.code} for x in qs]
+                        result = {'count': len, 'list': lRes}
+                        data['result'] = result
+                    else:
+                        data['status'] = 'error'
+                        data['html'] = 'Cannot find code {}'.format(code)
+                else:
+                    data['status'] = 'error'
+                    data['html'] = 'Cannot find code {}'.format(code)
+            else:
+                lRes = [{'stad': x.stad, 'code': x.code} for x in qs]
+                result = {'count': len, 'list': lRes}
+                data['result'] = result
+        else:
+            # Convert from stad to code
+            qs = Kloeke.objects.filter(stad__iexact=stad)
+            len = qs.count()
+            if len ==0:
+                data['status'] = 'error'
+                data['html'] = 'Cannot find stad {}'.format(stad)
+            else:
+                lRes = [{'stad': x.stad, 'code': x.code} for x in qs]
+                result = {'count': len, 'list': lRes}
+                data['result'] = result
+    else:
+        data['status'] = 'error'
+        data['html'] = 'Only POST requests are treated'
+
+    # Return the information
+    return JsonResponse(data)
+
 
 
 class DictionaryDetailView(DetailView):
@@ -1765,6 +1880,171 @@ class LocationListView(ListView):
 
         # Return the resulting filtered and sorted queryset
         return qs
+
+
+class KloekeListView(ListView):
+    """Listview of kloeke codes"""
+
+    model = Kloeke
+    paginate_by = 20
+    entrycount = 0
+    template_name = 'dictionary/kloeke_list.html'
+    dtype = ""
+    qs = None
+
+    def render_to_response(self, context, **response_kwargs):
+        """Check if a CSV response is needed or not"""
+
+        return super(KloekeListView, self).render_to_response(context, **response_kwargs)
+
+    def post(self, request, *args, **kwargs):
+        """The POST method is used for downloading stuff"""
+
+        # Get the parameters passed on with the GET or the POST request
+        get = self.custom_init()
+
+        sData = self.get_data(self.dtype)
+        bUsePlain = (self.dtype == "xlsx" or self.dtype == "csv")
+
+        sDownName = "kloekecodes.{}".format(self.dtype)
+
+        sContentType = ""
+        if self.dtype == "csv":
+            sContentType = "text/tab-separated-values"
+        elif self.dtype == "json":
+            sContentType = "application/json"
+        elif self.dtype == "xlsx":
+            sContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+        # Excel needs additional conversion
+        if self.dtype == "xlsx":
+            # Convert 'compressed_content' to an Excel worksheet
+            response = HttpResponse(content_type=sContentType)
+            response['Content-Disposition'] = 'attachment; filename="{}"'.format(sDownName)    
+            response = csv_to_excel(sData, response)
+        else:
+            response = HttpResponse(sData, content_type=sContentType)
+            response['Content-Disposition'] = 'attachment; filename="{}"'.format(sDownName)    
+
+        # Continue for all formats
+        return response
+
+    def custom_init(self):
+        # Get the parameters passed on with the GET or the POST request
+        get = self.request.GET if self.request.method == "GET" else self.request.POST
+        get = get.copy()
+        self.get = get
+
+        # Check if downloadtype is specified
+        self.dtype = "" if "downloadtype" not in get else get["downloadtype"]
+        return get
+
+    def get_context_data(self, **kwargs):
+        # Call the base implementation first to get a context
+        context = super(KloekeListView, self).get_context_data(**kwargs)
+
+        # Get parameters for the search
+        initial = self.request.GET
+        search_form = KloekeSearchForm(initial)
+
+        context['searchform'] = search_form
+
+        # Determine the count 
+        context['entrycount'] = self.entrycount # self.get_queryset().count()
+
+        # Set the prefix
+        context['app_prefix'] = APP_PREFIX
+
+        # Make sure the paginate-values are available
+        context['paginateValues'] = paginateValues
+
+        if 'paginate_by' in initial:
+            context['paginateSize'] = int(initial['paginate_by'])
+        else:
+            context['paginateSize'] = paginateSize
+
+        # Set the title of the application
+        context['title'] = "{} kloekecodes".format(THIS_DICTIONARY)
+
+        # Return the calculated context
+        return context
+
+    def get_paginate_by(self, queryset):
+        """
+        Paginate by specified value in querystring, or use default class property value.
+        """
+        return self.request.GET.get('paginate_by', self.paginate_by)
+        
+    def get_queryset(self):
+        # Get the parameters passed on with the GET or the POST request
+        get = self.custom_init()
+
+        # Fix the sort-order
+        get['sortOrder'] = 'stad'
+
+        lstQ = []
+
+        # Fine-tuning: search string is the LEMMA
+        if 'stad' in get and get['stad'] != '':
+            val = adapt_search(get['stad'])
+            query = Q(stad__iregex=val) 
+
+            # Apply the filter
+            lstQ.append(query)
+
+        # Check for dialect code (Kloeke)
+        if 'code' in get and get['code'] != '':
+            val = adapt_search(get['code'])
+            query = Q(code__iregex=val)
+            
+            # Apply the filter
+            lstQ.append(query)
+
+        # Calculate the final qs
+        qs = Kloeke.objects.filter(*lstQ).order_by('stad').distinct()
+
+        # Determine the length
+        self.entrycount = len(qs)
+
+        self.qs = qs
+
+        # Return the resulting filtered and sorted queryset
+        return qs
+
+    def get_data(self, dtype):
+        """Gather the data as JSON or else as CSV, including a header line and comma-separated"""
+
+        # Initialize
+        lData = []
+        sData = ""
+
+        qs = self.get_queryset()
+
+        if dtype == "json":
+            # Loop
+            for lib in qs:
+                row = {"id": lib.id, "code": lib.code, "stad": lib.stad, "numcode": lib.numcode, "libtype": lib.numstad}
+                lData.append(row)
+            # convert to string
+            sData = json.dumps(lData)
+        else:
+            # Create CSV string writer
+            output = StringIO()
+            delimiter = "\t" if dtype == "csv" else ","
+            csvwriter = csv.writer(output, delimiter=delimiter, quotechar='"')
+            # Headers
+            headers = ['id', 'code', 'stad', 'numcode', 'numstad']
+            csvwriter.writerow(headers)
+            # Loop
+            for lib in qs:
+                row = [lib.id, lib.code, lib.stad, lib.numcode, lib.numstad]
+                csvwriter.writerow(row)
+
+            # Convert to string
+            sData = output.getvalue()
+            output.close()
+
+        return sData
 
 
 class DialectListView(ListView):

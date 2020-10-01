@@ -24,6 +24,31 @@ def remove_from_fieldsets(fieldsets, fields):
 
                 break
 
+class FieldChoiceAdmin(admin.ModelAdmin):
+    readonly_fields=['machine_value']
+    list_display = ['english_name','dutch_name','abbr', 'machine_value','field']
+    list_filter = ['field']
+
+    def save_model(self, request, obj, form, change):
+
+        if obj.machine_value == None:
+            # Check out the query-set and make sure that it exists
+            qs = FieldChoice.objects.filter(field=obj.field)
+            if len(qs) == 0:
+                # The field does not yet occur within FieldChoice
+                # Future: ask user if that is what he wants (don't know how...)
+                # For now: assume user wants to add a new field (e.g: wordClass)
+                # NOTE: start with '0'
+                obj.machine_value = 0
+            else:
+                # Calculate highest currently occurring value
+                highest_machine_value = max([field_choice.machine_value for field_choice in qs])
+                # The automatic machine value we calculate is 1 higher
+                obj.machine_value= highest_machine_value+1
+
+        obj.save()
+
+
 class LemmaAdmin(admin.ModelAdmin):
     fieldsets = ( ('Editable', {'fields': ('gloss', )}),
                 )
@@ -64,7 +89,8 @@ class AfleveringAdmin(admin.ModelAdmin):
     fieldsets = ( ('Editable', {'fields': ('naam', 'deel', 'sectie', 'aflnum', 'inleiding', 'toonbaar', 'jaar', 'auteurs',
                                            'afltitel', 'sectietitel', 'plaats', 'toelichting')}),
                 )
-    list_display = ['deel', 'sectie', 'aflnum', 'naam', 'inleiding', 'toonbaar']
+    list_display = ['id', 'deel', 'sectie', 'aflnum', 'naam', 'inleiding', 'toonbaar']
+    ordering = ['deel__nummer', 'sectie', 'aflnum']
 
 
 def reset_infos(modeladmin, request, qs):
@@ -90,6 +116,17 @@ class InfoAdmin(admin.ModelAdmin):
     list_filter = ['deel', 'sectie']
 
 
+class KloekeAdmin(admin.ModelAdmin):
+    #list_display = ['code', 'stad', 'alt1', 'alt2']
+    #search_fields = ['code', 'stad', 'alt1', 'alt2']
+    #ordering = ['stad', 'code']
+
+    list_display = ['code', 'oud',  'stad', 'alt1', 'alt2', 'numcode', 'numstad']
+    search_fields = ['code','oud',  'stad', 'alt1', 'alt2']
+    ordering = ['-numstad', 'stad', 'code', 'oud']
+    list_filter = ['numcode', 'numstad']
+
+
 # -- Components of an entry
 admin.site.register(Lemma, LemmaAdmin)
 admin.site.register(Dialect, DialectAdmin)
@@ -104,3 +141,7 @@ admin.site.register(Deel)
 
 # -- dictionary as a whole
 admin.site.register(Entry, EntryAdmin)
+
+# -- Other
+admin.site.register(FieldChoice, FieldChoiceAdmin)
+admin.site.register(Kloeke, KloekeAdmin)
