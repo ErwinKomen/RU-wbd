@@ -17,6 +17,9 @@
 
   <p><span class="aflevering">&nbsp;</span></p>
 
+  <h4>Woordenboek van de Achterhoekse en Liemerse dialecten</h4>
+
+  <!--
   <p class="citation-line">
     {% spaceless %}
     <span class="citation-intro">WBD </span>
@@ -44,39 +47,44 @@
     {% endspaceless %}
     <span class="citation-pdf">(<a href="/{{app_prefix}}static/dictionary/content/pdf/{{intro_op_drie_pdf}}">pdf</a>)</span>
   </p>
+    -->
 
   {% for deel in object_list %}
     <p><b>
-      <span>Woordenboek van de Brabantse dialecten, Deel {{deel.nummer}}.</span>
+      <span>Deel {{deel.nummer}}.</span>
       <span class="deel">{{deel.titel}}</span>
     </b></p>
 
     <!-- Take all the [aflevering] elements for this [deel] and divide them over their [lemma] -->
     {% regroup deel.aflevering_set.all|dictsort:"get_number" by aflnum as afl_list %}
-    {% for afl in afl_list %}
-      <p class="citation-line">
-        {% for deze in afl.list %}
-          {% spaceless %}
-          <span class="citation-intro">WBD {{deel.romeins}}</span>
+    {% if afl_list|length == 0 %}
+      <p><i>(Nog niet beschikbaar)</i></p>
+    {% else %}
+      {% for afl in afl_list %}
+        <p class="citation-line">
+          {% for deze in afl.list %}
+            {% spaceless %}
+            <span class="citation-intro">WALD {{deel.romeins}}</span>
           
-          <span class="citation-number">{% if deze.sectietitel != "" %}, {{deze.sectie}}.{% else %}. {% endif %}{{deze.aflnum}}: </span>
-          <span class="citation-author">{{deze.auteurs}}, </span>
-          <i>
-            <span class="citation-title-intro">WBD {{deel.romeins}}, </span>
-            {% if deze.inleiding %}<span class="citation-title-inleiding">Inleiding en </span>{% endif %}
-            {% if deze.sectietitel != "" %}
-            <span class="citation-title-sectienummer">Sectie {{deze.sectie}}, </span>
-            <span class="citation-title-sectietitel">{{deze.sectietitel}}, </span>
-            {% endif %}
-            <span class="citation-title-aflnum">Aflevering {{deze.aflnum}}. </span>
-            <span class="citation-title-afltitel">{{deze.afltitel}}</span>
-          </i>
-          <span class="citation-publication">, {{deze.plaats}} {{deze.jaar}}.</span>
-          {% endspaceless %}
-          <span class="citation-pdf">(<a href="/{{app_prefix}}static/dictionary/content/pdf/{{deze.get_pdf}}">pdf</a>)</span>
-        {% endfor %}
-      </p>
-    {% endfor %}
+            <span class="citation-number">{% if deze.sectietitel != "" %}, {{deze.sectie}}.{% else %}. {% endif %}{{deze.aflnum}}: </span>
+            <span class="citation-author">{{deze.auteurs}}, </span>
+            <i>
+              <span class="citation-title-intro">WALD {{deel.romeins}}, </span>
+              {% if deze.inleiding %}<span class="citation-title-inleiding">Inleiding en </span>{% endif %}
+              {% if deze.sectietitel != "" %}
+                <span class="citation-title-sectienummer">Sectie {{deze.sectie}}, </span>
+                <span class="citation-title-sectietitel">{{deze.sectietitel}}, </span>
+              {% endif %}
+              <span class="citation-title-aflnum">Aflevering {{deze.aflnum}}. </span>
+              <span class="citation-title-afltitel">{{deze.afltitel}}</span>
+            </i>
+            <span class="citation-publication">, {{deze.plaats}} {{deze.jaar}}.</span>
+            {% endspaceless %}
+            <span class="citation-pdf">(<a href="/{{app_prefix}}static/dictionary/content/pdf/{{deze.get_pdf}}">pdf</a>)</span>
+          {% endfor %}
+        </p>
+      {% endfor %}
+    {% endif %}
 
   {% endfor %}
 
