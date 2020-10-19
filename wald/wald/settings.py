@@ -30,7 +30,7 @@ if "RU-wbd\\writable" in WRITABLE_DIR:
 APP_PREFIX = "dd/"
 if "d:" in WRITABLE_DIR or "D:" in WRITABLE_DIR:
     APP_PREFIX = ""
-elif "/scratch" in WRITABLE_DIR or "131.174" in hst:
+elif "/scratch" in WRITABLE_DIR or "/var/www" in WRITABLE_DIR or "131.174" in hst:
     # Configuration for http://ewald.science.ru.nl/
     # Also works for http://e-wald.nl
     APP_PREFIX = ""

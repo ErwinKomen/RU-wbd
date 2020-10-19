@@ -2172,9 +2172,13 @@ class DeelListView(ListView):
         # Set the title of the application
         context['title'] = "{} afleveringen".format(THIS_DICTIONARY)
 
-        context['intro_pdf'] = "wbd-1/1967_Brabantse Dialecten Voorlopige inleiding.pdf"
-        context['intro_op_drie_pdf'] = "wbd-3/2000_Brabantse Dialecten III Inleiding_Compleet.pdf"
+        #context['intro_pdf'] = "wbd-1/1967_Brabantse Dialecten Voorlopige inleiding.pdf"
+        #context['intro_op_drie_pdf'] = "wbd-3/2000_Brabantse Dialecten III Inleiding_Compleet.pdf"
 
         # Return the calculated context
         return context
+
+    def get_queryset(self):
+        qs = Deel.objects.all().order_by('nummer')
+        return qs
 
