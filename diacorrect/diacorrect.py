@@ -149,10 +149,26 @@ def do_dialect_correct(oArgs):
                 standaardspelling = row[header['standaardspelling']].value
                 dialectwoord = row[header['dialectwoord']].value
                 if standaardspelling != None and dialectwoord != None:
-                    if not "(n)" in dialectwoord and "(n)" in standaardspelling:
-                        if not read_only:
-                            row[header['standaardspelling']].value = standaardspelling.replace("(n)", "")
-                
+                    if not read_only:
+                        if "(n)" in standaardspelling and not "(n)" in dialectwoord:
+                            if "n" in dialectwoord:
+                                # ete  - ete(n) ==> ete
+                                row[header['opmerkingen']].value = standaardspelling
+                                row[header['standaardspelling']].value = standaardspelling.replace("(n)", "n")
+                            else:
+                                # eten - ete(n) ==> eten
+                                # Remove the (n)
+                                row[header['opmerkingen']].value = standaardspelling
+                                row[header['standaardspelling']].value = standaardspelling.replace("(n)", "")
+                    #if "(n)" in dialectwoord and not "(n)" in standaardspelling:
+                    #    if not read_only:
+                    #        row[header['standaardspelling']].value = "{}(n)".format(standaardspelling)
+                    #elif "n" in dialectwoord and "(n)" in standaardspelling:
+                    #    if not read_only:
+                    #        row[header['standaardspelling']].value = standaardspelling.replace("(n)", "n")
+                    #elif not "(n)" in dialectwoord and "(n)" in standaardspelling:
+                    #    if not read_only:
+                    #        row[header['standaardspelling']].value = standaardspelling.replace("(n)", "")
 
         # Save the workbook differently
         wb.save(flOutput)
