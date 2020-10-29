@@ -67,6 +67,14 @@ class AfleveringAdmin(admin.ModelAdmin):
     list_display = ['deelnummer', 'deel', 'sectie', 'aflnum', 'naam', 'inleiding', 'toonbaar']
 
 
+class DeelAdmin(admin.ModelAdmin):
+    formfield_overrides = {
+            models.CharField: {'widget': TextInput(attrs={'size': '50'})}
+        }
+    list_display = ['nummer', 'titel']
+    fields = ['nummer', 'titel', 'toelichting'] 
+
+
 def reset_infos(modeladmin, request, qs):
     """Reset all the info's in the queryset"""
 
@@ -100,7 +108,7 @@ admin.site.register(Info, InfoAdmin)
 admin.site.register(Description, DescriptionAdmin)
 
 # -- Components of a publication
-admin.site.register(Deel)
+admin.site.register(Deel, DeelAdmin)
 
 # -- dictionary as a whole
 admin.site.register(Entry, EntryAdmin)
