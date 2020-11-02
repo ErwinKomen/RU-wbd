@@ -1,4 +1,6 @@
 from django.contrib import admin
+from django.contrib.auth.models import User
+from django.contrib.auth.admin import UserAdmin
 from django import forms
 from django.core import serializers
 from django.contrib.contenttypes.models import ContentType

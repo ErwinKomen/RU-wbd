@@ -2,10 +2,12 @@
 Definition of views.
 """
 
+from django.contrib.auth import login, authenticate
+from django.contrib.auth.models import User, Group
 from django.views.generic.detail import DetailView
 from django.views.generic.list import ListView, View
-from django.shortcuts import get_object_or_404, render
-from django.http import HttpRequest, HttpResponse
+from django.shortcuts import get_object_or_404, render, redirect
+from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
 from django.core.urlresolvers import reverse
 from django.template import RequestContext, loader
 from django.template.loader import render_to_string
@@ -36,8 +38,13 @@ paginateEntries = 100
 # OLD: paginateValues = (1000, 500, 250, 100, 50, 40, 30, 20, 10, )
 paginateValues = (100, 50, 20, 10, 5, 2, 1, )
 outputColumns = ['begrip', 'trefwoord', 'dialectopgave', 'Kloekecode', 'aflevering', 'bronnenlijst']
+bDebug = True
 
 THIS_DICTIONARY = "e-WALD"
+
+# User group names important for anything
+app_userplus = "ewald_userplus" 
+app_editor = "ewald_editor"
 
 # General help functions
 def order_queryset_by_sort_order(get, qs, sOrder = 'gloss'):
@@ -159,6 +166,8 @@ def home(request):
         {
             'title': THIS_DICTIONARY,
             'year':datetime.now().year,
+            'is_app_userplus': user_is_ingroup(request, app_userplus),
+            'is_app_editor': user_is_ingroup(request, app_editor),
         }
     )
 
@@ -172,6 +181,8 @@ def contact(request):
             'title':'{} contact'.format(THIS_DICTIONARY),
             'message':'Henk van den Heuvel (H.vandenHeuvel@Let.ru.nl)',
             'year':datetime.now().year,
+            'is_app_userplus': user_is_ingroup(request, app_userplus),
+            'is_app_editor': user_is_ingroup(request, app_editor),
         }
     )
 
@@ -182,6 +193,8 @@ def about(request):
         {   'title':'{} informatie'.format(THIS_DICTIONARY),
             'message':'Radboud Universiteit Nijmegen - Dialectenwoordenboek.',
             'year':datetime.now().year,
+            'is_app_userplus': user_is_ingroup(request, app_userplus),
+            'is_app_editor': user_is_ingroup(request, app_editor),
         }
     )
 
@@ -193,8 +206,84 @@ def guide(request):
             'message':'Radboud Universiteit Nijmegen - Dialectenwoordenboek.',
             'dic_abbr': THIS_DICTIONARY,
             'year':datetime.now().year,
+            'is_app_userplus': user_is_ingroup(request, app_userplus),
+            'is_app_editor': user_is_ingroup(request, app_editor),
         }
     )
+
+def login_as_user(request, user_id):
+    assert isinstance(request, HttpRequest)
+
+    # Find out who I am
+    supername = request.user.username
+    super = User.objects.filter(username__iexact=supername).first()
+    if super == None:
+        return nlogin(request)
+
+    # Make sure that I am superuser
+    if super.is_staff and super.is_superuser:
+        user = User.objects.filter(username__iexact=user_id).first()
+        if user != None:
+            # Perform the login
+            login(request, user)
+            return HttpResponseRedirect(reverse("home"))
+
+    return home(request)
+
+def signup(request):
+    """Provide basic sign up and validation of it """
+
+    bStaffDefault = False
+
+    if request.method == 'POST':
+        form = SignUpForm(request.POST)
+        if form.is_valid():
+            # Save the form
+            form.save()
+            # Create the user
+            username = form.cleaned_data.get('username')
+            raw_password = form.cleaned_data.get('password1')
+
+            if bStaffDefault:
+                # also make sure that the user gets into the STAFF,
+                #      otherwise he/she may not see the admin pages
+                user = authenticate(username=username, 
+                                    password=raw_password,
+                                    is_staff=True)
+                user.is_staff = True
+                user.save()
+                # Add user to the "passim_user" group
+                gQs = Group.objects.filter(name="wald_user")
+                if gQs.count() > 0:
+                    g = gQs[0]
+                    g.user_set.add(user)
+            else:
+                user = authenticate(username=username, 
+                                    password=raw_password,
+                                    is_staff=False)
+            # Log in as the user
+            login(request, user)
+            return redirect('home')
+    else:
+        form = SignUpForm()
+    return render(request, 'dictionary/signup.html', {'form': form})
+
+def user_is_ingroup(request, sGroup):
+    # Is this user part of the indicated group?
+    user = User.objects.filter(username=request.user.username).first()
+
+    # Only look at group if the user is known
+    if user == None:
+        glist = []
+    else:
+        glist = [x.name for x in user.groups.all()]
+
+        # Only needed for debugging
+        if bDebug:
+            ErrHandle().Status("User [{}] is in groups: {}".format(user, glist))
+    # Evaluate the list
+    bIsInGroup = (sGroup in glist)
+    return bIsInGroup
 
 def do_repair(request):
     """Renders the REPAIR page."""
@@ -577,6 +666,9 @@ class TrefwoordListView(ListView):
 
         # Set the title of the application
         context['title'] = "{} trefwoorden".format(THIS_DICTIONARY)
+
+        context['is_app_userplus'] = user_is_ingroup(self.request, app_userplus)
+        context['is_app_editor'] = user_is_ingroup(request, app_editor)
 
         # If we are in 'strict' mode, we need to deliver the [qlist]
         if self.strict:
@@ -1093,6 +1185,9 @@ class LemmaListView(ListView):
         # Set the method
         context['method'] = "get"       # Alternative: "ajax"
 
+        context['is_app_userplus'] = user_is_ingroup(self.request, app_userplus)
+        context['is_app_editor'] = user_is_ingroup(request, app_editor)
+
         # Return the calculated context
         return context
 
@@ -1528,6 +1623,9 @@ class LocationListView(ListView):
         # Set the title of the application
         context['title'] = "{} plaatsen".format(THIS_DICTIONARY)
 
+        context['is_app_userplus'] = user_is_ingroup(self.request, app_userplus)
+        context['is_app_editor'] = user_is_ingroup(request, app_editor)
+
         # Get possible user choice of 'strict'
         if 'strict' in initial:
             self.strict = (initial['strict'] == "True")
@@ -1805,6 +1903,9 @@ class DialectListView(ListView):
 
         # Set the title of the application
         context['title'] = "{} dialecten".format(THIS_DICTIONARY)
+
+        context['is_app_userplus'] = user_is_ingroup(self.request, app_userplus)
+        context['is_app_editor'] = user_is_ingroup(request, app_editor)
 
         # Return the calculated context
         return context
@@ -2174,6 +2275,9 @@ class DeelListView(ListView):
 
         #context['intro_pdf'] = "wbd-1/1967_Brabantse Dialecten Voorlopige inleiding.pdf"
         #context['intro_op_drie_pdf'] = "wbd-3/2000_Brabantse Dialecten III Inleiding_Compleet.pdf"
+
+        context['is_app_userplus'] = user_is_ingroup(self.request, app_userplus)
+        context['is_app_editor'] = user_is_ingroup(request, app_editor)
 
         # Return the calculated context
         return context

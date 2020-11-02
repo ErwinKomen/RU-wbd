@@ -64,6 +64,10 @@ urlpatterns = [
     url(r'^repair/progress/$', wald.dictionary.views.do_repair_progress, name='repair_progress'),
     url(r'^static/(?P<path>.*)$',django.views.static.serve, {'document_root': STATIC_ROOT}),
 
+    url(r'^signup/$', wald.dictionary.views.signup, name='signup'),
+
+    url(r'^login/user/(?P<user_id>\w[\w\d_]+)$', wald.dictionary.views.login_as_user, name='login_as'),
+
     url(r'^login/$',
         django.contrib.auth.views.login,
         {

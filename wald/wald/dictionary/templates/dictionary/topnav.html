@@ -1,4 +1,4 @@
-﻿    <div name="topnav"></div>
+    <div name="topnav"></div>
 
     <div class="navbar navbar-custom navbar-fixed-top">
         <div class="container" url_home="{% url 'home' %}">
@@ -24,17 +24,19 @@
                           <li><a href="#" onclick="set_search('trefwoordsearch')">Trefwoorden</a></li>
                       </ul>
                     </li>
-                    {% if user.is_authenticated %}
+                    {% if user.is_superuser or user.is_authenticated and is_app_editor %}
                     <li class="dropdown">
                       <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" 
                          aria-haspopup="true" aria-expanded="false">Ontwikkelaars <span class="caret"></span></a>
                       <ul class="dropdown-menu">
-                        <li><a href="{% url 'definitions' %}">Definities</a></li>
-                        <li><a href="{% url 'entries' %}">Bewerken</a></li>
-                        <li role="separator" class="divider"></li>
                         <li><a href="{% url 'admin_entry_list' %}">Dialectopgaven</a></li>
                         <li role="separator" class="divider"></li>
-                        <li><a href="{% url 'repair' %}">Repareer...</a></li>
+                        <li><a href="{% url 'entries' %}">Bewerken</a></li>
+                        {% if user.is_superuser %}
+                          <li role="separator" class="divider"></li>
+                          <li><a href="{% url 'definitions' %}">Definities</a></li>
+                          <li><a href="{% url 'repair' %}">Repareer...</a></li>
+                        {% endif %}
                       </ul>
                     </li>
                     {% endif %}
@@ -87,7 +89,9 @@
                       <ul class="dropdown-menu">
                         <li><a href="{% url 'about' %}">Informatie</a></li>
                         <li><a href="{% url 'guide' %}">Handleiding</a></li>
-                        <li><a href="{% url 'dialectcheck' %}">Dialectencontrole</a></li>
+                        {% if user.is_superuser or is_app_userplus %}
+                          <li><a href="{% url 'dialectcheck' %}">Dialectencontrole</a></li>
+                        {% endif %}
                         <li><a href="{% url 'contact' %}">Contact</a></li>
                         {% if user.is_authenticated %}
                           <form id="logoutForm" action="{% url 'logout' %}" method="post" class="navbar-right">
