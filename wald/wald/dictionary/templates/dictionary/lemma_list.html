@@ -215,7 +215,11 @@
                   {% spaceless %}
                   {% for item_afl in item.alist %}
                     {% if item_afl.afl.first %}
-                      <span class="lemma-aflevering"><a href="/{{app_prefix}}static/dictionary/content/pdf/{{item_afl.entry.aflevering.get_pdf}}">{{item_afl.entry.aflevering.get_summary}}</a></span>
+                      {% if item_afl.entry.aflevering.naam == "-" %}
+                        <span class="lemma-aflevering">{{item_afl.entry.aflevering.get_summary}}</span>
+                      {% else %}
+                        <span class="lemma-aflevering"><a href="/{{app_prefix}}static/dictionary/content/pdf/{{item_afl.entry.aflevering.get_pdf}}">{{item_afl.entry.aflevering.get_summary}}</a></span>
+                      {% endif %}
                     {% endif %}
                     {% if item_afl.afl.last and not forloop.last %}<span>, </span>{% endif %}
                   {% endfor %}

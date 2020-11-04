@@ -12,8 +12,7 @@
     <OutputPath>.</OutputPath>
     <Name>diacorrect</Name>
     <RootNamespace>diacorrect</RootNamespace>
-    <InterpreterId>{cee766f8-213c-432e-ae52-0977c4fd4972}</InterpreterId>
-    <InterpreterVersion>3.5</InterpreterVersion>
+    <InterpreterId>MSBuild|{cee766f8-213c-432e-ae52-0977c4fd4972}|$(MSBuildProjectFullPath)</InterpreterId>
     <LaunchProvider>Standard Python launcher</LaunchProvider>
     <CommandLineArguments>-i "D:/Data Files/TG/Dialecten/Data/2020/WGD/Roeland/WGD-Rivierengebied-mens-20201028_EK.xlsx" -o "D:/Data Files/TG/Dialecten/Data/2020/WGD/Roeland/WGD-Rivierengebied-mens-20201029_EK.xlsx"</CommandLineArguments>
     <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
@@ -33,7 +32,6 @@
   <ItemGroup>
     <Interpreter Include="..\..\..\..\..\env\diadict\">
       <Id>{cee766f8-213c-432e-ae52-0977c4fd4972}</Id>
-      <BaseInterpreter>{9a7a9026-48c1-4688-9d5d-e5699d47d074}</BaseInterpreter>
       <Version>3.5</Version>
       <Description>diadict (Python 64-bit 3.5)</Description>
       <InterpreterPath>Scripts\python.exe</InterpreterPath>
@@ -45,10 +43,7 @@
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
-    <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
   </PropertyGroup>
-  <Import Condition="Exists($(PtvsTargetsFile))" Project="$(PtvsTargetsFile)" />
-  <Import Condition="!Exists($(PtvsTargetsFile))" Project="$(MSBuildToolsPath)\Microsoft.Common.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in
        Visual Studio and specify your pre- and post-build commands in
        the BeforeBuild and AfterBuild targets below. -->
@@ -57,4 +52,5 @@
   </Target>
   <Target Name="AfterBuild">
   </Target>
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
 </Project>

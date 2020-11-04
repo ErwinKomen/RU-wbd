@@ -662,13 +662,17 @@ class TrefwoordListView(ListView):
 
         # Set the afleveringen and mijnen that are available
         context['afleveringen'] = [afl for afl in Aflevering.objects.all()]
-        context['mijnen'] = [mijn for mijn in Mijn.objects.all().order_by('naam')]
+
+        mijnen = []
+        if self.bUseMijnen:
+            mijnen = [mijn for mijn in Mijn.objects.all().order_by('naam')]
+        context['mijnen'] = mijnen
 
         # Set the title of the application
         context['title'] = "{} trefwoorden".format(THIS_DICTIONARY)
 
         context['is_app_userplus'] = user_is_ingroup(self.request, app_userplus)
-        context['is_app_editor'] = user_is_ingroup(request, app_editor)
+        context['is_app_editor'] = user_is_ingroup(self.request, app_editor)
 
         # If we are in 'strict' mode, we need to deliver the [qlist]
         if self.strict:
@@ -1127,7 +1131,11 @@ class LemmaListView(ListView):
 
         # Set the afleveringen that are available
         context['afleveringen'] = [afl for afl in Aflevering.objects.all()]
-        context['mijnen'] = [mijn for mijn in Mijn.objects.all().order_by('naam')]
+
+        mijnen = []
+        if self.bUseMijnen:
+            mijnen = [mijn for mijn in Mijn.objects.all().order_by('naam')]
+        context['mijnen'] = mijnen
 
         # Pass on the word-order boolean
         context['order_word_toel'] = self.bOrderWrdToel
@@ -1186,7 +1194,7 @@ class LemmaListView(ListView):
         context['method'] = "get"       # Alternative: "ajax"
 
         context['is_app_userplus'] = user_is_ingroup(self.request, app_userplus)
-        context['is_app_editor'] = user_is_ingroup(request, app_editor)
+        context['is_app_editor'] = user_is_ingroup(self.request, app_editor)
 
         # Return the calculated context
         return context
@@ -1576,7 +1584,10 @@ class LocationListView(ListView):
         # Set the afleveringen that are available
         context['afleveringen'] = [afl for afl in Aflevering.objects.all()]
 
-        context['mijnen'] = [mijn for mijn in Mijn.objects.all().order_by('naam')]
+        mijnen = []
+        if self.bUseMijnen:
+            mijnen = [mijn for mijn in Mijn.objects.all().order_by('naam')]
+        context['mijnen'] = mijnen
 
         if 'paginate_by' in initial:
             context['paginateSize'] = int(initial['paginate_by'])
@@ -1624,7 +1635,7 @@ class LocationListView(ListView):
         context['title'] = "{} plaatsen".format(THIS_DICTIONARY)
 
         context['is_app_userplus'] = user_is_ingroup(self.request, app_userplus)
-        context['is_app_editor'] = user_is_ingroup(request, app_editor)
+        context['is_app_editor'] = user_is_ingroup(self.request, app_editor)
 
         # Get possible user choice of 'strict'
         if 'strict' in initial:
@@ -1905,7 +1916,7 @@ class DialectListView(ListView):
         context['title'] = "{} dialecten".format(THIS_DICTIONARY)
 
         context['is_app_userplus'] = user_is_ingroup(self.request, app_userplus)
-        context['is_app_editor'] = user_is_ingroup(request, app_editor)
+        context['is_app_editor'] = user_is_ingroup(self.request, app_editor)
 
         # Return the calculated context
         return context
@@ -2277,7 +2288,7 @@ class DeelListView(ListView):
         #context['intro_op_drie_pdf'] = "wbd-3/2000_Brabantse Dialecten III Inleiding_Compleet.pdf"
 
         context['is_app_userplus'] = user_is_ingroup(self.request, app_userplus)
-        context['is_app_editor'] = user_is_ingroup(request, app_editor)
+        context['is_app_editor'] = user_is_ingroup(self.request, app_editor)
 
         # Return the calculated context
         return context

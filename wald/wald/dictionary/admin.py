@@ -40,7 +40,7 @@ class DescriptionAdmin(admin.ModelAdmin):
 
 
 class DialectAdmin(admin.ModelAdmin):
-    fieldsets = ( ('Editable', {'fields': ('stad', 'code', 'nieuw', 'toelichting',)}),
+    fieldsets = ( ('Editable', {'fields': ('stad', 'code', 'nieuw', 'toonbaar',)}),
                 )
     list_display = ['nieuw', 'stad']
 
