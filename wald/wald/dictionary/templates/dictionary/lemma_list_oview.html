@@ -41,7 +41,7 @@
                 <span class="lemma-word-dialect-code hidden">{{item.entry.dialect.nieuw}}</span>
                 <span class="lemma-word-dialect-space hidden">&nbsp;</span>
                 <span class="lemma-word-dialect-stad">{{item.entry.dialect.stad}}</span>
-                {% if item.entry.kloeketoelichting != "" %}&nbsp;<span class="word-kloeketoelichting">[{{item.entry.kloeketoelichting}}]</span>&nbsp;{% endif %}
+                {% if item.entry.kloeketoelichting != "" %}&nbsp;<span class="word-kloeketoelichting">[{{item.entry.kloeketoelichting}}]</span>{% endif %}
                 <span>{% if not item.dialectopgave.last %}, {% endif %}</span>
                 {% if item.dialectopgave.first and not item.dialectopgave.last %}
                   <span class="lemma-word-dialect-dots">...</span>
