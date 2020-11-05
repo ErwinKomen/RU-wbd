@@ -299,11 +299,14 @@ def do_repair(request):
 
 def adapt_search(val):
     # First trim
-    val = val.strip()
-    # fnmatch.translate() works okay, but note beginning and ending spaces
-    # val = fnmatch.translate('^' + val + '$')
-    val = '^' + fnmatch.translate(val) + '$'
-    # val = '^' + val.replace("?", ".").replace("*", ".*") + '$'
+    val = val.strip()    
+    # Adapt for the use of '#'
+    if '#' in val:
+        # val = val.replace('#', '\\b.*')
+        #val = r'(^|\b)' + fnmatch.translate(val.replace('#', '')) + r'($|\b)'
+        val = r'(^|(.*\b))' + val.replace('#', r'((\b.*)|$)') # + r'((\b.*)|$)'
+    else:
+        val = '^' + fnmatch.translate(val) + '$'
     return val
 
 def export_csv(qs, sFileName):
@@ -1409,7 +1412,7 @@ class LemmaListView(ListView):
         # Fine-tuning: search string is the LEMMA
         if 'search' in get and get['search'] != '':
             val = get['search']
-            if '*' in val or '[' in val or '?' in val:
+            if '*' in val or '[' in val or '?' in val or '#' in val:
                 val = adapt_search(val)
                 lstQ.append(Q(gloss__iregex=val) )
             else:
