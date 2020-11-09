@@ -57,8 +57,13 @@ urlpatterns = [
     url(r'^list/$', permission_required('dictionary.search_gloss')(EntryListView.as_view()), name='admin_entry_list'), 
     url(r'^dictionary/search/$', permission_required('dictionary.search_gloss')(EntryListView.as_view())),
     url(r'^entry/(?P<pk>\d+)', DictionaryDetailView.as_view(), name='output'),
+
     url(r'^import/start/$', wald.dictionary.views.import_csv_start, name='import_start'),
     url(r'^import/progress/$', wald.dictionary.views.import_csv_progress, name='import_progress'),
+
+    url(r'^import/update(?:/(?P<pk>\d+))?/start/$', wald.dictionary.views.import_update_start, name='import_update_start'),
+    url(r'^import/update(?:/(?P<pk>\d+))?/progress/$', wald.dictionary.views.import_update_progress, name='import_update_progress'),
+
     url(r'^repair/$', permission_required('dictionary.search_gloss')(wald.dictionary.views.do_repair), name='repair'),
     url(r'^repair/start/$', wald.dictionary.views.do_repair_start, name='repair_start'),
     url(r'^repair/progress/$', wald.dictionary.views.do_repair_progress, name='repair_progress'),

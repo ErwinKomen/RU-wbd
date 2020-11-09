@@ -93,11 +93,36 @@ def clean_infos(modeladmin, request, qs):
             info.clear_item()
 clean_infos.short_description = "Clean process Info and remove CSV files"
 
+
 class InfoAdmin(admin.ModelAdmin):
     list_display = ['deel', 'sectie', 'aflnum', 'csv_file', 'processed', 'read', 'skipped']
     actions = [reset_infos, clean_infos]
     ordering = ['deel', 'sectie', 'aflnum']
     list_filter = ['deel', 'sectie']
+
+
+def reset_updates(modeladmin, request, qs):
+    """Reset all the data update's in the queryset"""
+
+    with transaction.atomic():
+        for dataupdate in qs:
+            dataupdate.reset_item()
+reset_updates.short_description = "Reset processing DataUpdate"
+
+def clean_updates(modeladmin, request, qs):
+    """Reset all the data update's in the queryset and remove associated CSV/XML files"""
+
+    with transaction.atomic():
+        for dataupdate in qs:
+            dataupdate.clear_item()
+clean_updates.short_description = "Clean processing DataUpdate and remove CSV/XML files"
+
+
+class DataUpdateAdmin(admin.ModelAdmin):
+    list_display = ['id', 'csv_file', 'processed', 'read', 'skipped']
+    actions = [reset_updates, clean_updates]
+    ordering = ['csv_file']
+    # list_filter = ['deel', 'sectie']
 
 
 # -- Components of an entry
@@ -107,6 +132,7 @@ admin.site.register(Trefwoord, TrefwoordAdmin)
 admin.site.register(Aflevering, AfleveringAdmin)
 admin.site.register(Mijn)
 admin.site.register(Info, InfoAdmin)
+admin.site.register(DataUpdate, DataUpdateAdmin)
 admin.site.register(Description, DescriptionAdmin)
 
 # -- Components of a publication
