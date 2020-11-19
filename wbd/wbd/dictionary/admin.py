@@ -43,6 +43,13 @@ class DialectAdmin(admin.ModelAdmin):
     list_display = ['nieuw', 'stad']
 
 
+class CoordinateAdmin(admin.ModelAdmin):
+    fieldsets = ( ('Editable', {'fields': ('kloeke', 'country', 'province', 'dictionary', 'place', 'point',)}),
+                )
+    list_display = ['kloeke', 'country', 'province', 'dictionary', 'place', 'point']
+    list_filter = ['country', 'province', 'dictionary']
+
+
 class TrefwoordAdmin(admin.ModelAdmin):
     fieldsets = ( ('Editable', {'fields': ('woord', 'toelichting',)}),
                 )
@@ -98,6 +105,7 @@ admin.site.register(Aflevering, AfleveringAdmin)
 admin.site.register(Mijn)
 admin.site.register(Info, InfoAdmin)
 admin.site.register(Description, DescriptionAdmin)
+admin.site.register(Coordinate, CoordinateAdmin)
 
 # -- Components of a publication
 admin.site.register(Deel)

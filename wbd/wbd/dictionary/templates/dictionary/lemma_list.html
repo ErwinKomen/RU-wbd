@@ -1,4 +1,4 @@
-﻿{% extends "dictionary/layout.html" %}
+{% extends "dictionary/layout.html" %}
 
 {% block content %}
 
@@ -158,6 +158,14 @@
                 <td class="hidden"> {{ item.entry.lemma.id }} </td>
                 <td><span class="lemma-list-name">{{item.entry.lemma.gloss}}</span></td>
                 <td>
+                  <!-- Allow showing trefwoorden on a map, including all the search criteria -->
+                  <a role="button" class="btn btn-xs" title="Toon trefwoorden op kaart"
+                     onclick="lemma_map(this);"
+                     targeturl="{% url 'lemmamap' item.entry.lemma.id %}"
+                     targetid="erwin"
+                      >
+                    <span class="glyphicon glyphicon-picture"></span>
+                  </a>
             {% endif %}
             {% if item.trefwoord_woord.first %}
               <span class="lemma-trefwoord"><a href="{% url 'trefwoordsearch' %}?search={{item.entry.trefwoord.woord|urlencode}}">{{item.entry.trefwoord.woord}}</a>:</span>

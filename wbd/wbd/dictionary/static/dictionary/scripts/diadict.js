@@ -287,6 +287,43 @@ function do_dialect(el) {
 
 }
 
+function lemma_map(el) {
+  var frm = "#lemmasearch",
+      data = null,
+      entries = null,
+      targeturl = "",
+      targetid = "";
+
+  try {
+    // Get the form data
+    //frm = $("form").first();
+    data = $(frm).serializeArray();
+    targeturl = $(el).attr("targeturl");
+    targetid = $(el).attr("targetid");
+
+    // Post the data to the server
+    $.post(targeturl, data, function (response) {
+      // Sanity check
+      if (response !== undefined) {
+        if (response.status == "ok") {
+          if ('entries' in response) {
+            entries = response['entries'];
+            errMsg("");
+          } else {
+            errMsg("Response is okay, but [html] is missing");
+          }
+          // Knoppen weer inschakelen
+
+        } else {
+          errMsg("Could not interpret response " + response.status);
+        }
+      }
+    });
+  } catch (ex) {
+    errMsg("lemma_map", ex);
+  }
+}
+
 function repair_start(sRepairType) {
     var sUrl = "";
     // Indicate that we are starting

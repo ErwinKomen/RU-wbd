@@ -24,10 +24,12 @@ import fnmatch
 import csv
 import codecs
 import copy
+import json
 from wbd.dictionary.models import *
 from wbd.dictionary.forms import *
 #from wbd.dictionary.adminviews import order_queryset_by_sort_order
 from wbd.settings import APP_PREFIX, WSGI_FILE
+from wbd.dictionary.conversion import rd_to_wgs, wgs_to_rd
 
 # Global variables
 paginateSize = 10
@@ -210,11 +212,14 @@ def do_repair(request):
 
 def adapt_search(val):
     # First trim
-    val = val.strip()
-    # fnmatch.translate() works okay, but note beginning and ending spaces
-    # val = fnmatch.translate('^' + val + '$')
-    val = '^' + fnmatch.translate(val) + '$'
-    # val = '^' + val.replace("?", ".").replace("*", ".*") + '$'
+    val = val.strip()    
+    # Adapt for the use of '#'
+    if '#' in val:
+        # val = val.replace('#', '\\b.*')
+        #val = r'(^|\b)' + fnmatch.translate(val.replace('#', '')) + r'($|\b)'
+        val = r'(^|(.*\b))' + val.replace('#', r'((\b.*)|$)') # + r'((\b.*)|$)'
+    else:
+        val = '^' + fnmatch.translate(val) + '$'
     return val
 
 def export_csv(qs, sFileName):
@@ -439,6 +444,83 @@ def import_csv_progress(request):
 
     # Return where we are
     return JsonResponse(data)
+
+def import_kloeke_dicts():
+    """Import kloeke dictionaries and add the info to the [Kloeke] table"""
+
+    # dir = D:/Data Files/TG/Dialecten/data/2020/
+    files = ["dsdd_kloeke_0.json","dsdd_kloeke_1.json","dsdd_kloeke_2.json"]
+    oErr = ErrHandle()
+    bSuccess = False
+    try:
+        if Coordinate.objects.count() == 0:
+            # REad the files
+            for file in files:
+                # FIgure out where it should be
+                file = os.path.abspath(os.path.join(MEDIA_ROOT, file))
+                # Read the file into memory
+                with open(file, "r", encoding="utf-8") as fd:
+                    lKloekeInfo = json.load(fd)
+
+                with transaction.atomic():
+                    for oInfo in lKloekeInfo:
+                        kloeke = oInfo['kloeke']
+                        obj = Coordinate.objects.filter(kloeke=kloeke).first()
+                        if obj == None:
+                            obj = Coordinate.objects.create(
+                                kloeke=kloeke, place=oInfo['place'],
+                                province=oInfo['province'], country=oInfo['country'],
+                                point=oInfo['point'], dictionary=oInfo['dictionary'])
+                        # Check if the link from [Dialect] has already been made
+                        dialect = Dialect.objects.filter(nieuw__iexact=kloeke).first()
+                        if dialect != None:
+                            if dialect.coordinate == None:
+                                dialect.coordinate = obj
+                                dialect.save()
+
+        bSuccess = True
+    except:
+        msg = oErr.get_error_message()
+        oErr.DoError("import_kloeke_dicts")
+        bSuccess = False
+    return bSuccess
+
+def import_kloeke_info():
+    """Import kloeke informatino from the Kaart app"""
+
+    file = "kaartinformatie.json"
+    oErr = ErrHandle()
+    bSuccess = False
+    try:
+        # FIgure out where the file is actually to be found
+        file = os.path.abspath(os.path.join(MEDIA_ROOT, file))
+        # Read the file into memory
+        with open(file, "r", encoding="utf-8") as fd:
+            lKloekeInfo = json.load(fd)
+
+        with transaction.atomic():
+            for oInfo in lKloekeInfo:
+                # Each item contains 5 elements: id, kloeke, place, x, y
+                kloeke = oInfo[1]
+                obj = Coordinate.objects.filter(kloeke__iexact=kloeke).first()
+                if obj == None:
+                    place = oInfo[2]
+                    point_lst = rd_to_wgs(oInfo[3], oInfo[4])
+                    point = '{}, {}'.format(point_lst[0], point_lst[1])
+                    obj = Coordinate.objects.create(kloeke=kloeke, place=place, point=point)
+                # Check if the link from [Dialect] has already been made
+                dialect = Dialect.objects.filter(nieuw__iexact=kloeke).first()
+                if dialect != None:
+                    if dialect.coordinate == None:
+                        dialect.coordinate = obj
+                        dialect.save()
+
+        bSuccess = True
+    except:
+        msg = oErr.get_error_message()
+        oErr.DoError("import_kloeke_info")
+        bSuccess = False
+    return bSuccess
 
 
 class DictionaryDetailView(DetailView):
@@ -756,7 +838,7 @@ class TrefwoordListView(ListView):
         # Fine-tuning: search string is the LEMMA
         if 'search' in get and get['search'] != '':
             val = get['search']
-            if '*' in val or '[' in val or '?' in val:
+            if '*' in val or '[' in val or '?' in val or '#' in val:
                 val = adapt_search(val)
                 lstQ.append(Q(woord__iregex=val) )
             else:
@@ -1303,7 +1385,7 @@ class LemmaListView(ListView):
         # Fine-tuning: search string is the LEMMA
         if 'search' in get and get['search'] != '':
             val = get['search']
-            if '*' in val or '[' in val or '?' in val:
+            if '*' in val or '[' in val or '?' in val or '#' in val:
                 val = adapt_search(val)
                 lstQ.append(Q(gloss__iregex=val) )
             else:
@@ -1386,6 +1468,89 @@ class LemmaListView(ListView):
 
         # Return the resulting filtered and sorted queryset
         return qse
+
+
+class LemmaMapView(DetailView):
+    """Show the 'trefwoorden' belonging to this lemma, after applying a filter"""
+
+    model = Lemma
+
+    def get(self, request, *args, **kwargs):
+        # No errors, just return to the homepage
+        return reverse('home')
+    
+    def post(self, request, *args, **kwargs):
+        # Formulate a response
+        data = {'status': 'error', 'msg': 'unknown'}
+
+        def query_add(lstQ, val, path, type):
+            if type == "str" and val != "" and val != None:
+                comparison = "iexact"
+                if '*' in val or '[' in val or '?' in val or '#' in val:
+                    val = adapt_search(val)
+                    comparison = "iregex"
+                lstQ.append(Q(**{"{}__{}".format(path, comparison): val}))
+            elif type == "int" and val != "" and val != None:
+                if val.isdigit():
+                    iVal = int(val)
+                    if iVal>0:
+                        lstQ.append(Q(**{"{}".format(path): iVal}))
+
+        oErr = ErrHandle()
+        try:
+            # Get the object from what we receive
+            lemma = self.get_object()
+
+            # Get the search parameters, if any
+            search_form = LemmaSearchForm(request.POST)
+            #qd = request.POST.copy()
+            if search_form.is_valid():
+                # Get the data
+                cleaned_data = search_form.cleaned_data
+
+                # Derive the variables from the cleaned_data
+                # NOT NEEDED: search = cleaned_data.get("search", None)
+                dialectCity = cleaned_data.get("dialectCity", "")
+                dialectCode = cleaned_data.get("dialectCode", "")
+                woord = cleaned_data.get("woord", None)
+                aflevering = cleaned_data.get("aflevering", None)
+                mijn = cleaned_data.get("mijn", None)
+
+                # Build a filter to get all entries, based on the cleaned data
+                lstQ = []
+                lstQ.append(Q(lemma__id=lemma.id))
+                # NOT NEEDED: query_add(lstQ, search, "lemma__gloss", "str")
+                query_add(lstQ, dialectCity, "dialect__stad", "str")
+                query_add(lstQ, dialectCode, "dialect__nieuw", "str")
+                query_add(lstQ, woord, "woord", "str")
+                query_add(lstQ, aflevering, "aflevering__id", "int")
+                query_add(lstQ, mijn, "mijnlijst__id", "int")
+
+                # Get features all the ENtry elements satisfying the condition
+                total = Entry.objects.filter(*lstQ).count()
+                lst_entry = Entry.objects.filter(*lstQ).order_by('trefwoord').values(
+                    'trefwoord__woord', 'woord', 'dialect__coordinate__point', 
+                    'dialect__coordinate__place', 'dialect__stad')
+
+                # Convert the list into something that can be used by the JS module
+                lst_back = []
+                for entry in lst_entry:
+                    oBack = dict(trefwoord=entry['trefwoord__woord'],
+                                 woord=entry['woord'],
+                                 stad=entry['dialect__stad'],
+                                 point=entry['dialect__coordinate__point'])
+                    lst_back.append(oBack)
+
+                # Add the data
+                data['entries'] = lst_back
+
+                # Set the status to okay
+                data['status'] = 'ok'
+
+        except:
+            data['msg'] = oErr.get_error_message()
+
+        return JsonResponse(data)
 
 
 class LocationListView(ListView):
@@ -1775,10 +1940,17 @@ class DialectListView(ListView):
     template_name = 'dictionary/dialect_list.html'
     entrycount = 0
     bDoTime = True
+    bImportKloekeInfo = False
 
     def get_context_data(self, **kwargs):
         # Call the base implementation first to get a context
         context = super(DialectListView, self).get_context_data(**kwargs)
+
+        # One-time calls
+        if self.bImportKloekeInfo: 
+            import_kloeke_dicts()
+            # Another one-time call
+            import_kloeke_info()
 
         # Get parameters for the search
         initial = self.request.GET

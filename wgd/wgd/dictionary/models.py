@@ -812,6 +812,23 @@ class LemmaDescr(models.Model):
             return None
     
 
+class Coordinate(models.Model):
+    """Kloeke code and real-life coordinates"""
+
+    # [1] The actual (new) KloekeCode
+    kloeke = models.CharField("Plaatscode (Kloeke)", blank=False, max_length=6, default="xxxxxx")
+    # [0-1] The place name
+    place = models.CharField("Place name", db_index=True, blank=True, max_length=MAX_LEMMA_LEN)
+    # [0-1] The province
+    province = models.CharField("Province", db_index=True, blank=True, max_length=MAX_LEMMA_LEN)
+    # [0-1] The country name
+    country = models.CharField("Country", db_index=True, blank=True, max_length=MAX_LEMMA_LEN)
+    # [0-1] The dictionary in which this occurs
+    dictionary = models.CharField("Dictionary", db_index=True, blank=True, max_length=MAX_LEMMA_LEN)
+    # [0-1] The point coordinates
+    point = models.CharField("Coordinates", db_index=True, blank=True, max_length=MAX_LEMMA_LEN)
+
+
 class Dialect(models.Model):
     """Dialect"""
 
@@ -822,6 +839,7 @@ class Dialect(models.Model):
     toonbaar = models.BooleanField("Mag getoond worden", blank=False, default=True)
     # Note: removed 'dialect_toelichting' in accordance with issue #22 of WLD
     # toelichting = models.TextField("Toelichting bij dialect", blank=True)
+    coordinate = models.ForeignKey(Coordinate, null=True, blank=True, on_delete=models.SET_NULL, related_name="coordinatedialects")
 
     class Meta:
         verbose_name_plural = "Dialecten"

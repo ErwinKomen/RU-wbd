@@ -946,7 +946,7 @@ class TrefwoordListView(ListView):
         # Fine-tuning: search string is the LEMMA
         if 'search' in get and get['search'] != '':
             val = get['search']
-            if '*' in val or '[' in val or '?' in val:
+            if '*' in val or '[' in val or '?' in val or '#' in val:
                 val = adapt_search(val)
                 lstQ.append(Q(woord__iregex=val) )
             else:

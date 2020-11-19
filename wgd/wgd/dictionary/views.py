@@ -253,11 +253,14 @@ def do_repair(request):
 
 def adapt_search(val):
     # First trim
-    val = val.strip()
-    # fnmatch.translate() works okay, but note beginning and ending spaces
-    # val = fnmatch.translate('^' + val + '$')
-    val = '^' + fnmatch.translate(val) + '$'
-    # val = '^' + val.replace("?", ".").replace("*", ".*") + '$'
+    val = val.strip()    
+    # Adapt for the use of '#'
+    if '#' in val:
+        # val = val.replace('#', '\\b.*')
+        #val = r'(^|\b)' + fnmatch.translate(val.replace('#', '')) + r'($|\b)'
+        val = r'(^|(.*\b))' + val.replace('#', r'((\b.*)|$)') # + r'((\b.*)|$)'
+    else:
+        val = '^' + fnmatch.translate(val) + '$'
     return val
 
 def export_csv(qs, sFileName):
@@ -487,6 +490,39 @@ def import_csv_progress(request):
 
     # Return where we are
     return JsonResponse(data)
+
+def import_kloeke_dicts():
+    """Import kloeke dictionaries and add the info to the [Kloeke] table"""
+
+    files = ["dsdd_kloeke_0.json","dsdd_kloeke_1.json","dsdd_kloeke_2.json"]
+    oErr = ErrHandle()
+    bSuccess = False
+    try:
+        if Coordinate.objects.count() == 0:
+            # REad the files
+            for file in files:
+                # FIgure out where it should be
+                file = os.path.abspath(os.path.join(MEDIA_ROOT, file))
+                # Read the file into memory
+                with open(file, "r", encoding="utf-8") as fd:
+                    lKloekeInfo = json.load(fd)
+
+                with transaction.atomic():
+                    for oInfo in lKloekeInfo:
+                        kloeke = oInfo['kloeke']
+                        obj = Coordinate.objects.filter(kloeke=kloeke).first()
+                        if obj == None:
+                            obj = Coordinate.objects.create(
+                                kloeke=kloeke, place=oInfo['place'],
+                                province=oInfo['province'], country=oInfo['country'],
+                                point=oInfo['point'], dictionary=oInfo['dictionary'])
+
+        bSuccess = True
+    except:
+        msg = oErr.get_error_message()
+        oErr.DoError("import_kloeke_dicts")
+        bSuccess = False
+    return bSuccess
 
 @csrf_exempt
 def kloeke_plaats(request):
@@ -871,7 +907,7 @@ class TrefwoordListView(ListView):
         # Fine-tuning: search string is the LEMMA
         if 'search' in get and get['search'] != '':
             val = get['search']
-            if '*' in val or '[' in val or '?' in val:
+            if '*' in val or '[' in val or '?' in val or '#' in val:
                 val = adapt_search(val)
                 lstQ.append(Q(woord__iregex=val) )
             else:
@@ -1418,7 +1454,7 @@ class LemmaListView(ListView):
         # Fine-tuning: search string is the LEMMA
         if 'search' in get and get['search'] != '':
             val = get['search']
-            if '*' in val or '[' in val or '?' in val:
+            if '*' in val or '[' in val or '?' in val or '#' in val:
                 val = adapt_search(val)
                 lstQ.append(Q(gloss__iregex=val) )
             else:

@@ -5,17 +5,18 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>e52b7c77-4dbb-4dce-9082-948775bca8ed</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>diacorrect.py</StartupFile>
+    <StartupFile>diakloeke.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <Name>diacorrect</Name>
     <RootNamespace>diacorrect</RootNamespace>
-    <InterpreterId>MSBuild|{cee766f8-213c-432e-ae52-0977c4fd4972}|$(MSBuildProjectFullPath)</InterpreterId>
+    <InterpreterId>{cee766f8-213c-432e-ae52-0977c4fd4972}</InterpreterId>
     <LaunchProvider>Standard Python launcher</LaunchProvider>
-    <CommandLineArguments>-i "D:/Data Files/TG/Dialecten/Data/2020/WGD/Roeland/WGD-Rivierengebied-mens-20201028_EK.xlsx" -o "D:/Data Files/TG/Dialecten/Data/2020/WGD/Roeland/WGD-Rivierengebied-mens-20201029_EK.xlsx"</CommandLineArguments>
+    <CommandLineArguments>-i "D:/Data Files/TG/Dialecten/data/2020/dsdd_keywords_2.json" -o "D:/Data Files/TG/Dialecten/data/2020/dsdd_kloeke_2.json"</CommandLineArguments>
     <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
+    <InterpreterVersion>3.5</InterpreterVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
@@ -27,6 +28,9 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="diacorrect.py" />
+    <Compile Include="diakloeke.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="utils.py" />
   </ItemGroup>
   <ItemGroup>

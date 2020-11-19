@@ -3,6 +3,12 @@ Correct the Excel WGD file
 
 This version created by Erwin R. Komen
 Date: 29/oct/2020
+
+Example:
+    python diacorrect.py 
+        -i "D:/Data Files/TG/Dialecten/Data/2020/WGD/Roeland/WGD-Rivierengebied-mens-20201028_EK.xlsx" 
+        -o "D:/Data Files/TG/Dialecten/Data/2020/WGD/Roeland/WGD-Rivierengebied-mens-20201029_EK.xlsx"
+
 """
 
 import sys, getopt, os.path, importlib
