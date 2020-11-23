@@ -135,6 +135,9 @@
       </form>
     </div>
 
+    <!-- Make sure the modal form is loaded -->
+    {% include 'dictionary/map_view.html' %}
+
     <div id="lemma_list_msg"><!-- Room for any error messages --></div>
     <div id="lemma_list_oview">
     {% if object_list %}
@@ -163,6 +166,7 @@
                      onclick="lemma_map(this);"
                      targeturl="{% url 'lemmamap' item.entry.lemma.id %}"
                      targetid="erwin"
+                     
                       >
                     <span class="glyphicon glyphicon-picture"></span>
                   </a>

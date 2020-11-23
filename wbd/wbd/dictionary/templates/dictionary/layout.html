@@ -9,17 +9,22 @@
     {% load staticfiles %}
     {% load static %}
     <link rel="stylesheet" type="text/css" href="{% static 'dictionary/content/bootstrap.min.css' %}" />
+    <link rel="stylesheet" href="{% static 'dictionary/content/font-awesome.min.css' %}" />
+    <link rel="stylesheet" type="text/css" href="{% static 'dictionary/content/leaflet.css' %}" />
     <link rel="stylesheet" type="text/css" href="{% static 'dictionary/content/site.css' %}" />
     <script src="{% static 'dictionary/scripts/modernizr-2.6.2.js' %}"></script>
     <script src="{% static 'dictionary/scripts/jquery-1.10.2.js' %}"></script>
     <script src="{% static 'dictionary/scripts/bootstrap.js' %}"></script>
     <script src="{% static 'dictionary/scripts/respond.js' %}"></script>
+    <script src="{% static 'dictionary/scripts/leaflet-src.js' %}"></script>
+    <script src="{% static 'dictionary/scripts/oms.min.js' %}"></script>
     <script src="{% static 'dictionary/scripts/diadict.js' %}"></script>
 </head>
 
 <body>
     {% include 'dictionary/topnav.html' %}
 
+    <div><code id="diadict_err"></code></div>
     <div name="layout"></div>
 
     <div class="container body-content">

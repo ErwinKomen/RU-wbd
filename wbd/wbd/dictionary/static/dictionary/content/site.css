@@ -319,3 +319,6 @@ body > div > footer a {
   z-index: 1000;
 }
 
+.modal-content {
+    /* background-color: whitesmoke; */
+}

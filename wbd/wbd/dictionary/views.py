@@ -1543,6 +1543,7 @@ class LemmaMapView(DetailView):
 
                 # Add the data
                 data['entries'] = lst_back
+                data['lemma'] = lemma.gloss
 
                 # Set the status to okay
                 data['status'] = 'ok'

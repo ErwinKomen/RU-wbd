@@ -14,6 +14,18 @@ var oProgressTimer = null;
 
 var loc_divErr = "diadict_err";
 
+// ============================= MAP ======================================================
+const tileUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+      attribution =
+'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors &copy; <a href="https://carto.com/attribution">CARTO</a>',
+      tiles = L.tileLayer(tileUrl, { attribution });
+var main_map_object = null;   // Leaflet map object
+var loc_sWaiting = " <span class=\"glyphicon glyphicon-refresh glyphicon-refresh-animate\"></span>";
+var loc_oms = null;
+var loc_layerDict = {};
+var loc_overlayMarkers = {};
+// ========================================================================================
+
 // GOOGLE TRACKING STATISTICS
 (function (i, s, o, g, r, a, m) {
   i['GoogleAnalyticsObject'] = r; i[r] = i[r] || function () {
@@ -36,9 +48,11 @@ function errMsg(sMsg, ex) {
     sHtml = "<code>" + sHtml + "</code>";
     $("#" + loc_divErr).html(sHtml);
 }
+
 function errClear() {
     $("#" + loc_divErr).html("");
 }
+
 /**
  * Goal: initiate a lemma search
  * Source: http://www.javascript-coder.com/javascript-form/javascript-reset-form.phtml
@@ -205,7 +219,11 @@ function do_search(el, sName, sType, pageNum) {
                   // Knoppen weer inschakelen
 
                 } else {
-                  $(elMsg).html("Could not interpret response " + response.status);
+                  if ("msg" in response) {
+                    $(elMsg).html(response.msg);
+                  } else {
+                    $(elMsg).html("Could not interpret response " + response.status);
+                  }
                 }
               }
             });
@@ -221,10 +239,38 @@ function do_search(el, sName, sType, pageNum) {
 }
 
 function init_events() {
+  // Events for input
   $(".search-input").keyup(function (e) {
     if (e.keyCode === 13) {
       $("#button_search").click();
     }
+  });
+
+  // Make modal draggable
+  $(".modal-header, modal-dragpoint").on("mousedown", function (mousedownEvt) {
+    var $draggable = $(this),
+        cursor = null,
+        x = mousedownEvt.pageX - $draggable.offset().left,
+        y = mousedownEvt.pageY - $draggable.offset().top;
+
+    // Set the cursor
+    cursor = $draggable.css("cursor");
+    $draggable.css("cursor", "grab");
+
+    $("body").on("mousemove.draggable", function (mousemoveEvt) {
+      $draggable.closest(".modal-dialog").offset({
+        "left": mousemoveEvt.pageX - x,
+        "top": mousemoveEvt.pageY - y
+      });
+      $draggable.css("cursor", "grab");
+    });
+    $("body").one("mouseup", function () {
+      $("body").off("mousemove.draggable");
+      $draggable.css("cursor", cursor);
+    });
+    $draggable.closest(".modal").one("bs.modal.hide", function () {
+      $("body").off("mousemove.draggable");
+    });
   });
 }
 
@@ -251,6 +297,7 @@ function do_additional(el) {
         return false;
     }
 }
+
 /**
  * Goal: change dialect choice
  * @returns {bool}
@@ -285,43 +332,6 @@ function do_dialect(el) {
         return false;
     }
 
-}
-
-function lemma_map(el) {
-  var frm = "#lemmasearch",
-      data = null,
-      entries = null,
-      targeturl = "",
-      targetid = "";
-
-  try {
-    // Get the form data
-    //frm = $("form").first();
-    data = $(frm).serializeArray();
-    targeturl = $(el).attr("targeturl");
-    targetid = $(el).attr("targetid");
-
-    // Post the data to the server
-    $.post(targeturl, data, function (response) {
-      // Sanity check
-      if (response !== undefined) {
-        if (response.status == "ok") {
-          if ('entries' in response) {
-            entries = response['entries'];
-            errMsg("");
-          } else {
-            errMsg("Response is okay, but [html] is missing");
-          }
-          // Knoppen weer inschakelen
-
-        } else {
-          errMsg("Could not interpret response " + response.status);
-        }
-      }
-    });
-  } catch (ex) {
-    errMsg("lemma_map", ex);
-  }
 }
 
 function repair_start(sRepairType) {
@@ -558,3 +568,181 @@ function set_search(sId) {
         errMsg("set_search", ex);
     }
 }
+
+// ============================= MAP ======================================================
+/**
+ * make_icon
+ * 
+ * @param {str}   name, representing category
+ * @returns {bool}
+ */
+function make_icon(name) {
+  var oBack = {};
+
+  try {
+    oBack = {
+      className: name,
+      html: '<i class="fas fa-map-marker-alt"></i>',
+      iconAncor: [3, 15]
+    };
+    return L.divIcon(oBack);
+  } catch (ex) {
+    errMsg("make_icon", ex);
+  }
+}
+
+/**
+ * make_marker
+ * 
+ * @param {entry}   entry object
+ * @returns {bool}
+ */
+function make_marker(entry) {
+  var point,    // Latitude, longitude array
+      marker;
+
+  try {
+    // Validate
+    if (entry.point === null || entry.point === "") { return false;}
+    // Get to the point
+    point = entry.point.split(",").map(Number);
+    // Create marker for this point
+    marker = L.marker(point, {icon: make_icon(entry.trefwoord), className: "" });
+    // Add to OMS
+    if (loc_oms !== null) { loc_oms.addMarker(marker); }
+    // Add marker to the trefwoord collectionlayer
+    if (loc_layerDict[entry.trefwoord] === undefined) {
+      loc_layerDict[entry.trefwoord] = [];
+    }
+    loc_layerDict[entry.trefwoord].push(marker);
+  } catch (ex) {
+    errMsg("make_marker", ex);
+  }
+}
+
+function lemma_map(el) {
+  var frm = "#lemmasearch",
+      data = null,
+      entries = null,
+      lemma = "",
+      map_title = "#map_view_title",
+      map_id = "map_lemma",
+      map_view = "#map_view",
+      point = null,
+      points = [],
+      polyline = null,
+      oOverlay = null,
+      i = 0,
+      targeturl = "",
+      targetid = "";
+
+  try {
+    // Get the form data
+    //frm = $("form").first();
+    data = $(frm).serializeArray();
+    targeturl = $(el).attr("targeturl");
+    targetid = $(el).attr("targetid");
+
+    // Show the modal
+    $(map_view).modal("toggle");
+
+    // Possibly remove what is still there
+    if (main_map_object !== null) {
+      // Remove tile layer from active map
+      tiles.remove()
+      // Remove the actual map
+      try {
+        main_map_object.remove();
+      } catch (ex) {
+        i = 0;
+      }
+      main_map_object = null;
+    }
+    // Indicate we are waiting
+    $("#" + map_id).html(loc_sWaiting);
+    if (points.length > 0) points.clear();
+    loc_layerDict = {};
+
+    // Post the data to the server
+    $.post(targeturl, data, function (response) {
+      // Sanity check
+      if (response !== undefined) {
+        if (response.status == "ok") {
+          if ('entries' in response) {
+            entries = response['entries'];
+            lemma = response['lemma'];
+            // Make sure the lemma shows
+            $(map_title).html("Begrip: [" + lemma + "]");
+
+            if (main_map_object == null) {
+              // now get the first point
+              for (i = 0; i < entries.length; i++) {
+                if (entries[i].point !== null && entries[i].point !== "") {
+                  // Add point to the array of points to find out the bounds
+                  points.push(entries[i].point.split(",").map(Number));
+                  // Create a marker for this point
+                  make_marker(entries[i]);
+                }
+              }
+              if (points.length > 0) {
+                // Get the first point
+                point = points[0];
+                // CLear the map section from the waiting symbol
+                $("#" + map_id).html();
+                // Set the starting map
+                main_map_object = L.map(map_lemma).setView([point[0], point[1]], 12);
+                // Add it to my tiles
+                tiles.addTo(main_map_object);
+                // https://github.com/jawj/OverlappingMarkerSpiderfier-Leaflet to handle overlapping markers
+                loc_oms = new OverlappingMarkerSpiderfier(main_map_object, { keepSpiderfied: true });
+
+                // Set map to fit the markers
+                polyline = L.polyline(points);
+                if (points.length > 1) {
+                  main_map_object.fitBounds(polyline.getBounds());
+                } else {
+                  main_map_object.setView(points[0], 12);
+                }
+
+                // Make a layer of markers
+                for (key in loc_layerDict) {
+                  var layername = '<span>' + key + '</span>';
+                  value = loc_layerDict[key];
+                  if (value.length > 0) {
+                    try {
+                      loc_overlayMarkers[layername] = L.layerGroup(value).addTo(main_map_object);
+                    } catch (ex) {
+                      i = 100;
+                    }
+                  }
+                }
+                L.control.layers({}, loc_overlayMarkers, { collapsed: false }).addTo(main_map_object);
+              }
+            }
+
+            // Make sure it is redrawn
+            // main_map_object.invalidateSize();
+            setTimeout(function () {
+              main_map_object.invalidateSize();
+            }, 1500);
+            // Debug  break point
+            i = 100;
+          } else {
+            errMsg("Response is okay, but [html] is missing");
+          }
+          // Knoppen weer inschakelen
+
+        } else {
+          if ("msg" in response) {
+            errMsg(response.msg);
+          } else {
+            errMsg("Could not interpret response " + response.status);
+          }
+        }
+      }
+    });
+  } catch (ex) {
+    errMsg("lemma_map", ex);
+  }
+}
+
