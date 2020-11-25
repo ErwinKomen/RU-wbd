@@ -322,3 +322,15 @@ body > div > footer a {
 .modal-content {
     /* background-color: whitesmoke; */
 }
+
+/* Leaflet stuff */
+section.leaflet-control-layers-list {
+    max-height: 300px;
+}
+
+input[type="checkbox"].leaflet-control-layers-selector {
+    display: none;
+}
+input[type="checkbox"].leaflet-control-layers-selector:not(:checked) + span {
+    background-color: lightgray !important;
+}

@@ -24,6 +24,15 @@ var loc_sWaiting = " <span class=\"glyphicon glyphicon-refresh glyphicon-refresh
 var loc_oms = null;
 var loc_layerDict = {};
 var loc_overlayMarkers = {};
+var loc_colorDict = {};
+var loc_trefwoord = [];
+var loc_colors = '#0fba62,#5aa5c4,black,#345beb,#e04eed,#ed4c72,#1e662a,#c92f04,#e39817'.split(',');
+// Trial: for fontawesome *4*
+const fontAwesomeIcon = L.divIcon({
+  html: '<i class="fa fa-map-marker fa-alt" style="color: darkred;"></i>',
+  iconSize: [20, 20],
+  className: 'myDivIcon'
+});
 // ========================================================================================
 
 // GOOGLE TRACKING STATISTICS
@@ -582,7 +591,10 @@ function make_icon(name) {
   try {
     oBack = {
       className: name,
-      html: '<i class="fas fa-map-marker-alt"></i>',
+      // Note: for fontawesome *4*
+      // html: '<i class="fa fa-map-marker fa-alt" style="font-size: 24px; color: '+loc_colorDict[name]+';"></i>',
+      // Note: for fontawesome *5*
+      html: '<i class="fas fa-map-marker-alt" style="color: ' + loc_colorDict[name] + ';"></i>',
       iconAncor: [3, 15]
     };
     return L.divIcon(oBack);
@@ -599,22 +611,34 @@ function make_icon(name) {
  */
 function make_marker(entry) {
   var point,    // Latitude, longitude array
+      trefwoord = "",
+      idx = -1,
       marker;
 
   try {
     // Validate
-    if (entry.point === null || entry.point === "") { return false;}
+    if (entry.point === null || entry.point === "") { return false; }
+    // Get the trefwoord
+    trefwoord = entry.trefwoord;
+    if (loc_trefwoord.indexOf(trefwoord) < 0) {
+      // Add it
+      loc_trefwoord.push(trefwoord);
+      // Set the color table
+      idx = loc_trefwoord.indexOf(trefwoord);
+      loc_colorDict[trefwoord] = loc_colors[idx % 10];
+    }
     // Get to the point
     point = entry.point.split(",").map(Number);
     // Create marker for this point
-    marker = L.marker(point, {icon: make_icon(entry.trefwoord), className: "" });
+    marker = L.marker(point, {icon: make_icon(trefwoord)}); //, className: "" });
+    // marker = L.marker(point, { icon: fontAwesomeIcon });
     // Add to OMS
     if (loc_oms !== null) { loc_oms.addMarker(marker); }
     // Add marker to the trefwoord collectionlayer
-    if (loc_layerDict[entry.trefwoord] === undefined) {
-      loc_layerDict[entry.trefwoord] = [];
+    if (loc_layerDict[trefwoord] === undefined) {
+      loc_layerDict[trefwoord] = [];
     }
-    loc_layerDict[entry.trefwoord].push(marker);
+    loc_layerDict[trefwoord].push(marker);
   } catch (ex) {
     errMsg("make_marker", ex);
   }
@@ -630,6 +654,7 @@ function lemma_map(el) {
       map_view = "#map_view",
       point = null,
       points = [],
+      keywords = [],
       polyline = null,
       oOverlay = null,
       i = 0,
@@ -657,11 +682,16 @@ function lemma_map(el) {
         i = 0;
       }
       main_map_object = null;
+      // Reset the 
     }
     // Indicate we are waiting
     $("#" + map_id).html(loc_sWaiting);
     if (points.length > 0) points.clear();
+    // Other initializations
     loc_layerDict = {};
+    loc_trefwoord = [];
+    loc_colorDict = {};
+    loc_overlayMarkers = {};
 
     // Post the data to the server
     $.post(targeturl, data, function (response) {
@@ -696,17 +726,9 @@ function lemma_map(el) {
                 // https://github.com/jawj/OverlappingMarkerSpiderfier-Leaflet to handle overlapping markers
                 loc_oms = new OverlappingMarkerSpiderfier(main_map_object, { keepSpiderfied: true });
 
-                // Set map to fit the markers
-                polyline = L.polyline(points);
-                if (points.length > 1) {
-                  main_map_object.fitBounds(polyline.getBounds());
-                } else {
-                  main_map_object.setView(points[0], 12);
-                }
-
                 // Make a layer of markers
                 for (key in loc_layerDict) {
-                  var layername = '<span>' + key + '</span>';
+                  var layername = '<span style="color: '+loc_colorDict[key]+';">' + key + '</span>' + ' (' + loc_layerDict[key].length + ')';
                   value = loc_layerDict[key];
                   if (value.length > 0) {
                     try {
@@ -717,6 +739,15 @@ function lemma_map(el) {
                   }
                 }
                 L.control.layers({}, loc_overlayMarkers, { collapsed: false }).addTo(main_map_object);
+
+                // Set map to fit the markers
+                polyline = L.polyline(points);
+                if (points.length > 1) {
+                  main_map_object.fitBounds(polyline.getBounds());
+                } else {
+                  main_map_object.setView(points[0], 12);
+                }
+
               }
             }
 
@@ -724,7 +755,8 @@ function lemma_map(el) {
             // main_map_object.invalidateSize();
             setTimeout(function () {
               main_map_object.invalidateSize();
-            }, 1500);
+              main_map_object.fitBounds(polyline.getBounds());
+            }, 200);
             // Debug  break point
             i = 100;
           } else {
