@@ -1195,15 +1195,15 @@ class Entry(models.Model):
 
     # ================= FOREIGN-KEYS ===========================
     # [1] Aflevering
-    aflevering = models.ForeignKey(Aflevering, db_index=True, blank=False, on_delete=models.CASCADE, related_name="aflevering_entries")
+    aflevering = models.ForeignKey(Aflevering, db_index=True, blank=False)  #, on_delete=models.CASCADE, related_name="aflevering_entries")
     # [1] Lemma: obligatory
-    lemma = models.ForeignKey(Lemma, db_index=True, blank=False, on_delete=models.CASCADE, related_name="lemma_entries")
+    lemma = models.ForeignKey(Lemma, db_index=True, blank=False)  #, on_delete=models.CASCADE, related_name="lemma_entries")
     # [1] Description: this description should be one and the same for a whole lemma, but this is not true in practice
-    descr = models.ForeignKey(Description, db_index=True, blank=False, on_delete=models.CASCADE, related_name="descr_entries")
+    descr = models.ForeignKey(Description, db_index=True, blank=False)  #, on_delete=models.CASCADE, related_name="descr_entries")
     # [1] Dialect: obligatory
-    dialect = models.ForeignKey(Dialect, db_index=True, blank=False, on_delete=models.CASCADE, related_name="dialect_entries")
+    dialect = models.ForeignKey(Dialect, db_index=True, blank=False)  #, on_delete=models.CASCADE, related_name="dialect_entries")
     # [1] Trefwoord: obligatory
-    trefwoord = models.ForeignKey(Trefwoord, db_index=True, blank=False, on_delete=models.CASCADE, related_name="trefwoord_entries")
+    trefwoord = models.ForeignKey(Trefwoord, db_index=True, blank=False)  #, on_delete=models.CASCADE, related_name="trefwoord_entries")
 
     # ============== MANY-TO-MANY fields ====================
     # Mijn [0-n]
