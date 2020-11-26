@@ -2093,7 +2093,7 @@ class DialectListView(ListView):
     template_name = 'dictionary/dialect_list.html'
     entrycount = 0
     bDoTime = True
-    bImportKloekeInfo = True
+    bImportKloekeInfo = False
 
     def get_context_data(self, **kwargs):
         # Call the base implementation first to get a context
