@@ -24,6 +24,7 @@ class BootstrapAuthenticationForm(AuthenticationForm):
                                    'class': 'form-control',
                                    'placeholder':'Password'}))
 
+
 class EntrySearchForm(forms.ModelForm):
 
     search = forms.CharField(label=_("Woord in het dialect"))

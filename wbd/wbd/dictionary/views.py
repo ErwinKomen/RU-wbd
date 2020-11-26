@@ -27,6 +27,7 @@ import copy
 import json
 from wbd.dictionary.models import *
 from wbd.dictionary.forms import *
+from wbd.mapview.views import MapView
 #from wbd.dictionary.adminviews import order_queryset_by_sort_order
 from wbd.settings import APP_PREFIX, WSGI_FILE
 from wbd.dictionary.conversion import rd_to_wgs, wgs_to_rd
@@ -1470,95 +1471,35 @@ class LemmaListView(ListView):
         return qse
 
 
-class LemmaMapView(DetailView):
-    """Show the 'trefwoorden' belonging to this lemma, after applying a filter"""
-
+class LemmaMapView(MapView):
     model = Lemma
+    modEntry = Entry
+    frmSearch = LemmaSearchForm
+    order_by = "trefwoord"
+    labelfield = "gloss"
 
-    def get(self, request, *args, **kwargs):
-        # No errors, just return to the homepage
-        return reverse('home')
-    
-    def post(self, request, *args, **kwargs):
-        # Formulate a response
-        data = {'status': 'error', 'msg': 'unknown'}
+    def initialize(self):
+        # Entries with a 'form' value
+        self.add_entry('woord', 'str', 'woord', 'woord')
+        self.add_entry('stad', 'str', 'dialect__stad', 'dialectCity')
+        self.add_entry('kloeke', 'str', 'dialect__nieuw', 'dialectCode')
+        self.add_entry('aflevering', 'int', 'aflevering__id', 'aflevering')
+        self.add_entry('mijn', 'int', 'mijnlijst__id', 'mijn')
 
-        def query_add(lstQ, val, path, type):
-            if type == "str" and val != "" and val != None:
-                comparison = "iexact"
-                if '*' in val or '[' in val or '?' in val or '#' in val:
-                    val = adapt_search(val)
-                    comparison = "iregex"
-                lstQ.append(Q(**{"{}__{}".format(path, comparison): val}))
-            elif type == "int" and val != "" and val != None:
-                if val.isdigit():
-                    iVal = int(val)
-                    if iVal>0:
-                        lstQ.append(Q(**{"{}".format(path): iVal}))
+        # Entries without a 'form' value
+        self.add_entry('trefwoord', 'str', 'trefwoord__woord')
+        self.add_entry('point', 'str', 'dialect__coordinate__point')
+        self.add_entry('place', 'str', 'dialect__coordinate__place')
 
-        oErr = ErrHandle()
-        try:
-            # Get the object from what we receive
-            lemma = self.get_object()
+    def get_popup(self, entry):
+        """Create a popup from the 'key' values defined in [initialize()]"""
 
-            # Get the search parameters, if any
-            search_form = LemmaSearchForm(request.POST)
-            #qd = request.POST.copy()
-            if search_form.is_valid():
-                # Get the data
-                cleaned_data = search_form.cleaned_data
-
-                # Derive the variables from the cleaned_data
-                # NOT NEEDED: search = cleaned_data.get("search", None)
-                dialectCity = cleaned_data.get("dialectCity", "")
-                dialectCode = cleaned_data.get("dialectCode", "")
-                woord = cleaned_data.get("woord", None)
-                aflevering = cleaned_data.get("aflevering", None)
-                mijn = cleaned_data.get("mijn", None)
-
-                # Build a filter to get all entries, based on the cleaned data
-                lstQ = []
-                lstQ.append(Q(lemma__id=lemma.id))
-                # NOT NEEDED: query_add(lstQ, search, "lemma__gloss", "str")
-                query_add(lstQ, dialectCity, "dialect__stad", "str")
-                query_add(lstQ, dialectCode, "dialect__nieuw", "str")
-                query_add(lstQ, woord, "woord", "str")
-                query_add(lstQ, aflevering, "aflevering__id", "int")
-                query_add(lstQ, mijn, "mijnlijst__id", "int")
-
-                # Get features all the ENtry elements satisfying the condition
-                total = Entry.objects.filter(*lstQ).count()
-                lst_entry = Entry.objects.filter(*lstQ).order_by('trefwoord').values(
-                    'trefwoord__woord', 'woord', 'dialect__coordinate__point', 
-                    'dialect__coordinate__place', 'dialect__stad', 'dialect__nieuw')
-
-                # Convert the list into something that can be used by the JS module
-                lst_back = []
-                for entry in lst_entry:
-                    # Create the popup visualization right here
-                    pop_up = '<p class="h6">{}</p>'.format(entry['woord'])
-                    pop_up += '<hr style="border: 1px solid green" />'
-                    pop_up += '<p style="font-size: smaller;"><span style="color: purple;">{}</span> {}</p>'.format(
-                        entry['dialect__nieuw'], entry['dialect__stad'])
-                    # Create object to return
-                    oBack = dict(trefwoord=entry['trefwoord__woord'],
-                                 woord=entry['woord'],
-                                 pop_up=pop_up,
-                                 point=entry['dialect__coordinate__point'])
-                    lst_back.append(oBack)
-
-                # Add the data
-                data['entries'] = lst_back
-                data['lemma'] = lemma.gloss
-
-                # Set the status to okay
-                data['status'] = 'ok'
-
-        except:
-            data['msg'] = oErr.get_error_message()
-
-        return JsonResponse(data)
-
+        pop_up = '<p class="h6">{}</p>'.format(entry['woord'])
+        pop_up += '<hr style="border: 1px solid green" />'
+        pop_up += '<p style="font-size: smaller;"><span style="color: purple;">{}</span> {}</p>'.format(
+            entry['kloeke'], entry['stad'])
+        return pop_up
+        
 
 class LocationListView(ListView):
     """Listview of locations"""

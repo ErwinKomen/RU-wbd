@@ -74,6 +74,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     # The apps for RU-wbd
     'wbd.dictionary',
+    'wbd.mapview',
 ]
 
 MIDDLEWARE_CLASSES = [
