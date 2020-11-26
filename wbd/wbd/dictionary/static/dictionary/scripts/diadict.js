@@ -23,6 +23,7 @@ var main_map_object = null;   // Leaflet map object
 var loc_sWaiting = " <span class=\"glyphicon glyphicon-refresh glyphicon-refresh-animate\"></span>";
 var loc_oms = null;
 var loc_layerDict = {};
+var loc_layerList = [];
 var loc_overlayMarkers = {};
 var loc_colorDict = {};
 var loc_trefwoord = [];
@@ -612,6 +613,7 @@ function make_icon(name) {
 function make_marker(entry) {
   var point,    // Latitude, longitude array
       trefwoord = "",
+      popup = "",
       idx = -1,
       marker;
 
@@ -629,9 +631,15 @@ function make_marker(entry) {
     }
     // Get to the point
     point = entry.point.split(",").map(Number);
+
     // Create marker for this point
-    marker = L.marker(point, {icon: make_icon(trefwoord)}); //, className: "" });
-    // marker = L.marker(point, { icon: fontAwesomeIcon });
+    marker = L.marker(point, { icon: make_icon(trefwoord) });
+
+    // Add a popup to the marker
+    //popup = entry.woord + "\n (" + entry.kloeke + ": " + entry.stad + ")";
+    popup = entry.pop_up;
+    marker.bindPopup(popup, { maxWidth: 200, closeButton: false });
+
     // Add to OMS
     if (loc_oms !== null) { loc_oms.addMarker(marker); }
     // Add marker to the trefwoord collectionlayer
@@ -689,6 +697,7 @@ function lemma_map(el) {
     if (points.length > 0) points.clear();
     // Other initializations
     loc_layerDict = {};
+    loc_layerList = [];
     loc_trefwoord = [];
     loc_colorDict = {};
     loc_overlayMarkers = {};
@@ -726,10 +735,20 @@ function lemma_map(el) {
                 // https://github.com/jawj/OverlappingMarkerSpiderfier-Leaflet to handle overlapping markers
                 loc_oms = new OverlappingMarkerSpiderfier(main_map_object, { keepSpiderfied: true });
 
-                // Make a layer of markers
+                // Convert layerdict into layerlist
                 for (key in loc_layerDict) {
-                  var layername = '<span style="color: '+loc_colorDict[key]+';">' + key + '</span>' + ' (' + loc_layerDict[key].length + ')';
-                  value = loc_layerDict[key];
+                  loc_layerList.push({key: key, value: loc_layerDict[key], freq: loc_layerDict[key].length});
+                }
+                // sort the layerlist
+                loc_layerList.sort(function (a, b) {
+                  return b.freq - a.freq;
+                });
+
+                // Make a layer of markers from the layerLIST
+                for (idx in loc_layerList) {
+                  var key = loc_layerList[idx].key;
+                  var layername = '<span style="color: ' + loc_colorDict[key] + ';">' + key + '</span>' + ' (' + loc_layerList[idx].freq + ')';
+                  value = loc_layerList[idx].value;
                   if (value.length > 0) {
                     try {
                       loc_overlayMarkers[layername] = L.layerGroup(value).addTo(main_map_object);

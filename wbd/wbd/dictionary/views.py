@@ -1530,14 +1530,20 @@ class LemmaMapView(DetailView):
                 total = Entry.objects.filter(*lstQ).count()
                 lst_entry = Entry.objects.filter(*lstQ).order_by('trefwoord').values(
                     'trefwoord__woord', 'woord', 'dialect__coordinate__point', 
-                    'dialect__coordinate__place', 'dialect__stad')
+                    'dialect__coordinate__place', 'dialect__stad', 'dialect__nieuw')
 
                 # Convert the list into something that can be used by the JS module
                 lst_back = []
                 for entry in lst_entry:
+                    # Create the popup visualization right here
+                    pop_up = '<p class="h6">{}</p>'.format(entry['woord'])
+                    pop_up += '<hr style="border: 1px solid green" />'
+                    pop_up += '<p style="font-size: smaller;"><span style="color: purple;">{}</span> {}</p>'.format(
+                        entry['dialect__nieuw'], entry['dialect__stad'])
+                    # Create object to return
                     oBack = dict(trefwoord=entry['trefwoord__woord'],
                                  woord=entry['woord'],
-                                 stad=entry['dialect__stad'],
+                                 pop_up=pop_up,
                                  point=entry['dialect__coordinate__point'])
                     lst_back.append(oBack)
 

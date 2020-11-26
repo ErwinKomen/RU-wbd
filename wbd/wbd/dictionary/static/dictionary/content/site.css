@@ -1,4 +1,4 @@
-﻿body {
+body {
     padding-top: 50px;
     padding-bottom: 20px;
 }
@@ -334,3 +334,19 @@ input[type="checkbox"].leaflet-control-layers-selector {
 input[type="checkbox"].leaflet-control-layers-selector:not(:checked) + span {
     background-color: lightgray !important;
 }
+
+.leaflet-popup-tip,                                                                                                                     
+.leaflet-popup-content-wrapper {                                                                                                        
+    text-align:center;                                                                                                                  
+    padding:6px;                                                                                                                        
+}                                                                                                                                       
+                                                                                                                                        
+.leaflet-popup-content, .leaflet-popup-content > hr {                                                                                                                
+    margin:0px;                                                                                                                         
+    padding:0px;                                                                                                                        
+}                                                                                                                                       
+                                                                                                                                        
+.leaflet-popup-content p {                                                                                                              
+    margin:0px;                                                                                                                         
+    padding:0px;                                                                                                                        
+}  
