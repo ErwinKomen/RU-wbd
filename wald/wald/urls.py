@@ -8,6 +8,7 @@ from django.conf.urls import url, include
 from django.conf.urls.static import static
 from django.contrib import admin
 import django.contrib.auth.views
+from django.views.decorators.csrf import csrf_exempt
 
 # Enable the admin:
 from wald.settings import APP_PREFIX, STATIC_ROOT
@@ -46,6 +47,7 @@ urlpatterns = [
     url(r'^lemmas$', LemmaListView.as_view(), name='lemmas'),
     url(r'^lemma/search/$', LemmaListView.as_view(), name='lemmasearch'),
     url(r'^lemma/search/ajax/$', LemmaListView.as_view(), name='lemmasearch_ajax'),
+    url(r'^lemma/map/(?P<pk>\d+)/$', csrf_exempt(LemmaMapView.as_view()), name='lemmamap'),
     url(r'^trefwoord/search/$', TrefwoordListView.as_view(), name='trefwoordsearch'),
     url(r'^dialects', DialectListView.as_view(), name='dialects'),
     url(r'^dialect/search/$', DialectListView.as_view(), name='dialectsearch'),

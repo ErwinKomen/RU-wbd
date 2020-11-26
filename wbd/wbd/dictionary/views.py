@@ -523,6 +523,67 @@ def import_kloeke_info():
         bSuccess = False
     return bSuccess
 
+def import_kloeke_cumul():
+    """Import kloeke information from the DSDD file
+    
+    Column significance:
+         0 kloeke_code1        De huidige kloekecode
+         1 kloeke_code_oud     (deze kloekecodes gebruiken we niet meer)
+         2 plaats
+         3 gemeentecode_2007   Code voor deze gemeente
+         4 gemeente
+         5 streek           
+         6 provincie
+         7 postcode            
+         8 land                Land
+         9 rd_x                Rijksdriehoeks X           
+        10 rd_y                Rijksdriehoeks Y
+        11 lat                 latitude
+        12 lng                 longitude
+        13 topocode            ?
+        14 std_spelling        ?
+        15 volgnr              nummer (intern)
+        16 in_dsdd             boolean (false)
+        17 cannot_be_in_wvd    boolean (false)
+        18 doet_niet_mee       boolean (false)
+        19 in_wvd              boolean (false)
+    """
+
+    file = "kloeke_cumul.tsv"
+    oErr = ErrHandle()
+    bSuccess = False
+    try:
+        # FIgure out where the file is actually to be found
+        file = os.path.abspath(os.path.join(MEDIA_ROOT, file))
+        # Read the file into memory
+        with open(file, "r", encoding="utf-8") as fd:
+            lKloekeInfo = json.load(fd)
+
+        with transaction.atomic():
+            for tabline in lKloekeInfo:
+                oInfo = tabline.split('\t')
+                # Each item contains 5 elements: id, kloeke, place, x, y
+                kloeke = oInfo[0]
+                obj = Coordinate.objects.filter(kloeke__iexact=kloeke).first()
+                if obj == None:
+                    place = oInfo[2]
+                    point_lst = rd_to_wgs(oInfo[11], oInfo[12])
+                    point = '{}, {}'.format(point_lst[0], point_lst[1])
+                    obj = Coordinate.objects.create(kloeke=kloeke, place=place, point=point)
+                # Check if the link from [Dialect] has already been made
+                dialect = Dialect.objects.filter(nieuw__iexact=kloeke).first()
+                if dialect != None:
+                    if dialect.coordinate == None:
+                        dialect.coordinate = obj
+                        dialect.save()
+
+        bSuccess = True
+    except:
+        msg = oErr.get_error_message()
+        oErr.DoError("import_kloeke_cumul")
+        bSuccess = False
+    return bSuccess
+
 
 class DictionaryDetailView(DetailView):
     """Details of an entry from the dictionary"""

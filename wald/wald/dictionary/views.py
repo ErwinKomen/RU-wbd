@@ -29,7 +29,9 @@ import copy
 import sys
 from wald.dictionary.models import *
 from wald.dictionary.forms import *
+from wald.mapview.views import MapView
 from wald.settings import APP_PREFIX, WSGI_FILE
+from wald.dictionary.conversion import rd_to_wgs, wgs_to_rd
 
 # Global variables
 paginateSize = 10
@@ -622,6 +624,89 @@ def import_update_progress(request, pk):
     # Return where we are
     return JsonResponse(data)
 
+def import_kloeke_cumul():
+    """Import kloeke information from the DSDD file
+    
+    Column significance:
+         0 kloeke_code1        De huidige kloekecode
+         1 kloeke_code_oud     (deze kloekecodes gebruiken we niet meer)
+         2 plaats
+         3 gemeentecode_2007   Code voor deze gemeente
+         4 gemeente
+         5 streek           
+         6 provincie
+         7 postcode            
+         8 land                Land
+         9 rd_x                Rijksdriehoeks X           
+        10 rd_y                Rijksdriehoeks Y
+        11 lat                 latitude
+        12 lng                 longitude
+        13 topocode            ?
+        14 std_spelling        ?
+        15 volgnr              nummer (intern)
+        16 in_dsdd             boolean (false)
+        17 cannot_be_in_wvd    boolean (false)
+        18 doet_niet_mee       boolean (false)
+        19 in_wvd              boolean (false)
+    """
+
+    file = "kloeke_cumul.tsv"
+    oErr = ErrHandle()
+    bSuccess = False
+    try:
+        # FIgure out where the file is actually to be found
+        file = os.path.abspath(os.path.join(MEDIA_ROOT, file))
+        # Read the file into memory
+        with open(file, "r", encoding="utf-8") as fd:
+            lKloekeInfo = fd.readlines() # json.load(fd)
+
+        with transaction.atomic():
+            for tabline in lKloekeInfo:
+                oInfo = tabline.replace('\n', '').split('\t')
+                # Each item contains 5 elements: id, kloeke, place, x, y
+                kloeke = oInfo[0]
+                province = oInfo[6]
+                country = oInfo[8]
+                place = oInfo[2]
+                point = '{}, {}'.format(oInfo[11], oInfo[12])
+                obj = Coordinate.objects.filter(kloeke__iexact=kloeke).first()
+                if obj == None:
+                    obj = Coordinate.objects.create(kloeke=kloeke, 
+                        place=place, point=point, province=province, country=country)
+                else:
+                    bNeedSaving = False
+                    # Adapt stuff
+                    if obj.kloeke != kloeke: 
+                        obj.kloeke = kloeke
+                        bNeedSaving = True
+                    if obj.province != province: 
+                        obj.province = province
+                        bNeedSaving = True
+                    if obj.country != country: 
+                        obj.country = country
+                        bNeedSaving = True
+                    if obj.place != place: 
+                        obj.place = place
+                        bNeedSaving = True
+                    if obj.point != point: 
+                        obj.point = point
+                        bNeedSaving = True
+                    if bNeedSaving:
+                        obj.save()
+
+                # Check if the link from [Dialect] has already been made
+                dialect = Dialect.objects.filter(nieuw__iexact=kloeke).first()
+                if dialect != None:
+                    if dialect.coordinate == None:
+                        dialect.coordinate = obj
+                        dialect.save()
+
+        bSuccess = True
+    except:
+        msg = oErr.get_error_message()
+        oErr.DoError("import_kloeke_cumul")
+        bSuccess = False
+    return bSuccess
 
 
 class DictionaryDetailView(DetailView):
@@ -1585,6 +1670,36 @@ class LemmaListView(ListView):
         return qse
 
 
+class LemmaMapView(MapView):
+    model = Lemma
+    modEntry = Entry
+    frmSearch = LemmaSearchForm
+    order_by = "trefwoord"
+    labelfield = "gloss"
+
+    def initialize(self):
+        # Entries with a 'form' value
+        self.add_entry('woord', 'str', 'woord', 'woord')
+        self.add_entry('stad', 'str', 'dialect__stad', 'dialectCity')
+        self.add_entry('kloeke', 'str', 'dialect__nieuw', 'dialectCode')
+        self.add_entry('aflevering', 'int', 'aflevering__id', 'aflevering')
+        self.add_entry('mijn', 'int', 'mijnlijst__id', 'mijn')
+
+        # Entries without a 'form' value
+        self.add_entry('trefwoord', 'str', 'trefwoord__woord')
+        self.add_entry('point', 'str', 'dialect__coordinate__point')
+        self.add_entry('place', 'str', 'dialect__coordinate__place')
+
+    def get_popup(self, entry):
+        """Create a popup from the 'key' values defined in [initialize()]"""
+
+        pop_up = '<p class="h6">{}</p>'.format(entry['woord'])
+        pop_up += '<hr style="border: 1px solid green" />'
+        pop_up += '<p style="font-size: smaller;"><span style="color: purple;">{}</span> {}</p>'.format(
+            entry['kloeke'], entry['stad'])
+        return pop_up
+    
+
 class LocationListView(ListView):
     """Listview of locations"""
 
@@ -1978,10 +2093,15 @@ class DialectListView(ListView):
     template_name = 'dictionary/dialect_list.html'
     entrycount = 0
     bDoTime = True
+    bImportKloekeInfo = True
 
     def get_context_data(self, **kwargs):
         # Call the base implementation first to get a context
         context = super(DialectListView, self).get_context_data(**kwargs)
+
+        # One-time calls
+        if self.bImportKloekeInfo: 
+            import_kloeke_cumul()
 
         # Get parameters for the search
         initial = self.request.GET

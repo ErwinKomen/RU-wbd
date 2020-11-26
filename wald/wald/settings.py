@@ -74,6 +74,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     # The apps for RU-wald
     'wald.dictionary',
+    'wald.mapview',
 ]
 
 MIDDLEWARE_CLASSES = [

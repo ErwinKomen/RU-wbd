@@ -303,3 +303,4 @@ ModelManifest.xml
 /wald/static/dictionary/content/EWBD_800_300_2.jpg
 /wbd/wbd/dictionary/static/dictionary/scripts/fontawesome.js
 /wbd/wbd/mapview/migrations
+/wald/wald/mapview/migrations/__init__.py
