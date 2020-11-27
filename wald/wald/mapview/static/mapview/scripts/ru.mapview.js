@@ -124,9 +124,25 @@ var ru = (function ($, ru) {
           }
           loc_layerDict[trefwoord].push(marker);
         } catch (ex) {
-          errMsg("make_marker", ex);
+          private_methods.errMsg("make_marker", ex);
+        }
+      },
+
+      leaflet_scrollbars: function () {
+        var layers_list = "section.leaflet-control-layers-list",
+            layers_scrollbar = "leaflet-control-layers-scrollbar",
+            height = 300;
+
+        try {
+          if ($(layers_list)[0].scrollHeight > height) {
+            $(layers_list).addClass(layers_scrollbar);
+            $(layers_list)[0].style.height = height + 'px';
+          }
+        } catch (ex) {
+          private_methods.errMsg("leaflet_scrollbars", ex);
         }
       }
+
     }
 
     // Public methods
@@ -258,10 +274,7 @@ var ru = (function ($, ru) {
                         main_map_object.setView(points[0], 12);
                       }
 
-                      if ($("section.leaflet-control-layers-list")[0].scrollHeight > 300) {
-                        $("section.leaflet-control-layers-list").addClass("leaflet-control-layers-scrollbar");
-                        $("section.leaflet-control-layers-list")[0].style.height = '300px';
-                      }
+                      private_methods.leaflet_scrollbars();
 
                     }
                   }
@@ -276,10 +289,7 @@ var ru = (function ($, ru) {
                       main_map_object.setView(points[0], 12);
                     }
 
-                    if ($("section.leaflet-control-layers-list")[0].scrollHeight > 300) {
-                      $("section.leaflet-control-layers-list").addClass("leaflet-control-layers-scrollbar");
-                      $("section.leaflet-control-layers-list")[0].style.height = '300px';
-                    }
+                    private_methods.leaflet_scrollbars();
 
                   }, 200);
                   // Debug  break point
