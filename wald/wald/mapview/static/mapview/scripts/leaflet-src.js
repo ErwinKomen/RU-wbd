@@ -5008,12 +5008,13 @@
   	expand: function () {
   		addClass(this._container, 'leaflet-control-layers-expanded');
   		this._section.style.height = null;
-  		var acceptableHeight = this._map.getSize().y - (this._container.offsetTop + 100);
-  		if (acceptableHeight < this._section.clientHeight) {
-  			addClass(this._section, 'leaflet-control-layers-scrollbar');
-  			this._section.style.height = acceptableHeight + 'px';
+  		var acceptableHeight = this._map.getSize().y - (this._container.offsetTop + 50);
+  		//if (acceptableHeight > 0 && acceptableHeight <= this._section.clientHeight) {
+  		if (acceptableHeight > 0 && acceptableHeight <= this._section.scrollHeight) {
+  		  addClass(this._section, 'leaflet-control-layers-scrollbar');
+  		  this._section.style.height = acceptableHeight + 'px';
   		} else {
-  			removeClass(this._section, 'leaflet-control-layers-scrollbar');
+  		  removeClass(this._section, 'leaflet-control-layers-scrollbar');
   		}
   		this._checkDisabledLayers();
   		return this;

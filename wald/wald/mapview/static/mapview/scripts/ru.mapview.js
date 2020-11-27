@@ -246,7 +246,9 @@ var ru = (function ($, ru) {
                           }
                         }
                       }
-                      L.control.layers({}, loc_overlayMarkers, { collapsed: false }).addTo(main_map_object);
+                      L.control
+                        .layers({}, loc_overlayMarkers, { collapsed: false })
+                        .addTo(main_map_object)
 
                       // Set map to fit the markers
                       polyline = L.polyline(points);
@@ -254,6 +256,11 @@ var ru = (function ($, ru) {
                         main_map_object.fitBounds(polyline.getBounds());
                       } else {
                         main_map_object.setView(points[0], 12);
+                      }
+
+                      if ($("section.leaflet-control-layers-list")[0].scrollHeight > 300) {
+                        $("section.leaflet-control-layers-list").addClass("leaflet-control-layers-scrollbar");
+                        $("section.leaflet-control-layers-list")[0].style.height = '300px';
                       }
 
                     }
@@ -268,6 +275,12 @@ var ru = (function ($, ru) {
                     } else {
                       main_map_object.setView(points[0], 12);
                     }
+
+                    if ($("section.leaflet-control-layers-list")[0].scrollHeight > 300) {
+                      $("section.leaflet-control-layers-list").addClass("leaflet-control-layers-scrollbar");
+                      $("section.leaflet-control-layers-list")[0].style.height = '300px';
+                    }
+
                   }, 200);
                   // Debug  break point
                   i = 100;
