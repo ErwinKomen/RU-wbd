@@ -1674,10 +1674,11 @@ class LemmaMapView(MapView):
     model = Lemma
     modEntry = Entry
     frmSearch = LemmaSearchForm
-    order_by = "trefwoord"
+    order_by = ["trefwoord"]
     labelfield = "gloss"
 
     def initialize(self):
+        super(LemmaMapView, self).initialize()
         # Entries with a 'form' value
         self.add_entry('woord', 'str', 'woord', 'woord')
         self.add_entry('stad', 'str', 'dialect__stad', 'dialectCity')
@@ -2177,6 +2178,21 @@ class DialectListView(ListView):
 
             # Set the information value to 'done'
             Information.set_kvalue("rhede", "done")
+
+        # Check if "DIalect count" has been processed
+        if Information.get_kvalue("dialectcount") != "done":
+            adapt_dialect = []
+            # Visit all dialects and get the  number of entries per dialect
+            with transaction.atomic():
+                for dialect in Dialect.objects.all():
+                    count = Entry.objects.filter(dialect=dialect).count()
+                    dialect.count = count
+                    dialect.save()
+
+
+            # Set the information value to 'done'
+            Information.set_kvalue("dialectcount", "done")
+
         return None
         
     def get_queryset(self):
@@ -2235,6 +2251,36 @@ class DialectListView(ListView):
         # Return the resulting filtered and sorted queryset
         return qs
 
+
+class DialectMapView(MapView):
+    model = Dialect
+    modEntry = Dialect
+    frmSearch = DialectSearchForm
+    order_by = ["streek", "stad"]
+    use_object = False
+    label = "Dialectplaatsen"
+
+    def initialize(self):
+        super(DialectMapView, self).initialize()
+        # Entries with a 'form' value
+        self.add_entry('stad', 'str', 'stad', 'search')
+        self.add_entry('kloeke', 'str', 'nieuw', 'nieuw')
+
+        # Entries without a 'form' value
+        self.add_entry('trefwoord', 'str', 'streek')
+        self.add_entry('point', 'str', 'coordinate__point')
+        self.add_entry('place', 'str', 'coordinate__place')
+        self.add_entry('count', 'int', 'count')
+
+    def get_popup(self, dialect):
+        """Create a popup from the 'key' values defined in [initialize()]"""
+
+        pop_up = '<p class="h6">{}</p>'.format(dialect['stad'])
+        pop_up += '<hr style="border: 1px solid green" />'
+        pop_up += '<p style="font-size: smaller;"><span style="color: purple;">{}</span> {}</p>'.format(
+            dialect['kloeke'], dialect['count'])
+        return pop_up
+    
 
 class DialectCheckView(ListView):
     """Check how the dialects have fared"""

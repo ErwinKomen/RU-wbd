@@ -52,6 +52,7 @@ urlpatterns = [
     url(r'^dialects', DialectListView.as_view(), name='dialects'),
     url(r'^dialect/search/$', DialectListView.as_view(), name='dialectsearch'),
     url(r'^dialect/check/$', DialectCheckView.as_view(), name='dialectcheck'),
+    url(r'^dialect/map/$', csrf_exempt(DialectMapView.as_view()), name='dialectmap'),
     url(r'^locations', LocationListView.as_view(), name='locations'),
     url(r'^location/search/$', LocationListView.as_view(), name='locationsearch'),
     url(r'^mines', MijnListView.as_view(), name='mines'),

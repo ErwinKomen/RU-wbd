@@ -140,6 +140,7 @@ admin.site.register(Trefwoord, TrefwoordAdmin)
 admin.site.register(Aflevering, AfleveringAdmin)
 admin.site.register(Mijn)
 admin.site.register(Info, InfoAdmin)
+admin.site.register(Information)
 admin.site.register(DataUpdate, DataUpdateAdmin)
 admin.site.register(Description, DescriptionAdmin)
 

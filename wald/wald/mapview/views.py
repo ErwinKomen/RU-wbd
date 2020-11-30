@@ -14,6 +14,8 @@ from django.db import connection
 from django.db.models import Q
 from django.db.models.functions import Lower
 from django.http import JsonResponse
+import fnmatch
+
 
 import sys
 
@@ -68,6 +70,18 @@ class ErrHandle:
         else:
             return ""
 
+def adapt_search(val):
+    # First trim
+    val = val.strip()    
+    # Adapt for the use of '#'
+    if '#' in val:
+        val = r'(^|(.*\b))' + val.replace('#', r'((\b.*)|$)')
+    else:
+        val = '^' + fnmatch.translate(val) + '$'
+    return val
+
+
+
 # Create your views here.
 class MapView(DetailView):
     """Show the 'trefwoorden' belonging to this lemma, after applying a filter"""
@@ -78,6 +92,8 @@ class MapView(DetailView):
     entry_list = []
     order_by = ""
     labelfield = ""
+    use_object = True
+    label = ""
 
     def get(self, request, *args, **kwargs):
         # No errors, just return to the homepage
@@ -85,10 +101,17 @@ class MapView(DetailView):
 
     def initialize(self):
         # This is where the user may himself call [add_entry] to fill the [entry_list]
-        pass
+        self.entry_list = []
 
     def add_entry(self, key, type="str", query="", form=""):
         self.entry_list.append(dict(key=key, form=form, type=type, query=query))
+
+    def get_object(self, queryset = None):
+        if self.use_object:
+            response = super(MapView, self).get_object(queryset)
+        else:
+            response = None
+        return response
 
     def get_popup(self, entry):
         return "(no popup specified)"
@@ -128,7 +151,8 @@ class MapView(DetailView):
                 # Build a filter to get all entries, based on the cleaned data
                 lstQ = []
                 # Start with the main object's id
-                lstQ.append(Q(**{"{}__id".format(self.model._meta.model_name.lower()): obj.id}))
+                if self.use_object:
+                    lstQ.append(Q(**{"{}__id".format(self.model._meta.model_name.lower()): obj.id}))
 
                 # Derive the variables from the cleaned_data according to entry_list
                 value_list = []
@@ -143,7 +167,7 @@ class MapView(DetailView):
                 # Get features of all the ENtry elements satisfying the condition
                 total = self.modEntry.objects.filter(*lstQ).count()
                 # Retrieve all the necessary entries
-                lst_entry = self.modEntry.objects.filter(*lstQ).order_by(self.order_by).values(*value_list)
+                lst_entry = self.modEntry.objects.filter(*lstQ).order_by(*self.order_by).values(*value_list)
 
                 # Create a new list that uses the 'key's from entry_list
                 lst_back = []
@@ -156,13 +180,17 @@ class MapView(DetailView):
 
                 # Add the data
                 data['entries'] = lst_back
-                data['label'] = getattr(obj, self.labelfield)    # lemma.gloss
+                if self.use_object:
+                    data['label'] = getattr(obj, self.labelfield)    # lemma.gloss
+                else:
+                    data['label'] = self.label
 
                 # Set the status to okay
                 data['status'] = 'ok'
 
         except:
             data['msg'] = oErr.get_error_message()
+            oErr.DoError("MapView/post")
 
         return JsonResponse(data)
 
