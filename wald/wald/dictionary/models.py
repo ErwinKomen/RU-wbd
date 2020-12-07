@@ -541,6 +541,7 @@ class Lemma(models.Model):
                 if "sense" in options:
                     sense = options['sense']
                 if oTime != None: iStart = get_now_time()
+                gloss = options['gloss']
                 qItem = Lemma(gloss=gloss, sense=sense)
                 qItem.save()
                 if oTime != None: oTime['save'] += get_now_time() - iStart
@@ -771,7 +772,7 @@ class Dialect(models.Model):
 
         with transaction.atomic():
             for obj in Dialect.objects.all():
-                if obj.dialect_entries.count() == 0:
+                if obj.entry_set.count() == 0:
                     obj.toonbaar = False
                     obj.save()
         return True
@@ -1664,10 +1665,13 @@ def xml_to_fixture(xml_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
 
     def get_basename(d, s, a):
         # Basename: derive from deel/section/aflevering
-        sBaseName = "fixture-d" + str(d)
-        if iSectie != None: sBaseName = sBaseName + "-s" + str(s)
-        sBaseName = sBaseName + "-a" + str(a)
-        return sBaseName
+        if s == None:
+            s = ""
+        sResult = "fixture-d{}-s{}-a{}".format(d,s,a)
+        #sBaseName = "fixture-d" + str(d)
+        #if iSectie != None: sBaseName = sBaseName + "-s" + str(s)
+        #sBaseName = sBaseName + "-a" + str(a)
+        return sResult
 
     try:
         # Retrieve the correct instance of the status object
@@ -2110,7 +2114,8 @@ def xml_update(xml_file, status_id, dataupdate_id, bUseDbase=False, bUseOld=Fals
                             sLastLemma = sLemma
 
                             # Remove anything *under* this lemma: all entries and related trefwoord, description
-                            lemma_this.lemma_entries.all().delete()
+                            # lemma_this.lemma_entries.all().delete()
+                            lemma_this.entry_set.all().delete()
 
                         # Find out which lemma-description this is
                         sToelichting = ""

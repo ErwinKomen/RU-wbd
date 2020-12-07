@@ -2,6 +2,7 @@
 {% load i18n admin_urls %}
 {% block after_related_objects %}
 
+{% if original %}
 <div class="row">
   <div class="col-md-3">
     <span><a id="info_button" class="btn btn-primary" 
@@ -20,4 +21,5 @@
         <!-- Any possible errors will appear here-->
     </div>
 </div>
+{% endif %}
 {% endblock %}

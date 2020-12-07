@@ -108,6 +108,7 @@
     <Content Include="wald\dictionary\static\dictionary\content\fontawesome-5-all.css" />
     <Content Include="wald\dictionary\static\dictionary\content\taalkaart-wald.jpg" />
     <Content Include="wald\dictionary\static\dictionary\content\site.css" />
+    <Content Include="wald\dictionary\static\dictionary\content\taalkaart-wald_vindplaatsen.jpg" />
     <Content Include="wald\dictionary\static\dictionary\fonts\glyphicons-halflings-regular.eot" />
     <Content Include="wald\dictionary\static\dictionary\fonts\glyphicons-halflings-regular.svg" />
     <Content Include="wald\dictionary\static\dictionary\fonts\glyphicons-halflings-regular.ttf" />
