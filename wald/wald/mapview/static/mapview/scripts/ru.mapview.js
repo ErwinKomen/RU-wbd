@@ -154,6 +154,52 @@ var ru = (function ($, ru) {
     // Public methods
     return {
       /**
+       * legend_click 
+       *    Toggle 'minus' and 'plus' glyphicon, indicating whether the legend includes or excludes all items
+       * 
+       * @param {dom}   where this request starts from
+       * @returns {void}
+       */
+      legend_click(el) {
+        var el_sign = null,
+            mod_cont = null,
+            lfl_sect = null;
+
+        try {
+          mod_cont = $(el).closest(".modal-content");
+          lfl_sect = $(mod_cont).find("section.leaflet-control-layers-list");
+          // Get the minus/plus sign
+          el_sign = $(el).find("span.glyphicon").first();
+          // Action depends on what the current status is
+          if ($(el_sign).hasClass("glyphicon-minus")) {
+            // Change from minus to plus
+            $(el_sign).removeClass("glyphicon-minus");
+            $(el_sign).addClass("glyphicon-plus");
+            // Uncheck all checkbox values ...
+            $(lfl_sect).find(".leaflet-control-layers-selector").each(function () {
+              var $this = $(this);
+              $this[0].checked = true;
+              $this.click();
+            });
+          } else {
+            // Change from plus to minus
+            $(el_sign).removeClass("glyphicon-plus");
+            $(el_sign).addClass("glyphicon-minus");
+            // Check all checkbox values ...
+            $(lfl_sect).find(".leaflet-control-layers-selector").each(function () {
+              var $this = $(this);
+              $this[0].checked = false;
+              $this.click();
+            });
+          }
+
+        } catch (ex) {
+          private_methods.errMsg("lemma_map", ex);
+
+        }
+      },
+
+      /**
        * lemma_map 
        *    Show all dialect words for the particular Lemma
        *    The dialect words are grouped per 'trefwoord'
