@@ -849,6 +849,7 @@ class TrefwoordListView(ListView):
 
         context['is_app_userplus'] = user_is_ingroup(self.request, app_userplus)
         context['is_app_editor'] = user_is_ingroup(self.request, app_editor)
+        context['year'] = datetime.now().year
 
         # If we are in 'strict' mode, we need to deliver the [qlist]
         if self.strict:
@@ -1371,6 +1372,7 @@ class LemmaListView(ListView):
 
         context['is_app_userplus'] = user_is_ingroup(self.request, app_userplus)
         context['is_app_editor'] = user_is_ingroup(self.request, app_editor)
+        context['year'] = datetime.now().year
 
         # Return the calculated context
         return context
@@ -1600,7 +1602,7 @@ class LemmaListView(ListView):
         # Check for dialect city
         if 'dialectCity' in get and get['dialectCity'] != '':
             val = get['dialectCity']
-            if '*' in val or '[' in val or '?' in val:
+            if '*' in val or '[' in val or '?' in val or '#' in val:
                 # val = adapt_search(get['dialectCity'])
                 val = adapt_search(val)
                 lstQ.append(Q(entry__dialect__stad__iregex=val))
@@ -1612,7 +1614,7 @@ class LemmaListView(ListView):
         # Check for dialect code (Kloeke)
         if 'dialectCode' in get and get['dialectCode'] != '':
             val = get['dialectCode']
-            if '*' in val or '[' in val or '?' in val:
+            if '*' in val or '[' in val or '?' in val or '#' in val:
                 val = adapt_search(val)
                 lstQ.append(Q(entry__dialect__nieuw__iregex=val))
             else:

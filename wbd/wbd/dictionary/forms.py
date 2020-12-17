@@ -99,13 +99,29 @@ class TrefwoordSearchForm(forms.ModelForm):
         fields = ('woord', 'toelichting', 'optdialect')
 
 
+#class DialectSearchForm(forms.ModelForm):
+
+#    search = forms.CharField(label=_("Plaats"))
+#    nieuw = forms.CharField(label=_("Kloekecode"))
+#    sortOrder = forms.CharField(label=_("Sort Order"), initial="stad")
+#    aflevering = forms.CharField(label=_("Deel/sectie/aflevering"))
+#    mijn = forms.CharField(label=_("Mijn"))
+
+#    class Meta:
+
+#        ATTRS_FOR_FORMS = {'class': 'form-control'};
+
+#        model = Dialect
+#        fields = ('stad', 'code', 'nieuw')
+
+
 class DialectSearchForm(forms.ModelForm):
 
-    search = forms.CharField(label=_("Plaats"))
-    nieuw = forms.CharField(label=_("Kloekecode"))
-    sortOrder = forms.CharField(label=_("Sort Order"), initial="stad")
-    aflevering = forms.CharField(label=_("Deel/sectie/aflevering"))
-    mijn = forms.CharField(label=_("Mijn"))
+    search = forms.CharField(label=_("Plaats"), required=False)
+    nieuw = forms.CharField(label=_("Kloekecode"), required=False)
+    sortOrder = forms.CharField(label=_("Sort Order"), initial="stad", required=False)
+    aflevering = forms.CharField(label=_("Deel/sectie/aflevering"), required=False)
+    mijn = forms.CharField(label=_("Mijn"), required=False)
 
     class Meta:
 
@@ -113,6 +129,14 @@ class DialectSearchForm(forms.ModelForm):
 
         model = Dialect
         fields = ('stad', 'code', 'nieuw')
+
+    def __init__(self, *args, **kwargs):
+        # Perform standard initialization
+        super(DialectSearchForm, self).__init__(*args, **kwargs)
+        # Make sure to disallow obligatoriness of fields
+        self.fields['stad'].required = False
+        self.fields['code'].required = False
+        self.fields['nieuw'].required = False
 
 
 class MijnSearchForm(forms.ModelForm):

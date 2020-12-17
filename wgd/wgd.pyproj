@@ -4,8 +4,9 @@
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
     <Name>wgd</Name>
     <RootNamespace>wgd</RootNamespace>
-    <InterpreterId>MSBuild|{fa2f7d1e-00ed-49ea-9692-0bad8d50817d}|$(MSBuildProjectFullPath)</InterpreterId>
+    <InterpreterId>{fa2f7d1e-00ed-49ea-9692-0bad8d50817d}</InterpreterId>
     <WebBrowserPort>6502</WebBrowserPort>
+    <InterpreterVersion>3.5</InterpreterVersion>
   </PropertyGroup>
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -35,6 +36,7 @@
     <Compile Include="wgd\dictionary\admin.py" />
     <Compile Include="wgd\dictionary\adminviews.py" />
     <Compile Include="wgd\dictionary\apps.py" />
+    <Compile Include="wgd\dictionary\conversion.py" />
     <Compile Include="wgd\dictionary\fixtures\management\commands\permissions.py" />
     <Compile Include="wgd\dictionary\fixtures\management\commands\__init__.py">
       <SubType>Code</SubType>
@@ -43,15 +45,18 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="wgd\dictionary\forms.py" />
-    <Compile Include="wgd\dictionary\migrations\__init__.py">
-      <SubType>Code</SubType>
-    </Compile>
     <Compile Include="wgd\dictionary\models.py" />
     <Compile Include="wgd\dictionary\tests.py" />
     <Compile Include="wgd\dictionary\views.py" />
     <Compile Include="wgd\dictionary\__init__.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="wgd\mapview\admin.py" />
+    <Compile Include="wgd\mapview\apps.py" />
+    <Compile Include="wgd\mapview\models.py" />
+    <Compile Include="wgd\mapview\tests.py" />
+    <Compile Include="wgd\mapview\views.py" />
+    <Compile Include="wgd\mapview\__init__.py" />
     <Compile Include="wgd\utils.py" />
     <Compile Include="wgd\__init__.py" />
     <Compile Include="wgd\settings.py" />
@@ -63,6 +68,7 @@
     <Content Include="wgd\dictionary\static\dictionary\content\boeken-wgd.jpg" />
     <Content Include="wgd\dictionary\static\dictionary\content\bootstrap.css" />
     <Content Include="wgd\dictionary\static\dictionary\content\bootstrap.min.css" />
+    <Content Include="wgd\dictionary\static\dictionary\content\fontawesome-5-all.css" />
     <Content Include="wgd\dictionary\static\dictionary\content\site.css" />
     <Content Include="wgd\dictionary\static\dictionary\content\taalkaart-wgd-large.jpg" />
     <Content Include="wgd\dictionary\static\dictionary\content\taalkaart-wgd-plaatsen.jpg" />
@@ -88,6 +94,21 @@
     <Content Include="wgd\dictionary\static\dictionary\scripts\modernizr-2.6.2.js" />
     <Content Include="wgd\dictionary\static\dictionary\scripts\respond.js" />
     <Content Include="wgd\dictionary\static\dictionary\scripts\respond.min.js" />
+    <Content Include="wgd\dictionary\static\dictionary\webfonts\fa-brands-400.eot" />
+    <Content Include="wgd\dictionary\static\dictionary\webfonts\fa-brands-400.svg" />
+    <Content Include="wgd\dictionary\static\dictionary\webfonts\fa-brands-400.ttf" />
+    <Content Include="wgd\dictionary\static\dictionary\webfonts\fa-brands-400.woff" />
+    <Content Include="wgd\dictionary\static\dictionary\webfonts\fa-brands-400.woff2" />
+    <Content Include="wgd\dictionary\static\dictionary\webfonts\fa-regular-400.eot" />
+    <Content Include="wgd\dictionary\static\dictionary\webfonts\fa-regular-400.svg" />
+    <Content Include="wgd\dictionary\static\dictionary\webfonts\fa-regular-400.ttf" />
+    <Content Include="wgd\dictionary\static\dictionary\webfonts\fa-regular-400.woff" />
+    <Content Include="wgd\dictionary\static\dictionary\webfonts\fa-regular-400.woff2" />
+    <Content Include="wgd\dictionary\static\dictionary\webfonts\fa-solid-900.eot" />
+    <Content Include="wgd\dictionary\static\dictionary\webfonts\fa-solid-900.svg" />
+    <Content Include="wgd\dictionary\static\dictionary\webfonts\fa-solid-900.ttf" />
+    <Content Include="wgd\dictionary\static\dictionary\webfonts\fa-solid-900.woff" />
+    <Content Include="wgd\dictionary\static\dictionary\webfonts\fa-solid-900.woff2" />
     <Content Include="wgd\dictionary\templates\dictionary\about.html" />
     <Content Include="wgd\dictionary\templates\dictionary\admin_entry_list.html" />
     <Content Include="wgd\dictionary\templates\dictionary\aflevering_list.html" />
@@ -112,6 +133,29 @@
     <Content Include="wgd\dictionary\templates\dictionary\robots.txt" />
     <Content Include="wgd\dictionary\templates\dictionary\topnav.html" />
     <Content Include="wgd\dictionary\templates\dictionary\trefwoord_list.html" />
+    <Content Include="wgd\mapview\migrations\__pycache__\__init__.cpython-35.pyc" />
+    <Content Include="wgd\mapview\static\mapview\content\fontawesome-5-all.css" />
+    <Content Include="wgd\mapview\static\mapview\content\leaflet.css" />
+    <Content Include="wgd\mapview\static\mapview\content\ru.mapview.css" />
+    <Content Include="wgd\mapview\static\mapview\scripts\leaflet-src.js" />
+    <Content Include="wgd\mapview\static\mapview\scripts\oms.min.js" />
+    <Content Include="wgd\mapview\static\mapview\scripts\ru.mapview.js" />
+    <Content Include="wgd\mapview\static\mapview\webfonts\fa-brands-400.eot" />
+    <Content Include="wgd\mapview\static\mapview\webfonts\fa-brands-400.svg" />
+    <Content Include="wgd\mapview\static\mapview\webfonts\fa-brands-400.ttf" />
+    <Content Include="wgd\mapview\static\mapview\webfonts\fa-brands-400.woff" />
+    <Content Include="wgd\mapview\static\mapview\webfonts\fa-brands-400.woff2" />
+    <Content Include="wgd\mapview\static\mapview\webfonts\fa-regular-400.eot" />
+    <Content Include="wgd\mapview\static\mapview\webfonts\fa-regular-400.svg" />
+    <Content Include="wgd\mapview\static\mapview\webfonts\fa-regular-400.ttf" />
+    <Content Include="wgd\mapview\static\mapview\webfonts\fa-regular-400.woff" />
+    <Content Include="wgd\mapview\static\mapview\webfonts\fa-regular-400.woff2" />
+    <Content Include="wgd\mapview\static\mapview\webfonts\fa-solid-900.eot" />
+    <Content Include="wgd\mapview\static\mapview\webfonts\fa-solid-900.svg" />
+    <Content Include="wgd\mapview\static\mapview\webfonts\fa-solid-900.ttf" />
+    <Content Include="wgd\mapview\static\mapview\webfonts\fa-solid-900.woff" />
+    <Content Include="wgd\mapview\static\mapview\webfonts\fa-solid-900.woff2" />
+    <Content Include="wgd\mapview\templates\mapview\map_view.html" />
     <Content Include="wgd\templates\admin\base.html" />
     <Content Include="wgd\templates\admin\base_site.html" />
     <Content Include="wgd\templates\admin\dictionary\info\change_form.html" />
@@ -127,9 +171,20 @@
     <Folder Include="wgd\dictionary\static\dictionary\content\" />
     <Folder Include="wgd\dictionary\static\dictionary\fonts\" />
     <Folder Include="wgd\dictionary\static\dictionary\scripts\" />
+    <Folder Include="wgd\dictionary\static\dictionary\webfonts\" />
     <Folder Include="wgd\dictionary\templates\" />
     <Folder Include="wgd\dictionary\static\" />
     <Folder Include="wgd\dictionary\templates\dictionary\" />
+    <Folder Include="wgd\mapview\" />
+    <Folder Include="wgd\mapview\migrations\" />
+    <Folder Include="wgd\mapview\migrations\__pycache__\" />
+    <Folder Include="wgd\mapview\static\" />
+    <Folder Include="wgd\mapview\static\mapview\" />
+    <Folder Include="wgd\mapview\static\mapview\content\" />
+    <Folder Include="wgd\mapview\static\mapview\scripts\" />
+    <Folder Include="wgd\mapview\static\mapview\webfonts\" />
+    <Folder Include="wgd\mapview\templates\" />
+    <Folder Include="wgd\mapview\templates\mapview\" />
     <Folder Include="wgd\templates\" />
     <Folder Include="wgd\templates\admin\" />
     <Folder Include="wgd\templates\admin\dictionary\" />

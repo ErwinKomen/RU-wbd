@@ -17,6 +17,7 @@ from datetime import datetime
 from xml.dom import minidom
 from operator import itemgetter
 import xml.etree.ElementTree as ET
+
 import os
 import operator
 import re
@@ -487,7 +488,7 @@ def import_kloeke_dicts():
     return bSuccess
 
 def import_kloeke_info():
-    """Import kloeke informatino from the Kaart app"""
+    """Import kloeke information from the Kaart app"""
 
     file = "kaartinformatie.json"
     oErr = ErrHandle()
@@ -557,19 +558,42 @@ def import_kloeke_cumul():
         file = os.path.abspath(os.path.join(MEDIA_ROOT, file))
         # Read the file into memory
         with open(file, "r", encoding="utf-8") as fd:
-            lKloekeInfo = json.load(fd)
+            lKloekeInfo = fd.readlines() # json.load(fd)
 
         with transaction.atomic():
             for tabline in lKloekeInfo:
-                oInfo = tabline.split('\t')
+                oInfo = tabline.replace('\n', '').split('\t')
                 # Each item contains 5 elements: id, kloeke, place, x, y
                 kloeke = oInfo[0]
+                province = oInfo[6]
+                country = oInfo[8]
+                place = oInfo[2]
+                point = '{}, {}'.format(oInfo[11], oInfo[12])
                 obj = Coordinate.objects.filter(kloeke__iexact=kloeke).first()
                 if obj == None:
-                    place = oInfo[2]
-                    point_lst = rd_to_wgs(oInfo[11], oInfo[12])
-                    point = '{}, {}'.format(point_lst[0], point_lst[1])
-                    obj = Coordinate.objects.create(kloeke=kloeke, place=place, point=point)
+                    obj = Coordinate.objects.create(kloeke=kloeke, 
+                        place=place, point=point, province=province, country=country)
+                else:
+                    bNeedSaving = False
+                    # Adapt stuff
+                    if obj.kloeke != kloeke: 
+                        obj.kloeke = kloeke
+                        bNeedSaving = True
+                    if obj.province != province: 
+                        obj.province = province
+                        bNeedSaving = True
+                    if obj.country != country: 
+                        obj.country = country
+                        bNeedSaving = True
+                    if obj.place != place: 
+                        obj.place = place
+                        bNeedSaving = True
+                    if obj.point != point: 
+                        obj.point = point
+                        bNeedSaving = True
+                    if bNeedSaving:
+                        obj.save()
+
                 # Check if the link from [Dialect] has already been made
                 dialect = Dialect.objects.filter(nieuw__iexact=kloeke).first()
                 if dialect != None:
@@ -1462,7 +1486,7 @@ class LemmaListView(ListView):
         # Check for dialect city
         if 'dialectCity' in get and get['dialectCity'] != '':
             val = get['dialectCity']
-            if '*' in val or '[' in val or '?' in val:
+            if '*' in val or '[' in val or '?' in val or '#' in val:
                 # val = adapt_search(get['dialectCity'])
                 val = adapt_search(val)
                 lstQ.append(Q(entry__dialect__stad__iregex=val))
@@ -1474,7 +1498,7 @@ class LemmaListView(ListView):
         # Check for dialect code (Kloeke)
         if 'dialectCode' in get and get['dialectCode'] != '':
             val = get['dialectCode']
-            if '*' in val or '[' in val or '?' in val:
+            if '*' in val or '[' in val or '?' in val or '#' in val:
                 val = adapt_search(val)
                 lstQ.append(Q(entry__dialect__nieuw__iregex=val))
             else:
@@ -1536,10 +1560,11 @@ class LemmaMapView(MapView):
     model = Lemma
     modEntry = Entry
     frmSearch = LemmaSearchForm
-    order_by = "trefwoord"
+    order_by = ["trefwoord"]
     labelfield = "gloss"
 
     def initialize(self):
+        super(LemmaMapView, self).initialize()
         # Entries with a 'form' value
         self.add_entry('woord', 'str', 'woord', 'woord')
         self.add_entry('stad', 'str', 'dialect__stad', 'dialectCity')
@@ -1560,7 +1585,7 @@ class LemmaMapView(MapView):
         pop_up += '<p style="font-size: smaller;"><span style="color: purple;">{}</span> {}</p>'.format(
             entry['kloeke'], entry['stad'])
         return pop_up
-        
+    
 
 class LocationListView(ListView):
     """Listview of locations"""
@@ -1955,11 +1980,43 @@ class DialectListView(ListView):
         # Call the base implementation first to get a context
         context = super(DialectListView, self).get_context_data(**kwargs)
 
+        oErr = ErrHandle()
         # One-time calls
+        qs = Dialect.objects.filter(coordinate__isnull=True)
+        count_dialect = qs.count()
         if self.bImportKloekeInfo: 
-            import_kloeke_dicts()
+            import_kloeke_cumul()
             # Another one-time call
             import_kloeke_info()
+            count_after = Dialect.objects.filter(coordinate__isnull=True).count()
+            count_gain = count_dialect - count_after
+
+        # Try to do repair
+        if count_dialect > 0:
+            with transaction.atomic():
+                for dialect in qs:
+                    # Get the kloekecode minus the last letter and the place-name
+                    kloeke_truncated = dialect.nieuw[0:4]
+                    stad = dialect.stad
+                    # Find this one in Coordinates
+                    coordinate = Coordinate.objects.filter(place__iexact=stad, kloeke__startswith=kloeke_truncated).first()
+                    if coordinate == None and "-" in stad:
+                        stad = stad.replace("-", " ")
+                        coordinate = Coordinate.objects.filter(place__iexact=stad, kloeke__startswith=kloeke_truncated).first()
+                    if coordinate != None:
+                        # ======= DEBUG ==================
+                        oErr.Status("WBD adapt {} to {}".format(dialect.nieuw, coordinate.kloeke))
+                        # ================================
+                        # Adapt the dialect's kloeke code
+                        dialect.nieuw = coordinate.kloeke
+                        # Set the dialect's coordinate entry
+                        dialect.coordinate = coordinate
+                        # Make sure the correct stad (place name) is chosen
+                        dialect.stad = stad
+                        # Save the result
+                        dialect.save()
+            count_after = Dialect.objects.filter(coordinate__isnull=True).count()
+            count_gain = count_dialect - count_after
 
         # Get parameters for the search
         initial = self.request.GET
@@ -2046,6 +2103,38 @@ class DialectListView(ListView):
         # Return the resulting filtered and sorted queryset
         return qs
 
+
+class DialectMapView(MapView):
+    model = Dialect
+    modEntry = Dialect
+    frmSearch = DialectSearchForm
+    # Note: use 'coordinate__province' here instead of 'streek' as in WALD
+    order_by = ["coordinate__province", "stad"]
+    use_object = False
+    label = "Dialectplaatsen"
+
+    def initialize(self):
+        super(DialectMapView, self).initialize()
+        # Entries with a 'form' value
+        self.add_entry('stad', 'str', 'stad', 'search')
+        self.add_entry('kloeke', 'str', 'nieuw', 'nieuw')
+
+        # Entries without a 'form' value
+        # Note: use 'coordinate__province' here instead of 'streek' as in WALD
+        self.add_entry('trefwoord', 'str', 'coordinate__province')
+        self.add_entry('point', 'str', 'coordinate__point')
+        self.add_entry('place', 'str', 'coordinate__place')
+        self.add_entry('count', 'int', 'count')
+
+    def get_popup(self, dialect):
+        """Create a popup from the 'key' values defined in [initialize()]"""
+
+        pop_up = '<p class="h6">{}</p>'.format(dialect['stad'])
+        pop_up += '<hr style="border: 1px solid green" />'
+        pop_up += '<p style="font-size: smaller;"><span style="color: purple;">{}</span> {}</p>'.format(
+            dialect['kloeke'], dialect['count'])
+        return pop_up
+    
 
 class DialectCheckView(ListView):
     """Check how the dialects have fared"""

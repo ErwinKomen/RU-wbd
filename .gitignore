@@ -305,3 +305,4 @@ ModelManifest.xml
 /wbd/wbd/mapview/migrations
 /wald/wald/mapview/migrations/__init__.py
 /wald/wald/dictionary/static/dictionary/content/taalkaart-wald_vindplaatsen-groot.jpg
+/wgd/wgd/mapview/migrations/__init__.py

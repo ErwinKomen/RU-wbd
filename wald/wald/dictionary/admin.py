@@ -50,6 +50,7 @@ class CoordinateAdmin(admin.ModelAdmin):
                 )
     list_display = ['kloeke', 'country', 'province', 'dictionary', 'place', 'point']
     list_filter = ['country', 'province', 'dictionary']
+    search_fields = ['place', 'province', 'country', 'kloeke']
 
 
 class TrefwoordAdmin(admin.ModelAdmin):

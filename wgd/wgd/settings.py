@@ -22,7 +22,7 @@ hst = socket.gethostbyname(socket.gethostname())
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WRITABLE_DIR = os.path.abspath(os.path.join(BASE_DIR, "../../writable/database/"))
 MEDIA_ROOT = os.path.abspath(os.path.join(BASE_DIR, "../../writable/media/"))
-if "RU-wbd\\writable" in WRITABLE_DIR:
+if "RU-wgd\\writable" in WRITABLE_DIR:
     # Need another string
     WRITABLE_DIR = os.path.abspath(os.path.join(BASE_DIR, "../../../writable/database/"))
     MEDIA_ROOT = os.path.abspath(os.path.join(BASE_DIR, "../../../writable/media/"))
@@ -75,6 +75,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     # The apps for RU-wgd
     'wgd.dictionary',
+    'wgd.mapview',
 ]
 
 MIDDLEWARE_CLASSES = [

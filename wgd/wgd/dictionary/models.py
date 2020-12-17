@@ -828,18 +828,33 @@ class Coordinate(models.Model):
     # [0-1] The point coordinates
     point = models.CharField("Coordinates", db_index=True, blank=True, max_length=MAX_LEMMA_LEN)
 
+    def __str__(self):
+        sBack = "{}: {}".format(self.kloeke, self.place)
+        return sBack
+
 
 class Dialect(models.Model):
     """Dialect"""
 
+    # [1] The location name (city)
     stad = models.CharField("Dialectlocatie", db_index=True, blank=False, max_length=MAX_LEMMA_LEN, default="(unknown)")
+    # [1] The 'old' Kloeke code
     code = models.CharField("Plaatscode (Kloeke)", blank=False, max_length=6, default="xxxxxx")
+    # [1] The 'new' Kloeke code
     nieuw = models.CharField("Plaatscode (Nieuwe Kloeke)", db_index=True, blank=False, max_length=6, default="xxxxxx")
+    # [1] The area
+    streek = models.CharField("Streek", db_index=True, blank=False, max_length=MAX_LEMMA_LEN, default="(unknown)")
+
     # A field that indicates this item may be showed
     toonbaar = models.BooleanField("Mag getoond worden", blank=False, default=True)
     # Note: removed 'dialect_toelichting' in accordance with issue #22 of WLD
     # toelichting = models.TextField("Toelichting bij dialect", blank=True)
+
+    # [0-1] Would like to have a coordinate for this dialect
     coordinate = models.ForeignKey(Coordinate, null=True, blank=True, on_delete=models.SET_NULL, related_name="coordinatedialects")
+
+    # [1] Calculated field: number of 'Entry' elements for this dialect
+    count = models.IntegerField("Number of entries", default=0)
 
     class Meta:
         verbose_name_plural = "Dialecten"
