@@ -2281,6 +2281,10 @@ class DialectCheckView(ListView):
 
         context['k_double'] = k_double
 
+        # (5) Get a list of all dialects that are used, but that do not have a coordinate
+        dc_list = Dialect.objects.filter(coordinate__isnull=True).order_by('stad').values('stad', 'nieuw', 'id')
+        context['dc_list'] = dc_list
+
         # Return the context
         return context
 

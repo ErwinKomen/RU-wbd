@@ -2460,7 +2460,7 @@ class DialectCheckView(ListView):
                 sBack += "{}".format(num)
             return sBack
 
-        # The set of ranges that cen be looked at
+        # The set of ranges that can be looked at
         ranges = [{'d': 1, 's': None}, {'d': 2, 's': None}, {'d': 3, 's': 1}, {'d': 3, 's': 2}, {'d': 3, 's': 3}, {'d': 3, 's': 4}]
 
         # Add my own stuff to the context
@@ -2550,6 +2550,11 @@ class DialectCheckView(ListView):
                     k_double.append(oDouble)
 
         context['k_double'] = k_double
+
+        # (5) Get a list of all dialects that are used, but that do not have a coordinate
+        dc_list = Dialect.objects.filter(coordinate__isnull=True).order_by('stad').values('stad', 'nieuw', 'id')
+        context['dc_list'] = dc_list
+
 
         # Return the context
         return context
