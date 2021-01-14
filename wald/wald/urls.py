@@ -8,6 +8,7 @@ from django.conf.urls import url, include
 from django.conf.urls.static import static
 from django.contrib import admin
 import django.contrib.auth.views
+from django.views.decorators.csrf import csrf_exempt
 
 # Enable the admin:
 from wald.settings import APP_PREFIX, STATIC_ROOT
@@ -46,10 +47,12 @@ urlpatterns = [
     url(r'^lemmas$', LemmaListView.as_view(), name='lemmas'),
     url(r'^lemma/search/$', LemmaListView.as_view(), name='lemmasearch'),
     url(r'^lemma/search/ajax/$', LemmaListView.as_view(), name='lemmasearch_ajax'),
+    url(r'^lemma/map/(?P<pk>\d+)/$', csrf_exempt(LemmaMapView.as_view()), name='lemmamap'),
     url(r'^trefwoord/search/$', TrefwoordListView.as_view(), name='trefwoordsearch'),
     url(r'^dialects', DialectListView.as_view(), name='dialects'),
     url(r'^dialect/search/$', DialectListView.as_view(), name='dialectsearch'),
     url(r'^dialect/check/$', DialectCheckView.as_view(), name='dialectcheck'),
+    url(r'^dialect/map/$', csrf_exempt(DialectMapView.as_view()), name='dialectmap'),
     url(r'^locations', LocationListView.as_view(), name='locations'),
     url(r'^location/search/$', LocationListView.as_view(), name='locationsearch'),
     url(r'^mines', MijnListView.as_view(), name='mines'),
@@ -57,8 +60,13 @@ urlpatterns = [
     url(r'^list/$', permission_required('dictionary.search_gloss')(EntryListView.as_view()), name='admin_entry_list'), 
     url(r'^dictionary/search/$', permission_required('dictionary.search_gloss')(EntryListView.as_view())),
     url(r'^entry/(?P<pk>\d+)', DictionaryDetailView.as_view(), name='output'),
+
     url(r'^import/start/$', wald.dictionary.views.import_csv_start, name='import_start'),
     url(r'^import/progress/$', wald.dictionary.views.import_csv_progress, name='import_progress'),
+
+    url(r'^import/update(?:/(?P<pk>\d+))?/start/$', wald.dictionary.views.import_update_start, name='import_update_start'),
+    url(r'^import/update(?:/(?P<pk>\d+))?/progress/$', wald.dictionary.views.import_update_progress, name='import_update_progress'),
+
     url(r'^repair/$', permission_required('dictionary.search_gloss')(wald.dictionary.views.do_repair), name='repair'),
     url(r'^repair/start/$', wald.dictionary.views.do_repair_start, name='repair_start'),
     url(r'^repair/progress/$', wald.dictionary.views.do_repair_progress, name='repair_progress'),

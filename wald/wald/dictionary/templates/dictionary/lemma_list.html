@@ -1,4 +1,4 @@
-﻿{% extends "dictionary/layout.html" %}
+{% extends "dictionary/layout.html" %}
 
 {% block content %}
 
@@ -135,6 +135,9 @@
       </form>
     </div>
 
+    <!-- Make sure the modal form is loaded -->
+    {% include 'mapview/map_view.html' %}
+
     <div id="lemma_list_msg"><!-- Room for any error messages --></div>
     <div id="lemma_list_oview">
     {% if object_list %}
@@ -175,7 +178,7 @@
                 <span class="lemma-word-dialect-code hidden">{{item.entry.dialect.nieuw}}</span>
                 <span class="lemma-word-dialect-space hidden">&nbsp;</span>
                 <span class="lemma-word-dialect-stad">{{item.entry.dialect.stad}}</span>
-                {% if item.entry.kloeketoelichting != "" %}&nbsp;<span class="word-kloeketoelichting">[{{item.entry.kloeketoelichting}}]</span>&nbsp;{% endif %}
+                {% if item.entry.kloeketoelichting != "" %}&nbsp;<span class="word-kloeketoelichting">[{{item.entry.kloeketoelichting}}]</span>{% endif %}
                 <span>{% if not item.dialectopgave.last %}, {% endif %}</span>
                 {% if item.dialectopgave.first and not item.dialectopgave.last %}
                   <span class="lemma-word-dialect-dots">...</span>
@@ -201,6 +204,12 @@
                   <!-- Treat the list of lemma-descriptions (toelichtingen) and sources (bronnen) for this lemma -->
                   {% spaceless %}
 
+                  <a role="button" class="btn btn-xs" title="Toon trefwoorden op kaart"
+                     onclick="ru.mapview.lemma_map(this);"
+                     targeturl="{% url 'lemmamap' item.entry.lemma.id %}" targetid="" >
+                    <i class="far fa-map" style="color: brown;"></i>
+                  </a>
+
                   {% for item_descr in item.dlist %}
                     {% if item_descr.descr.first %}<span class="toelichting">{{item_descr.entry.toelichting}}</span>{% endif %}
                     {% if item_descr.entry.bronnenlijst %}<span class="lemma-bronnen"> [{{item_descr.entry.bronnenlijst}}]</span>{% endif %}
@@ -215,7 +224,11 @@
                   {% spaceless %}
                   {% for item_afl in item.alist %}
                     {% if item_afl.afl.first %}
-                      <span class="lemma-aflevering"><a href="/{{app_prefix}}static/dictionary/content/pdf/{{item_afl.entry.aflevering.get_pdf}}">{{item_afl.entry.aflevering.get_summary}}</a></span>
+                      {% if item_afl.entry.aflevering.naam == "-" %}
+                        <span class="lemma-aflevering">{{item_afl.entry.aflevering.get_summary}}</span>
+                      {% else %}
+                        <span class="lemma-aflevering"><a href="/{{app_prefix}}static/dictionary/content/pdf/{{item_afl.entry.aflevering.get_pdf}}">{{item_afl.entry.aflevering.get_summary}}</a></span>
+                      {% endif %}
                     {% endif %}
                     {% if item_afl.afl.last and not forloop.last %}<span>, </span>{% endif %}
                   {% endfor %}

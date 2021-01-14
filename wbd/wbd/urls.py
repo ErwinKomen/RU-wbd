@@ -21,6 +21,7 @@ from wbd.dictionary.adminviews import EntryListView, InfoListView
 from django.core import urlresolvers
 from django.shortcuts import redirect
 from django.core.urlresolvers import reverse, reverse_lazy
+from django.views.decorators.csrf import csrf_exempt
 from django.views.generic.base import RedirectView
 from django.views.generic import TemplateView
 
@@ -46,10 +47,12 @@ urlpatterns = [
     url(r'^lemmas$', LemmaListView.as_view(), name='lemmas'),
     url(r'^lemma/search/$', LemmaListView.as_view(), name='lemmasearch'),
     url(r'^lemma/search/ajax/$', LemmaListView.as_view(), name='lemmasearch_ajax'),
+    url(r'^lemma/map/(?P<pk>\d+)/$', csrf_exempt(LemmaMapView.as_view()), name='lemmamap'),
     url(r'^trefwoord/search/$', TrefwoordListView.as_view(), name='trefwoordsearch'),
     url(r'^dialects', DialectListView.as_view(), name='dialects'),
     url(r'^dialect/search/$', DialectListView.as_view(), name='dialectsearch'),
     url(r'^dialect/check/$', DialectCheckView.as_view(), name='dialectcheck'),
+    url(r'^dialect/map/$', csrf_exempt(DialectMapView.as_view()), name='dialectmap'),
     url(r'^locations', LocationListView.as_view(), name='locations'),
     url(r'^location/search/$', LocationListView.as_view(), name='locationsearch'),
     url(r'^mines', MijnListView.as_view(), name='mines'),

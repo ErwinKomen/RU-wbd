@@ -29,7 +29,9 @@ import copy
 import sys
 from wald.dictionary.models import *
 from wald.dictionary.forms import *
+from wald.mapview.views import MapView
 from wald.settings import APP_PREFIX, WSGI_FILE
+from wald.dictionary.conversion import rd_to_wgs, wgs_to_rd
 
 # Global variables
 paginateSize = 10
@@ -299,11 +301,14 @@ def do_repair(request):
 
 def adapt_search(val):
     # First trim
-    val = val.strip()
-    # fnmatch.translate() works okay, but note beginning and ending spaces
-    # val = fnmatch.translate('^' + val + '$')
-    val = '^' + fnmatch.translate(val) + '$'
-    # val = '^' + val.replace("?", ".").replace("*", ".*") + '$'
+    val = val.strip()    
+    # Adapt for the use of '#'
+    if '#' in val:
+        # val = val.replace('#', '\\b.*')
+        #val = r'(^|\b)' + fnmatch.translate(val.replace('#', '')) + r'($|\b)'
+        val = r'(^|(.*\b))' + val.replace('#', r'((\b.*)|$)') # + r'((\b.*)|$)'
+    else:
+        val = '^' + fnmatch.translate(val) + '$'
     return val
 
 def export_csv(qs, sFileName):
@@ -532,6 +537,177 @@ def import_csv_progress(request):
     # Return where we are
     return JsonResponse(data)
 
+def import_update_start(request, pk):
+    # Formulate a response
+    data = {'status': 'done'}
+    oErr = ErrHandle()
+
+    try:
+        sFile = request.GET.get('filename', '')
+
+        bUseDbase = request.GET.get('usedbase', False)
+        if bUseDbase:
+            if bUseDbase == "true":
+                bUseDbase = True
+            else:
+                bUseDbase = False
+
+        # Get the id of the DataUpdate object
+        dataupdate = DataUpdate.objects.filter(id=pk).first()
+
+        if dataupdate == None:
+            data['status'] = 'error: no DataUpdate object found'
+            return JsonResponse(data)
+
+        # Remove any previous status objects for this info
+        StatusUpdate.objects.filter(dataupdate=dataupdate).delete()
+
+        # Create a new import-status object
+        oStatus = StatusUpdate.objects.create(dataupdate=dataupdate)
+
+        # Note that we are starting
+        oStatus.set_status("starting")
+
+        # Call the process - depending on the file ending
+        if ".xml" in sFile:
+            oResult = xml_update(sFile, oStatus.id, dataupdate.id, bUseDbase = bUseDbase, bUseOld = True)
+        else:
+            # *NOT implemented* yet for CSV
+            # oResult = csv_to_fixture(sFile, iDeel, iSectie, iAflnum, iStatus, bUseDbase = bUseDbase, bUseOld = True)
+            pass
+
+        if oResult == None or oResult['result'] == False:
+            data['status'] = 'error'
+
+        # WSince we are done: explicitly set the status so
+        oStatus.set_status("done")
+    except Exception as ex:
+        oErr.DoError("import_update_start error")
+        data['status'] = "error"
+
+    # Return this response
+    return JsonResponse(data)
+
+def import_update_progress(request, pk):
+    oErr = ErrHandle()
+    # Prepare a return object
+    data = {'read':0, 'skipped':0, 'method': '(unknown)', 'msg': ''}
+    try:
+        # Debugging
+        oErr.Status("import_update_progress at {}".format(datetime.now()))
+
+        qd = request.POST if request.POST else request.GET
+        # Get the DataUpdate object
+        dataupdate = DataUpdate.objects.filter(id=pk).first()
+        # Find out how far importing is going
+        qs = StatusUpdate.objects.filter(dataupdate=dataupdate)
+        if qs != None and len(qs) > 0:
+            oStatus = qs[0]
+            # Fill in the return object
+            data['read'] = oStatus.read
+            data['skipped'] = oStatus.skipped
+            data['method'] = oStatus.method
+            data['status'] = oStatus.status
+            # Checking...
+            if data['status'] == "idle":
+                data['msg'] = "Idle status in import_update_progress"
+        else:
+            # Do we have an INFO object?
+            if dataupdate == None:
+                data['status'] = "Cannot find DataUpdate with id={}".format(pk)
+            else:
+                data['status'] = "No status object for dataupdate=" + str(dataupdate.id) + " has been created yet"
+    except Exception as ex:
+        oErr.DoError("import_update_progress error")
+        data['status'] = "error"
+
+    # Return where we are
+    return JsonResponse(data)
+
+def import_kloeke_cumul():
+    """Import kloeke information from the DSDD file
+    
+    Column significance:
+         0 kloeke_code1        De huidige kloekecode
+         1 kloeke_code_oud     (deze kloekecodes gebruiken we niet meer)
+         2 plaats
+         3 gemeentecode_2007   Code voor deze gemeente
+         4 gemeente
+         5 streek           
+         6 provincie
+         7 postcode            
+         8 land                Land
+         9 rd_x                Rijksdriehoeks X           
+        10 rd_y                Rijksdriehoeks Y
+        11 lat                 latitude
+        12 lng                 longitude
+        13 topocode            ?
+        14 std_spelling        ?
+        15 volgnr              nummer (intern)
+        16 in_dsdd             boolean (false)
+        17 cannot_be_in_wvd    boolean (false)
+        18 doet_niet_mee       boolean (false)
+        19 in_wvd              boolean (false)
+    """
+
+    file = "kloeke_cumul.tsv"
+    oErr = ErrHandle()
+    bSuccess = False
+    try:
+        # FIgure out where the file is actually to be found
+        file = os.path.abspath(os.path.join(MEDIA_ROOT, file))
+        # Read the file into memory
+        with open(file, "r", encoding="utf-8") as fd:
+            lKloekeInfo = fd.readlines() # json.load(fd)
+
+        with transaction.atomic():
+            for tabline in lKloekeInfo:
+                oInfo = tabline.replace('\n', '').split('\t')
+                # Each item contains 5 elements: id, kloeke, place, x, y
+                kloeke = oInfo[0]
+                province = oInfo[6]
+                country = oInfo[8]
+                place = oInfo[2]
+                point = '{}, {}'.format(oInfo[11], oInfo[12])
+                obj = Coordinate.objects.filter(kloeke__iexact=kloeke).first()
+                if obj == None:
+                    obj = Coordinate.objects.create(kloeke=kloeke, 
+                        place=place, point=point, province=province, country=country)
+                else:
+                    bNeedSaving = False
+                    # Adapt stuff
+                    if obj.kloeke != kloeke: 
+                        obj.kloeke = kloeke
+                        bNeedSaving = True
+                    if obj.province != province: 
+                        obj.province = province
+                        bNeedSaving = True
+                    if obj.country != country: 
+                        obj.country = country
+                        bNeedSaving = True
+                    if obj.place != place: 
+                        obj.place = place
+                        bNeedSaving = True
+                    if obj.point != point: 
+                        obj.point = point
+                        bNeedSaving = True
+                    if bNeedSaving:
+                        obj.save()
+
+                # Check if the link from [Dialect] has already been made
+                dialect = Dialect.objects.filter(nieuw__iexact=kloeke).first()
+                if dialect != None:
+                    if dialect.coordinate == None:
+                        dialect.coordinate = obj
+                        dialect.save()
+
+        bSuccess = True
+    except:
+        msg = oErr.get_error_message()
+        oErr.DoError("import_kloeke_cumul")
+        bSuccess = False
+    return bSuccess
+
 
 class DictionaryDetailView(DetailView):
     """Details of an entry from the dictionary"""
@@ -662,13 +838,18 @@ class TrefwoordListView(ListView):
 
         # Set the afleveringen and mijnen that are available
         context['afleveringen'] = [afl for afl in Aflevering.objects.all()]
-        context['mijnen'] = [mijn for mijn in Mijn.objects.all().order_by('naam')]
+
+        mijnen = []
+        if self.bUseMijnen:
+            mijnen = [mijn for mijn in Mijn.objects.all().order_by('naam')]
+        context['mijnen'] = mijnen
 
         # Set the title of the application
         context['title'] = "{} trefwoorden".format(THIS_DICTIONARY)
 
         context['is_app_userplus'] = user_is_ingroup(self.request, app_userplus)
-        context['is_app_editor'] = user_is_ingroup(request, app_editor)
+        context['is_app_editor'] = user_is_ingroup(self.request, app_editor)
+        context['year'] = datetime.now().year
 
         # If we are in 'strict' mode, we need to deliver the [qlist]
         if self.strict:
@@ -851,7 +1032,7 @@ class TrefwoordListView(ListView):
         # Fine-tuning: search string is the LEMMA
         if 'search' in get and get['search'] != '':
             val = get['search']
-            if '*' in val or '[' in val or '?' in val:
+            if '*' in val or '[' in val or '?' in val or '#' in val:
                 val = adapt_search(val)
                 lstQ.append(Q(woord__iregex=val) )
             else:
@@ -1127,7 +1308,11 @@ class LemmaListView(ListView):
 
         # Set the afleveringen that are available
         context['afleveringen'] = [afl for afl in Aflevering.objects.all()]
-        context['mijnen'] = [mijn for mijn in Mijn.objects.all().order_by('naam')]
+
+        mijnen = []
+        if self.bUseMijnen:
+            mijnen = [mijn for mijn in Mijn.objects.all().order_by('naam')]
+        context['mijnen'] = mijnen
 
         # Pass on the word-order boolean
         context['order_word_toel'] = self.bOrderWrdToel
@@ -1186,7 +1371,8 @@ class LemmaListView(ListView):
         context['method'] = "get"       # Alternative: "ajax"
 
         context['is_app_userplus'] = user_is_ingroup(self.request, app_userplus)
-        context['is_app_editor'] = user_is_ingroup(request, app_editor)
+        context['is_app_editor'] = user_is_ingroup(self.request, app_editor)
+        context['year'] = datetime.now().year
 
         # Return the calculated context
         return context
@@ -1401,7 +1587,7 @@ class LemmaListView(ListView):
         # Fine-tuning: search string is the LEMMA
         if 'search' in get and get['search'] != '':
             val = get['search']
-            if '*' in val or '[' in val or '?' in val:
+            if '*' in val or '[' in val or '?' in val or '#' in val:
                 val = adapt_search(val)
                 lstQ.append(Q(gloss__iregex=val) )
             else:
@@ -1416,7 +1602,7 @@ class LemmaListView(ListView):
         # Check for dialect city
         if 'dialectCity' in get and get['dialectCity'] != '':
             val = get['dialectCity']
-            if '*' in val or '[' in val or '?' in val:
+            if '*' in val or '[' in val or '?' in val or '#' in val:
                 # val = adapt_search(get['dialectCity'])
                 val = adapt_search(val)
                 lstQ.append(Q(entry__dialect__stad__iregex=val))
@@ -1428,7 +1614,7 @@ class LemmaListView(ListView):
         # Check for dialect code (Kloeke)
         if 'dialectCode' in get and get['dialectCode'] != '':
             val = get['dialectCode']
-            if '*' in val or '[' in val or '?' in val:
+            if '*' in val or '[' in val or '?' in val or '#' in val:
                 val = adapt_search(val)
                 lstQ.append(Q(entry__dialect__nieuw__iregex=val))
             else:
@@ -1485,6 +1671,37 @@ class LemmaListView(ListView):
         # Return the resulting filtered and sorted queryset
         return qse
 
+
+class LemmaMapView(MapView):
+    model = Lemma
+    modEntry = Entry
+    frmSearch = LemmaSearchForm
+    order_by = ["trefwoord"]
+    labelfield = "gloss"
+
+    def initialize(self):
+        super(LemmaMapView, self).initialize()
+        # Entries with a 'form' value
+        self.add_entry('woord', 'str', 'woord', 'woord')
+        self.add_entry('stad', 'str', 'dialect__stad', 'dialectCity')
+        self.add_entry('kloeke', 'str', 'dialect__nieuw', 'dialectCode')
+        self.add_entry('aflevering', 'int', 'aflevering__id', 'aflevering')
+        self.add_entry('mijn', 'int', 'mijnlijst__id', 'mijn')
+
+        # Entries without a 'form' value
+        self.add_entry('trefwoord', 'str', 'trefwoord__woord')
+        self.add_entry('point', 'str', 'dialect__coordinate__point')
+        self.add_entry('place', 'str', 'dialect__coordinate__place')
+
+    def get_popup(self, entry):
+        """Create a popup from the 'key' values defined in [initialize()]"""
+
+        pop_up = '<p class="h6">{}</p>'.format(entry['woord'])
+        pop_up += '<hr style="border: 1px solid green" />'
+        pop_up += '<p style="font-size: smaller;"><span style="color: purple;">{}</span> {}</p>'.format(
+            entry['kloeke'], entry['stad'])
+        return pop_up
+    
 
 class LocationListView(ListView):
     """Listview of locations"""
@@ -1576,7 +1793,10 @@ class LocationListView(ListView):
         # Set the afleveringen that are available
         context['afleveringen'] = [afl for afl in Aflevering.objects.all()]
 
-        context['mijnen'] = [mijn for mijn in Mijn.objects.all().order_by('naam')]
+        mijnen = []
+        if self.bUseMijnen:
+            mijnen = [mijn for mijn in Mijn.objects.all().order_by('naam')]
+        context['mijnen'] = mijnen
 
         if 'paginate_by' in initial:
             context['paginateSize'] = int(initial['paginate_by'])
@@ -1624,7 +1844,7 @@ class LocationListView(ListView):
         context['title'] = "{} plaatsen".format(THIS_DICTIONARY)
 
         context['is_app_userplus'] = user_is_ingroup(self.request, app_userplus)
-        context['is_app_editor'] = user_is_ingroup(request, app_editor)
+        context['is_app_editor'] = user_is_ingroup(self.request, app_editor)
 
         # Get possible user choice of 'strict'
         if 'strict' in initial:
@@ -1876,10 +2096,15 @@ class DialectListView(ListView):
     template_name = 'dictionary/dialect_list.html'
     entrycount = 0
     bDoTime = True
+    bImportKloekeInfo = False
 
     def get_context_data(self, **kwargs):
         # Call the base implementation first to get a context
         context = super(DialectListView, self).get_context_data(**kwargs)
+
+        # One-time calls
+        if self.bImportKloekeInfo: 
+            import_kloeke_cumul()
 
         # Get parameters for the search
         initial = self.request.GET
@@ -1905,7 +2130,7 @@ class DialectListView(ListView):
         context['title'] = "{} dialecten".format(THIS_DICTIONARY)
 
         context['is_app_userplus'] = user_is_ingroup(self.request, app_userplus)
-        context['is_app_editor'] = user_is_ingroup(request, app_editor)
+        context['is_app_editor'] = user_is_ingroup(self.request, app_editor)
 
         # Return the calculated context
         return context
@@ -1955,6 +2180,21 @@ class DialectListView(ListView):
 
             # Set the information value to 'done'
             Information.set_kvalue("rhede", "done")
+
+        # Check if "DIalect count" has been processed
+        if Information.get_kvalue("dialectcount") != "done":
+            adapt_dialect = []
+            # Visit all dialects and get the  number of entries per dialect
+            with transaction.atomic():
+                for dialect in Dialect.objects.all():
+                    count = Entry.objects.filter(dialect=dialect).count()
+                    dialect.count = count
+                    dialect.save()
+
+
+            # Set the information value to 'done'
+            Information.set_kvalue("dialectcount", "done")
+
         return None
         
     def get_queryset(self):
@@ -2013,6 +2253,36 @@ class DialectListView(ListView):
         # Return the resulting filtered and sorted queryset
         return qs
 
+
+class DialectMapView(MapView):
+    model = Dialect
+    modEntry = Dialect
+    frmSearch = DialectSearchForm
+    order_by = ["streek", "stad"]
+    use_object = False
+    label = "Dialectplaatsen"
+
+    def initialize(self):
+        super(DialectMapView, self).initialize()
+        # Entries with a 'form' value
+        self.add_entry('stad', 'str', 'stad', 'search')
+        self.add_entry('kloeke', 'str', 'nieuw', 'nieuw')
+
+        # Entries without a 'form' value
+        self.add_entry('trefwoord', 'str', 'streek')
+        self.add_entry('point', 'str', 'coordinate__point')
+        self.add_entry('place', 'str', 'coordinate__place')
+        self.add_entry('count', 'int', 'count')
+
+    def get_popup(self, dialect):
+        """Create a popup from the 'key' values defined in [initialize()]"""
+
+        pop_up = '<p class="h6">{}</p>'.format(dialect['stad'])
+        pop_up += '<hr style="border: 1px solid green" />'
+        pop_up += '<p style="font-size: smaller;"><span style="color: purple;">{}</span> {}</p>'.format(
+            dialect['kloeke'], dialect['count'])
+        return pop_up
+    
 
 class DialectCheckView(ListView):
     """Check how the dialects have fared"""
@@ -2277,7 +2547,7 @@ class DeelListView(ListView):
         #context['intro_op_drie_pdf'] = "wbd-3/2000_Brabantse Dialecten III Inleiding_Compleet.pdf"
 
         context['is_app_userplus'] = user_is_ingroup(self.request, app_userplus)
-        context['is_app_editor'] = user_is_ingroup(request, app_editor)
+        context['is_app_editor'] = user_is_ingroup(self.request, app_editor)
 
         # Return the calculated context
         return context

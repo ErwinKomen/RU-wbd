@@ -301,4 +301,8 @@ ModelManifest.xml
 /wald/static/dictionary/content/taalkaart-limburg.jpg
 /wald/static/dictionary/content/EWBD_800_600_2.jpg
 /wald/static/dictionary/content/EWBD_800_300_2.jpg
-/wald/static/dictionary/fonts
+/wbd/wbd/dictionary/static/dictionary/scripts/fontawesome.js
+/wbd/wbd/mapview/migrations
+/wald/wald/mapview/migrations/__init__.py
+/wald/wald/dictionary/static/dictionary/content/taalkaart-wald_vindplaatsen-groot.jpg
+/wgd/wgd/mapview/migrations/__init__.py

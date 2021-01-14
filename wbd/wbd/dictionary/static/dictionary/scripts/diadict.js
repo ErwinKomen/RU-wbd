@@ -36,9 +36,11 @@ function errMsg(sMsg, ex) {
     sHtml = "<code>" + sHtml + "</code>";
     $("#" + loc_divErr).html(sHtml);
 }
+
 function errClear() {
     $("#" + loc_divErr).html("");
 }
+
 /**
  * Goal: initiate a lemma search
  * Source: http://www.javascript-coder.com/javascript-form/javascript-reset-form.phtml
@@ -205,7 +207,11 @@ function do_search(el, sName, sType, pageNum) {
                   // Knoppen weer inschakelen
 
                 } else {
-                  $(elMsg).html("Could not interpret response " + response.status);
+                  if ("msg" in response) {
+                    $(elMsg).html(response.msg);
+                  } else {
+                    $(elMsg).html("Could not interpret response " + response.status);
+                  }
                 }
               }
             });
@@ -221,10 +227,38 @@ function do_search(el, sName, sType, pageNum) {
 }
 
 function init_events() {
+  // Events for input
   $(".search-input").keyup(function (e) {
     if (e.keyCode === 13) {
       $("#button_search").click();
     }
+  });
+
+  // Make modal draggable
+  $(".modal-header, modal-dragpoint").on("mousedown", function (mousedownEvt) {
+    var $draggable = $(this),
+        cursor = null,
+        x = mousedownEvt.pageX - $draggable.offset().left,
+        y = mousedownEvt.pageY - $draggable.offset().top;
+
+    // Set the cursor
+    cursor = $draggable.css("cursor");
+    $draggable.css("cursor", "grab");
+
+    $("body").on("mousemove.draggable", function (mousemoveEvt) {
+      $draggable.closest(".modal-dialog").offset({
+        "left": mousemoveEvt.pageX - x,
+        "top": mousemoveEvt.pageY - y
+      });
+      $draggable.css("cursor", "grab");
+    });
+    $("body").one("mouseup", function () {
+      $("body").off("mousemove.draggable");
+      $draggable.css("cursor", cursor);
+    });
+    $draggable.closest(".modal").one("bs.modal.hide", function () {
+      $("body").off("mousemove.draggable");
+    });
   });
 }
 
@@ -251,6 +285,7 @@ function do_additional(el) {
         return false;
     }
 }
+
 /**
  * Goal: change dialect choice
  * @returns {bool}
@@ -521,3 +556,4 @@ function set_search(sId) {
         errMsg("set_search", ex);
     }
 }
+

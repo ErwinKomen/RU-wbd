@@ -464,9 +464,6 @@ class Lemma(models.Model):
     """Lemma"""
 
     gloss = models.CharField("Gloss voor dit lemma", db_index=True, blank=False, max_length=MAX_LEMMA_LEN, default="(unknown)")
-    # toelichting = models.TextField("Omschrijving van het lemma", blank=True)
-    # bronnenlijst = models.TextField("Bronnenlijst bij dit lemma", db_index=True, blank=True)
-    # boek = models.TextField("Boekaanduiding", db_index=True, null=True,blank=True)
     # [0-1] Optional @Sense_lemma_id attribute
     sense = models.CharField("Sense lemma id", db_index=True, blank=True, max_length=MAX_LEMMA_LEN)
     lmdescr = models.ManyToManyField(Description, through='LemmaDescr')
@@ -516,18 +513,26 @@ class Lemma(models.Model):
 
         oErr = ErrHandle()
         try:
-            # Get the parameters
-            gloss = options['gloss']
-            # Make sure it is lower case
-            gloss = gloss.lower()
-            # Try find an existing item
-            lstQ = []
-            # lstQ.append(Q(gloss__iexact=gloss))
-            lstQ.append(Q(gloss=gloss))
+            # FIrst check for 'sense' 
+            sense = options.get('sense', None)
+            if sense == None:
+                # Get the parameters
+                gloss = options['gloss']
+                # Make sure it is lower case
+                gloss = gloss.lower()
+                # Try find an existing item
+                lstQ = []
+                # lstQ.append(Q(gloss__iexact=gloss))
+                lstQ.append(Q(gloss=gloss))
 
-            if oTime != None: iStart = get_now_time()
-            qItem = Lemma.objects.filter(*lstQ).first()
-            if oTime != None: oTime['search_L'] += get_now_time() - iStart
+                if oTime != None: iStart = get_now_time()
+                qItem = Lemma.objects.filter(*lstQ).first()
+                if oTime != None: oTime['search_L'] += get_now_time() - iStart
+            else:
+                # Try to get it by [sense]
+                if oTime != None: iStart = get_now_time()
+                qItem = Lemma.objects.filter(Q(sense=sense)).first()
+                if oTime != None: oTime['search_L'] += get_now_time() - iStart
 
             # see if we get one value back
             if qItem == None:
@@ -536,6 +541,7 @@ class Lemma(models.Model):
                 if "sense" in options:
                     sense = options['sense']
                 if oTime != None: iStart = get_now_time()
+                gloss = options['gloss']
                 qItem = Lemma(gloss=gloss, sense=sense)
                 qItem.save()
                 if oTime != None: oTime['save'] += get_now_time() - iStart
@@ -637,17 +643,46 @@ class LemmaDescr(models.Model):
             return None
     
 
+class Coordinate(models.Model):
+    """Kloeke code and real-life coordinates"""
+
+    # [1] The actual (new) KloekeCode
+    kloeke = models.CharField("Plaatscode (Kloeke)", blank=False, max_length=6, default="xxxxxx")
+    # [0-1] The place name
+    place = models.CharField("Place name", db_index=True, blank=True, max_length=MAX_LEMMA_LEN)
+    # [0-1] The province
+    province = models.CharField("Province", db_index=True, blank=True, max_length=MAX_LEMMA_LEN)
+    # [0-1] The country name
+    country = models.CharField("Country", db_index=True, blank=True, max_length=MAX_LEMMA_LEN)
+    # [0-1] The dictionary in which this occurs
+    dictionary = models.CharField("Dictionary", db_index=True, blank=True, max_length=MAX_LEMMA_LEN)
+    # [0-1] The point coordinates
+    point = models.CharField("Coordinates", db_index=True, blank=True, max_length=MAX_LEMMA_LEN)
+
+
 class Dialect(models.Model):
     """Dialect"""
 
+    # [1] The location name (city)
     stad = models.CharField("Dialectlocatie", db_index=True, blank=False, max_length=MAX_LEMMA_LEN, default="(unknown)")
+    # [1] The 'old' Kloeke code
     code = models.CharField("Plaatscode (Kloeke)", blank=False, max_length=6, default="xxxxxx")
+    # [1] The 'new' Kloeke code
     nieuw = models.CharField("Plaatscode (Nieuwe Kloeke)", db_index=True, blank=False, max_length=6, default="xxxxxx")
+    # [1] The area
     streek = models.CharField("Streek", db_index=True, blank=False, max_length=MAX_LEMMA_LEN, default="(unknown)")
-    # A field that indicates this item may be showed
+    
+    # [1] A field that indicates this item may be showed
     toonbaar = models.BooleanField("Mag getoond worden", blank=False, default=True)
     # Note: removed 'dialect_toelichting' in accordance with issue #22 of WLD
     # toelichting = models.TextField("Toelichting bij dialect", blank=True)
+
+    # [0-1] Would like to have a coordinate for this dialect
+    coordinate = models.ForeignKey(Coordinate, null=True, blank=True, on_delete=models.SET_NULL, related_name="coordinatedialects")
+
+    # [1] Calculated field: number of 'Entry' elements for this dialect
+    count = models.IntegerField("Number of entries", default=0)
+
 
     class Meta:
         verbose_name_plural = "Dialecten"
@@ -730,6 +765,16 @@ class Dialect(models.Model):
                 inst.toonbaar = False
                 inst.save()
         # Return positively
+        return True
+
+    def adapt_toonbaar():
+        """Check dialects that may not be shown, since no entries are there"""
+
+        with transaction.atomic():
+            for obj in Dialect.objects.all():
+                if obj.entry_set.count() == 0:
+                    obj.toonbaar = False
+                    obj.save()
         return True
 
 
@@ -883,6 +928,41 @@ class Info(models.Model):
         self.save()
 
 
+class DataUpdate(models.Model):
+    """Update of existing dictionary data"""
+
+    # Whether/when processed
+    processed = models.CharField("Verwerkt", blank=True, max_length=MAX_LEMMA_LEN)
+    # Number of read and skipped lines
+    read = models.IntegerField("Gelezen", blank=False, default=0)
+    skipped = models.IntegerField("Overgeslagen", blank=False, default=0)
+    # Het bestand dat ge-upload wordt
+    csv_file = models.FileField(upload_to="csv_files/")
+
+    def reset_item(self):
+        # Reset the 'Processed' comment
+        self.processed = ""
+        # Reset the amount of items read and skipped
+        self.read = 0
+        self.skipped = 0
+        # Save changes
+        self.save()
+
+    def clear_item(self):
+        # Reset the 'Processed' comment
+        self.processed = ""
+        # Reset the amount of items read and skipped
+        self.read = 0
+        self.skipped = 0
+        # Remove the CSV-file from where it is stored
+        csv_file = self.csv_file.path
+        os.remove(csv_file)
+        # Reset the CSV-file
+        self.csv_file = ""
+        # Save changes
+        self.save()
+
+
 class Status(models.Model):
     """Status of importing a CSV file """
 
@@ -893,6 +973,22 @@ class Status(models.Model):
     method = models.CharField("Reading method", blank=False, max_length=MAX_LEMMA_LEN, default="(unknown)")
     # Link to the Info
     info = models.ForeignKey(Info, blank=False)
+
+    def set_status(self, sStatus, sMsg = None):
+        self.status = sStatus
+        self.save()
+
+
+class StatusUpdate(models.Model):
+    """Status of updating a CSV/XML file """
+
+    # Number of read and skipped lines
+    read = models.IntegerField("Gelezen", blank=False, default=0)
+    skipped = models.IntegerField("Overgeslagen", blank=False, default=0)
+    status = models.TextField("Status", blank=False, default="idle")
+    method = models.CharField("Reading method", blank=False, max_length=MAX_LEMMA_LEN, default="(unknown)")
+    # Link to the Info
+    dataupdate = models.ForeignKey(DataUpdate, blank=False)
 
     def set_status(self, sStatus, sMsg = None):
         self.status = sStatus
@@ -1102,24 +1198,28 @@ class Entry(models.Model):
     def __str__(self):
         return self.woord + '_' + self.dialect.nieuw
 
-    # Lemma: obligatory
-    lemma = models.ForeignKey(Lemma, db_index=True, blank=False)
-    # Description: this description should be one and the same for a whole lemma, but this is not true in practice
-    descr = models.ForeignKey(Description, db_index=True, blank=False)
-    # Dialect: obligatory
-    dialect = models.ForeignKey(Dialect, db_index=True, blank=False)
-    # Trefwoord: obligatory
-    trefwoord = models.ForeignKey(Trefwoord, db_index=True, blank=False)
+    # [1] Dialectal entry: obligatory
+    woord = models.CharField("Dialectopgave", db_index=True, blank=False, max_length=MAX_LEMMA_LEN, default="(unknown)")
+    # [0-1] See WLD issue #22
+    kloeketoelichting = models.TextField("Toelichting bij dialectopgave voor een bepaalde kloekelocatie", blank=True)
+    # [0-1] Notes to this entry: optional
+    toelichting = models.TextField("Toelichting", db_index=True, blank=True)
+
+    # ================= FOREIGN-KEYS ===========================
+    # [1] Aflevering
+    aflevering = models.ForeignKey(Aflevering, db_index=True, blank=False)  #, on_delete=models.CASCADE, related_name="aflevering_entries")
+    # [1] Lemma: obligatory
+    lemma = models.ForeignKey(Lemma, db_index=True, blank=False)  #, on_delete=models.CASCADE, related_name="lemma_entries")
+    # [1] Description: this description should be one and the same for a whole lemma, but this is not true in practice
+    descr = models.ForeignKey(Description, db_index=True, blank=False)  #, on_delete=models.CASCADE, related_name="descr_entries")
+    # [1] Dialect: obligatory
+    dialect = models.ForeignKey(Dialect, db_index=True, blank=False)  #, on_delete=models.CASCADE, related_name="dialect_entries")
+    # [1] Trefwoord: obligatory
+    trefwoord = models.ForeignKey(Trefwoord, db_index=True, blank=False)  #, on_delete=models.CASCADE, related_name="trefwoord_entries")
+
+    # ============== MANY-TO-MANY fields ====================
     # Mijn [0-n]
     mijnlijst = models.ManyToManyField(Mijn, db_index=True, through='EntryMijn')
-    # Aflevering [1]
-    aflevering = models.ForeignKey(Aflevering, db_index=True, blank=False)
-    # Dialectal entry: obligatory
-    woord = models.CharField("Dialectopgave", db_index=True, blank=False, max_length=MAX_LEMMA_LEN, default="(unknown)")
-    # Notes to this entry: optional
-    toelichting = models.TextField("Toelichting", db_index=True, blank=True)
-    # See WLD issue #22
-    kloeketoelichting = models.TextField("Toelichting bij dialectopgave voor een bepaalde kloekelocatie", blank=True)
 
     def get_trefwoord_woord(self):
         return self.trefwoord.woord + '_' + self.woord
@@ -1565,10 +1665,13 @@ def xml_to_fixture(xml_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
 
     def get_basename(d, s, a):
         # Basename: derive from deel/section/aflevering
-        sBaseName = "fixture-d" + str(d)
-        if iSectie != None: sBaseName = sBaseName + "-s" + str(s)
-        sBaseName = sBaseName + "-a" + str(a)
-        return sBaseName
+        if s == None:
+            s = ""
+        sResult = "fixture-d{}-s{}-a{}".format(d,s,a)
+        #sBaseName = "fixture-d" + str(d)
+        #if iSectie != None: sBaseName = sBaseName + "-s" + str(s)
+        #sBaseName = sBaseName + "-a" + str(a)
+        return sResult
 
     try:
         # Retrieve the correct instance of the status object
@@ -1874,6 +1977,252 @@ def xml_to_fixture(xml_file, iDeel, iSectie, iAflevering, iStatus, bUseDbase=Fal
         oErr.DoError("xml_to_fixture", True)
         return oBack
 
+# ----------------------------------------------------------------------------------
+# Name :    xml_update
+# Goal :    Update XML file into the database directly
+# History:
+#  09/nov/2020   ERK Created
+# ----------------------------------------------------------------------------------
+def xml_update(xml_file, status_id, dataupdate_id, bUseDbase=False, bUseOld=False):
+    """Process an XML with entry definition updates"""
+
+    oBack = {}          # What we return
+    oStatus = None
+    sVersie = ""        # The version we are using--this depends on the column names
+    sDict = "wald"      # The dictionary we are working for: wld, wbd, wald, wgd
+    bUsdDbaseMijnen = False
+    oErr = ErrHandle()
+
+    try:
+        # Retrieve the correct instance of the statusupdate object
+        oStatus = StatusUpdate.objects.filter(id=status_id).first()
+        oStatus.method = "db"
+        oStatus.set_status("preparing")
+        
+        # Other initialisations
+        oBack['result'] = False
+        lstUpdate = []
+
+        # Validate: input file exists
+        if not "/" in xml_file and not "\\" in xml_file:
+            xml_file = os.path.abspath( os.path.join(MEDIA_ROOT, "csv_files", xml_file))
+        elif xml_file.startswith("csv_files"):
+            xml_file = os.path.abspath( os.path.join(MEDIA_ROOT, xml_file))
+        if (not os.path.isfile(xml_file)): 
+            oStatus.set_status("error", "Cannot find file " + xml_file)
+            return oBack
+
+        # Get the [DataUpdate] object
+        oDataUpdate = DataUpdate.objects.filter(id=dataupdate_id).first()
+        lstUpdate.append(oDataUpdate)
+
+        # Start creating an array that will hold the fixture elements
+        arFixture = []
+        iPkLemma = 1        # The PK for each Lemma
+        iPkDescr = 1        # The PK for each Description (lemma-toelichting many-to-many)
+        iPkTrefwoord = 1    # The PK for each Trefwoord
+        iPkDialect = 1      # The PK for each Dialect
+        iPkEntry = 0        # The PK for each Entry
+        iPkAflevering = 1   # The PK for each Aflevering
+        iPkMijn = 1         # The PK for each Mijn
+        iPkEntryMijn = 1    # The PK for each Entry/Mijn
+        iCounter = 0        # Loop counter for progress
+        iRead = 0           # Number read correctly
+        iSkipped = 0        # Number skipped
+
+        # Prepare the entry object
+        oEntry = fEntry()
+
+         # Initialization of 'last' items
+        descr_this = None
+               
+        # Process all the objects in [lstUpdate]
+        bAllowEmptyXml = True       # TODO: set this to FALSE for production!!!
+        for oUpdate in lstUpdate:
+            # Get the details of this object
+            try:
+                xml_file = oUpdate.csv_file.path
+            except:
+                xml_file = ""
+            if not os.path.isfile(xml_file) and not bAllowEmptyXml:
+                sMsg = "file is not existing: {}".format(xml_file)
+                oStatus.set_status("error", sMsg)
+                oBack['result'] = False
+                oBack['msg'] = sMsg
+                oErr.Status(sMsg)
+                return oBack
+            sProcessed = ""
+            if oUpdate.processed != None:
+                sProcessed = oUpdate.processed
+
+            # Determine whether we will process this item or not
+            bDoThisItem = (xml_file != "" and sProcessed == "")
+
+            if bDoThisItem:
+                iRead = 0           # Number read correctly
+                iSkipped = 0        # Number skipped
+
+                sWorking = "working on update {}".format(oUpdate.id)
+                oStatus.set_status(sWorking)
+                oErr.Status(sWorking)
+
+                # Speed-up storages
+                sLastLemma = ""    
+                sLastLemmaDescr = ""
+                sLastTw = ""
+                sLastTwToel = ""
+                # Instances
+                lemma_this = None
+                trefwoord_this = None
+                descr_this = None
+
+                # Time measurements: keep track of time used in different parts
+                oTime = {}
+                oTime['read'] = 0   # time to read the XML file
+                oTime['db'] = 0     # Time spent in reading and saving database items
+                oTime['entry'] = 0  # Processing entries
+                oTime['save'] = 0   # Time spent in saving
+                oTime['search_L'] = 0   # Time spent in searching (lemma)
+                oTime['search_T'] = 0   # Time spent in searching (trefwoord)
+                oTime['search_Ds'] = 0  # Time spent in searching (description)
+                oTime['search_Dt'] = 0  # Time spent in searching (dialect)
+                oTime['search_LD'] = 0  # Time spent in searching (lemmadescription)
+                oTime['search_M'] = 0   # Time spent in searching (mijn)
+
+                # Now read the XML as an object
+                iStarttime = get_now_time()
+                tree = ET.parse(xml_file)
+                root = tree.getroot()
+                oTime['read'] = get_now_time() - iStarttime
+                iStartTime = get_now_time()
+
+                # Top level: super-lemma
+                for aggrkeyw in root.iter('formrepresentation_aggregatedkeyword'):
+                    # Get the semantic domain
+                    sDomein = aggrkeyw.get('text')
+
+                    # Next level: lemma
+                    for senselemma in aggrkeyw.findall('senselemma'):
+                        # Get the lemma
+                        sLemma = senselemma.get('text')                     
+                        # This identifier should be checked to find the correct Lemma 
+                        # NOTE: this is an update, so it **may** exist already!
+                        sSenseLemmaId = senselemma.get('Sense_lemma_id')    
+                        # Make sure we have a pointer to the correct lemma
+                        if sLemma != sLastLemma:
+                            lemma_this = Lemma.get_instance({'gloss': sLemma, 'sense': sSenseLemmaId}, oTime)
+                            sLastLemma = sLemma
+
+                            # Remove anything *under* this lemma: all entries and related trefwoord, description
+                            # lemma_this.lemma_entries.all().delete()
+                            lemma_this.entry_set.all().delete()
+
+                        # Find out which lemma-description this is
+                        sToelichting = ""
+                        for comment in senselemma.findall('contextcomment'):
+                            if sToelichting != "": sToelichting += " // " 
+                            sToelichting += comment.text.strip()
+                        descr_this = Description.get_instance({'bronnenlijst': "", 'boek': "",
+                                                            'toelichting': sToelichting}, descr_this, oTime)
+
+                        # We do need the PKs of the lemma and the description
+                        iPkLemma = lemma_this.pk
+                        iPkDescr = descr_this.pk
+
+                        # Add the [iPkDescr] to the LemmaDescr--but only if it is not already there
+                        iPkLemmaDescr = LemmaDescr.get_item({'lemma': lemma_this,
+                                                                'description': descr_this}, oTime)
+
+                        # Find all the <contextexample> items, which are indexed by their 'locationkloeke'
+                        examples = {}
+                        for example in senselemma.findall('contextexample'):
+                            # There should be only one location attached to a context example
+                            for loc in example.findall('Location'):
+                                sKloeke = loc.get("locationkloeke")
+                            examples[sKloeke] = example.text.strip()
+
+                        # Next level: trefwoord
+                        for formkeyword in senselemma.findall('formkeyword'):
+                            # Get the keyword = trefwoord
+                            sTrefwoord = formkeyword.get('text')
+                            # Process this keyword
+                            if sTrefwoord != sLastTw:
+                                iPkTrefwoord = Trefwoord.get_item({'woord': sTrefwoord}, oTime)
+                                sLastTw = sTrefwoord
+
+                            # Next level: dialect entries
+                            for dialectform in formkeyword.findall("formrepresentation_dialectform"):
+                                # Get the entry
+                                sDialectWoord = dialectform.get('text')
+
+                                # Get all the locations where this entry is used
+                                for location in dialectform.findall("Location"):
+                                    # Get the dialect index
+                                    sKloekeId = location.get('locationkloeke')
+                                    iPkDialect = Dialect.get_item({'stad': location.get('locationplace'),
+                                                                   'streek': location.get('locationarea'), 
+                                                                   'nieuw': sKloekeId}, oTime)
+
+                                    # Determine any sourcebook definition (there can be only one)
+                                    sLocComment = ""
+                                    for sourcebookdef in location.findall("definitionsourcebook"):
+                                        sLocComment = sourcebookdef.get('definitionsourcebook')
+
+                                    # Check if this particular location has an example
+                                    sExample = ""
+                                    if sKloekeId in examples:
+                                        sExample = examples[sKloekeId]
+
+                                    # Check validity
+                                    if iPkDescr < 0 or iPkLemma < 0 or iPkLemmaDescr < 0 or iPkDialect < 0 or iPkTrefwoord < 0:
+                                        # Something has gone wrong: we cannot continue
+                                        oStatus.set_status("error")
+                                        errHandle.DoError("xml_update has a negative index", True)
+                                        return oBack
+
+                                    # This is updating, so *CREATE* a new Entry
+                                    iStarttime = get_now_time()
+                                    oEntry = Entry.objects.create(woord=sDialectWoord,
+                                                           toelichting=sExample,
+                                                           kloeketoelichting=sLocComment,
+                                                           lemma_id=iPkLemma,
+                                                           descr_id=iPkDescr,     # This is the Description that in principle is valid for the whole lemma, but not in practice
+                                                           dialect_id=iPkDialect,
+                                                           trefwoord_id=iPkTrefwoord,
+                                                           aflevering_id=iPkAflevering)
+                                    oTime['entry'] += get_now_time() - iStarttime
+                                    iRead += 1
+                
+                        # Keep track of progress
+                        oStatus.skipped = iSkipped
+                        oStatus.read = iRead
+                        oStatus.status = "{} (read={:.1f}, db={:.1f}, entry={:.1f}, search (L={:.1f}, T={:.1f}, Ds={:.1f}, LD={:.1f}, Dt={:.1f}, M={:.1f}), save={:.1f})".format(
+                            sWorking, oTime['read'], oTime['db'], oTime['entry'],
+                            oTime['search_L'], oTime['search_T'], oTime['search_Ds'], oTime['search_LD'], oTime['search_Dt'], oTime['search_M'], oTime['save'])
+                        oStatus.save()
+
+                # Note the results for this info object
+                oUpdate.read = iRead
+                oUpdate.skipped = iSkipped
+                oUpdate.processed = "Processed at {:%d/%b/%Y %H:%M:%S}".format(datetime.now())
+                oUpdate.save()
+
+        # Make sure only dialects are shown that actually have entries
+        Dialect.adapt_toonbaar()
+
+        # return positively
+        oBack['result'] = True
+        oBack['skipped'] = iSkipped
+        oBack['read'] = iRead
+        oStatus.set_status("done")
+        # Return what we found
+        return oBack
+    except:
+        if oStatus != None:
+            oStatus.set_status("error")
+        sMsg = oErr.get_error_message()
+        oErr.DoError("xml_update", True)
+        return oBack
 
 # ----------------------------------------------------------------------------------
 # Name :    csv_to_fixture

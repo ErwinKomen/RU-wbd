@@ -12,6 +12,7 @@
     <h4>Zoeken</h4>
     <p>Vanuit het hoofdmenu kan in het vakje 'Begrip' snel naar een begrip gezocht worden.
     Daarbij kan gebruik gemaakt worden van de symbolen * (nul of meer willekeurige tekens) of ? (één willekeurig teken).
+    Het symbool # kan gebruikt worden om naar een woord te zoeken binnen een begrip (<code>are#</code> geeft alle begrippen met 'are').
     Door uit de menu-optie 'Zoeken' te kiezen voor 'Begrippen', 'Plaatsen' of 'Trefwoorden' ontstaan er de volgende drie zoekmogelijkheden:
       <ol>
         <li><b>Begrippen</b> - zoek naar één of meer begrippen en geef per begrip alle dialectwoorden, ingedeeld naar trefwoord.</li>
@@ -22,6 +23,14 @@
         <li><b>Trefwoorden</b> - zoek naar één of meer trefwoorden en geef de gevonden dialectwoorden onderverdeeld per begrip.</li>
       </ol>
     </p>
+    <div class="suggestion">
+      <table>
+        <tr>
+          <td valign="top"><b>TIP</b>:</td>
+          <td valign="top">Mocht u een begrip niet kunnen vinden, probeer het dan met een hekje erachter</td>
+        </tr>
+      </table>
+    </div>
     <h4>Dialectweergave</h4>
     <p>De dialecten waarin de dialectopgaven voorkomen kunnen op verschillende manieren worden weergegeven.
     Standaard wordt alleen de plaatsnaam (<code>Plaats</code>) weergegeven. 
@@ -30,13 +39,13 @@
     </p>
     <p>Wanneer een dialectopgave identiek is voor meerdere dialecten, dan wordt de eerste plaats standaard gevolgd door een komma en drie punten:</p>
     <div>
-      <span class="lemma-trefwoord"><a href="/trefwoord/search/?search=beter%20met%20iemand%20zijn">beter met iemand zijn</a>:</span>
-      <span class="lemma-word">en ’t soŏ bĕetər meĕm zen</span>
-      <span>(</span>
+      <span class="lemma-trefwoord"><a href="/lemma/search/?search=rookkanaal">rookkanaal</a>:</span>
+      <span class="lemma-word ">rookgat</span>
+      <span> (</span>
       <span class="lemma-word-dialect">
-        <span class="lemma-word-dialect-code hidden">L205p</span>
+        <span class="lemma-word-dialect-code hidden">l037p</span>
         <span class="lemma-word-dialect-space hidden">&nbsp;</span>
-        <span class="lemma-word-dialect-stad">Aarle</span>
+        <span class="lemma-word-dialect-stad">doetinchem</span>
         <span>, </span>
         <span class="lemma-word-dialect-dots">...</span>
       </span>
@@ -46,20 +55,26 @@
     <p>Om <em>alle</em> plaatsen te zien waar deze dialectopgave gesproken wordt kan bovenin het scherm de optie <code>Dialectlijst</code> worden aangevinkt.
     Dan verschijnen alle opties:</p>
     <div>
-      <span class="lemma-trefwoord"><a href="/trefwoord/search/?search=beter%20met%20iemand%20zijn">beter met iemand zijn</a>:</span>
-      <span class="lemma-word">en ’t soŏ bĕetər meĕm zen</span>
-      <span>(</span>
+      <span class="lemma-trefwoord"><a href="/lemma/search/?search=rookkanaal">rookkanaal</a>:</span>
+      <span class="lemma-word ">rookgat</span>
+      <span> (</span>
       <span class="lemma-word-dialect">
-        <span class="lemma-word-dialect-code hidden">L205p</span>
+        <span class="lemma-word-dialect-code hidden">l037p</span>
         <span class="lemma-word-dialect-space hidden">&nbsp;</span>
-        <span class="lemma-word-dialect-stad">Aarle</span>
+        <span class="lemma-word-dialect-stad">doetinchem</span>
         <span>, </span>
         <span class="lemma-word-dialect-dots hidden">...</span>
       </span>
       <span class="lemma-word-dialect-additional">
-        <span class="lemma-word-dialect-code hidden">L206p</span>
+        <span class="lemma-word-dialect-code hidden">f163p</span>
         <span class="lemma-word-dialect-space hidden">&nbsp;</span>
-        <span class="lemma-word-dialect-stad">Rixtel</span>
+        <span class="lemma-word-dialect-stad">eefde</span>
+        <span>, </span>
+      </span>
+      <span class="lemma-word-dialect-additional">  
+        <span class="lemma-word-dialect-code hidden">f205b</span>
+        <span class="lemma-word-dialect-space hidden">&nbsp;</span>
+        <span class="lemma-word-dialect-stad">toldijk</span>
         <span></span>
       </span>
       <span>)</span>
@@ -92,32 +107,34 @@
       <div class="panel-heading" data-toggle="collapse">
         <span>Filteren...</span>
         <span class="filter-summary">
-          <span class="filter-item">woord=c*</span>
+          <span class="filter-item">woord=k*</span>
           <span class="filter-item">plaats=b*</span>
-          <span class="filter-item">aflevering=II-4</span>
+          <span class="filter-item">aflevering=II-1</span>
         </span>
       </div>
     </div>
-    <p>Het bovenstaande filter geeft aan dat de dialectopgave moet beginnen met de letter 'c', 
+    <p>Het bovenstaande filter geeft aan dat de dialectopgave moet beginnen met de letter 'k', 
     dat de plaatsnaam moet beginnen met de letter 'b', 
-    en dat de dialectopgaven beperkt moeten zijn tot diegenen die voorkomen in deel II, aflevering 4.</p>
+    en dat de dialectopgaven beperkt moeten zijn tot diegenen die voorkomen in deel II, aflevering 1.</p>
     <h4>Kleuren en coderingen</h4>
     <p>Er worden in het {{dic_abbr}} een aantal verschillende kleurcoderingen gebruikt. De meeste daarvan spreken voor zichzelf.
     Hieronder een voorbeeld van kleurcoderingen waar enige uitleg bij gegeven kan worden:</p>
     <div class="row">
     <div class="col-md-10 col-md-offset-1">
       {% spaceless %}
-      <span class="lemma-trefwoord"><a href="/trefwoord/search/?search=waaier">waaier</a>:</span>
+      <span class="lemma-trefwoord"><a href="/trefwoord/search/?search=ruwijzelen">ruwijzelen</a>:</span>
       <span class="lemma-word-toelichting"></span>&nbsp;
-      <span class="lemma-word">wèèjǝr</span><span> (</span><span class="lemma-word-dialect"><span class="lemma-word-dialect-code hidden">L256p</span><span class="lemma-word-dialect-space hidden">&nbsp;</span><span class="lemma-word-dialect-stad">Aalst</span><span>, </span><span class="lemma-word-dialect-dots">...</span></span>
-      <span class="lemma-word-dialect-additional hidden"><span class="lemma-word-dialect-code hidden">L225p</span><span class="lemma-word-dialect-space hidden">&nbsp;</span><span class="lemma-word-dialect-stad">Zeelst</span><span></span></span><span>)</span><span>, </span>
-      <span class="lemma-word">wèèr</span><span> (</span><span class="lemma-word-dialect"><span class="lemma-word-dialect-code hidden">L207p</span><span class="lemma-word-dialect-space hidden">&nbsp;</span><span class="lemma-word-dialect-stad">Gemert</span><span></span></span><span>)</span><span>, </span>
-      <span class="lemma-word-toelichting">(of: wèèjǝr?)</span>&nbsp;
-      <span class="lemma-word">wáájǝr</span><span> (</span><span class="lemma-word-dialect"><span class="lemma-word-dialect-code hidden">K172p</span><span class="lemma-word-dialect-space hidden">&nbsp;</span><span class="lemma-word-dialect-stad">Boxtel</span>
-      &nbsp;<span class="word-kloeketoelichting">[Van Bakel]</span>&nbsp;
-      <span></span></span><span>)</span><span>, </span>
-      <span class="lemma-word-toelichting">waaier, dienende om het pas gesterkte kettinggaren mee droog te waaien (bladzijde 28), v.d. Ven - Vos</span>&nbsp;
-      <span class="lemma-word">wèèjǝr</span><span> (</span><span class="lemma-word-dialect"><span class="lemma-word-dialect-code hidden">L207p</span><span class="lemma-word-dialect-space hidden">&nbsp;</span><span class="lemma-word-dialect-stad">Gemert</span><span></span></span><span>)</span>
+      <span class="lemma-word">roewgiezelen</span><span> (</span><span class="lemma-word-dialect"><span class="lemma-word-dialect-code hidden">waldk009</span><span class="lemma-word-dialect-space hidden">&nbsp;</span><span class="lemma-word-dialect-stad">gelselaar en kerspel goor</span>
+      &nbsp;<span class="word-kloeketoelichting">[1948; wanink, g.h. twents - achterhoeks woordenboek benevens grammatica (zutphen 1948)]</span>&nbsp;
+      </span><span>)</span><span>, </span>
+      <span class="lemma-word">row-iezele</span><span> (</span><span class="lemma-word-dialect"><span class="lemma-word-dialect-code hidden">l083p</span><span class="lemma-word-dialect-space hidden">&nbsp;</span><span class="lemma-word-dialect-stad">stokkum</span></span><span>)</span><span>, </span>
+      <span class="lemma-word">rowgiezelen</span><span> (</span><span class="lemma-word-dialect"><span class="lemma-word-dialect-code hidden">f205b</span><span class="lemma-word-dialect-space hidden">&nbsp;</span><span class="lemma-word-dialect-stad">toldijk</span></span><span>)</span><span>, </span>
+      <span class="lemma-word-toelichting">met de uutdrukking: "better woor 't rookt as woor 't roewgiezelt", geef ie an dat 't better is um in de warmte te zitten met rook der bie, as in de koldegheid. (ok: wich, hen || bat)</span>&nbsp;
+      <span class="lemma-word">roewgiezelen</span><span> (</span><span class="lemma-word-dialect"><span class="lemma-word-dialect-code hidden">f161p</span><span class="lemma-word-dialect-space hidden">&nbsp;</span><span class="lemma-word-dialect-stad">gorssel</span></span><span>)</span><span>, </span>
+      <span class="lemma-word-toelichting">roewgiezelen dut 't, as de giezel blif zitten op de beume en zo</span>&nbsp;
+      <span class="lemma-word">roewgiezelen</span><span> (</span><span class="lemma-word-dialect"><span class="lemma-word-dialect-code hidden">f181p</span><span class="lemma-word-dialect-space hidden">&nbsp;</span><span class="lemma-word-dialect-stad">almen</span></span><span>)</span>
+      <!-- Treat the afleveringen for this trefwoord -->
+      <span class="lemma-aflevering"><a href="/static/dictionary/content/pdf/wald-5/1987_Schaars, AHG_De weerld A (WALD) (AF).pdf">V-1</a></span>
       {% endspaceless %}
     </div>
       </div>

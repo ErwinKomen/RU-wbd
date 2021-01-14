@@ -80,7 +80,9 @@
             </i>
             <span class="citation-publication">, {{deze.plaats}} {{deze.jaar}}.</span>
             {% endspaceless %}
-            <span class="citation-pdf">(<a href="/{{app_prefix}}static/dictionary/content/pdf/{{deze.get_pdf}}">pdf</a>)</span>
+            {% if deze.naam != "-" %}
+              <span class="citation-pdf">(<a href="/{{app_prefix}}static/dictionary/content/pdf/{{deze.get_pdf}}">pdf</a>)</span>
+            {% endif %}
           {% endfor %}
         </p>
       {% endfor %}
