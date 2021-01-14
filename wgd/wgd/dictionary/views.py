@@ -194,7 +194,6 @@ def csv_to_excel(sCsvData, response):
     wb.save(response)
     return response
 
-
 def home(request):
     """Renders the home page."""
     assert isinstance(request, HttpRequest)
