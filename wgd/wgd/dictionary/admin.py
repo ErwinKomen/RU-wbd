@@ -63,9 +63,9 @@ class DescriptionAdmin(admin.ModelAdmin):
 
 
 class DialectAdmin(admin.ModelAdmin):
-    fieldsets = ( ('Editable', {'fields': ('stad', 'code', 'nieuw', 'toelichting', 'coordinate',)}),
+    fieldsets = ( ('Editable', {'fields': ('stad', 'code', 'nieuw', 'streek', 'coordinate', 'toonbaar',)}),
                 )
-    list_display = ['nieuw', 'stad', 'coordinate']
+    list_display = ['nieuw', 'stad', 'streek']
     search_fields = ['nieuw', 'stad']
 
 
