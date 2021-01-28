@@ -2253,6 +2253,109 @@ class DialectListView(ListView):
     bDoTime = True
     bImportKloekeInfo = False
 
+    def initialize(self):
+        oErr = ErrHandle()
+
+        dialect_repair = {
+            'Balgoy': 'L018p', 'Beneden-Leeuwen': 'L053p', 'Bunschoten-Spakenburg': 'F139p', 'Culemborg ': 'K039p',
+            'Druten': 'L054p', 'Elst': 'L025p', 'Ewijk': 'L064p', 'Millingen': 'L075p', 'Nijmegen': 'L071p',
+            'Ooij': 'L073p', 'Ooy': 'L073p', 'stadnieuw': 'Ooij', 'Wijchen': 'L106p', 'Winssen': 'L064a',
+            }
+
+        try:
+            # Remove all /number from the dialect city names
+            if Information.get_kvalue("dialect_slash") != "done":
+                with transaction.atomic():
+                    for dialect in Dialect.objects.filter(stad__iregex=r"^[a-zA-Z ]*/\.?[0-9][0-9]?$"):
+                        # Remove the slash and number
+                        dialect.stad = dialect.stad.split("/")[0].strip()
+                        dialect.save()
+
+                # Set the information value to 'done'
+                Information.set_kvalue("dialect_slash", "done")
+
+            # Check if "Rhede" has been processed
+            if Information.get_kvalue("dialect_compress") != "done":
+                adapt_dialect = []
+                manual_dialect = []
+                # Look for dialects that have the same name+streek, but multiple identifiers
+                for dialect in Dialect.objects.all():
+                    stad = dialect.stad
+                    streek = dialect.streek
+                    if stad == "Wijchen" or stad == "Ooij":
+                        iStop = 1
+                    count = Dialect.objects.filter(stad=stad, streek=streek).count()
+                    if count > 1 or (count == 1 and dialect.coordinate == None):
+                        bFound = False
+                        for adaptation in adapt_dialect:
+                            if stad == adaptation['stad'] and streek == adaptation['streek']:
+                                bFound = True
+                                break
+                        if not bFound:
+                            obj = Dialect.objects.filter(stad=stad, streek=streek, coordinate__isnull=False).first()
+                            if obj == None:
+                                if stad in dialect_repair:
+                                    kloeke_nieuw = dialect_repair[stad]
+                                    obj = Dialect.objects.filter(stad=stad, streek=streek).first()
+                                    obj.nieuw = kloeke_nieuw
+                                    obj.coordinate = Coordinate.objects.filter(kloeke=kloeke_nieuw).first()
+                                    obj.save()
+                                else:
+                                    # Get the kloeke codes
+                                    kloekes = [x.nieuw for x in Dialect.objects.filter(stad=stad, streek=streek)]
+                                    oManual = dict(stad=stad, streek=streek, kloekes=kloekes)
+                                    manual_dialect.append(oManual)
+                            if obj != None:
+                                all = [x.id for x in Dialect.objects.filter(stad=stad, streek=streek).all() if x.id != obj.id]
+                                oAdapt = dict(stad=stad, streek=streek, obj=obj, all=all)
+                                adapt_dialect.append(oAdapt)
+                # Show the codes that need manual doing
+                oErr.Status("Some dialects need manual treatment:")
+                for item in manual_dialect:
+                    oErr.Status("{}\t{}\t{}".format(item['stad'], item['streek'], item['kloekes']))
+
+                # Go through all the adaptations that need doing
+                for adaptation in adapt_dialect:
+                    stad = adaptation['stad']
+                    streek = adaptation['streek']
+                    obj = adaptation['obj']
+                    all = adaptation['all']
+                    # Visit all entries with a dialect like this
+                    entries = Entry.objects.filter(dialect__id__in=all).values('id')
+                    oErr.Status("stad: {} do {}".format(stad, entries.count()))
+                    with transaction.atomic():
+                        for entry in Entry.objects.filter(id__in=entries):
+                            entry.dialect = obj
+                            entry.save()
+                            #print("done entry #{}".format(entry.id), file=sys.stderr)
+                    # Remove the superfluous dialects
+                    Dialect.objects.filter(id__in=all).delete()
+
+
+                # Set the information value to 'done' - but only if there are no manuals left
+                if len(manual_dialect) == 0:
+                    Information.set_kvalue("dialect_compress", "done")
+
+            # Check if "DIalect count" has been processed
+            if Information.get_kvalue("dialectcount") != "done":
+                adapt_dialect = []
+                # Visit all dialects and get the  number of entries per dialect
+                with transaction.atomic():
+                    for dialect in Dialect.objects.all():
+                        count = Entry.objects.filter(dialect=dialect).count()
+                        dialect.count = count
+                        dialect.save()
+
+
+                # Set the information value to 'done'
+                Information.set_kvalue("dialectcount", "done")
+
+        except:
+            msg = oErr.get_error_message()
+            oErr.DoError("DialectListView/initialize")
+
+        return None
+
     def get_context_data(self, **kwargs):
         # Call the base implementation first to get a context
         context = super(DialectListView, self).get_context_data(**kwargs)
@@ -2327,6 +2430,9 @@ class DialectListView(ListView):
         return self.request.GET.get('paginate_by', self.paginate_by)
         
     def get_queryset(self):
+        # Initializations
+        self.initialize()
+
         # Measure how long it takes
         if self.bDoTime: iStart = get_now_time()
 
