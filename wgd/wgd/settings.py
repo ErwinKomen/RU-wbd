@@ -15,6 +15,9 @@ import posixpath
 import socket
 from django.contrib import admin
 
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = False        # Further down DEBUG is put to True for development environment
+
 # Get the HOST by IP address
 hst = socket.gethostbyname(socket.gethostname())
 
@@ -22,6 +25,7 @@ hst = socket.gethostbyname(socket.gethostname())
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WRITABLE_DIR = os.path.abspath(os.path.join(BASE_DIR, "../../writable/database/"))
 MEDIA_ROOT = os.path.abspath(os.path.join(BASE_DIR, "../../writable/media/"))
+ADMIN_SITE_URL = "/"
 if "RU-wgd\\writable" in WRITABLE_DIR:
     # Need another string
     WRITABLE_DIR = os.path.abspath(os.path.join(BASE_DIR, "../../../writable/database/"))
@@ -30,14 +34,17 @@ if "RU-wgd\\writable" in WRITABLE_DIR:
 APP_PREFIX = ""
 if "d:" in WRITABLE_DIR or "D:" in WRITABLE_DIR:
     APP_PREFIX = ""
+    DEBUG = True
 elif "/scratch" in WRITABLE_DIR or "131.174" in hst:
     # Configuration for http://ewgd.science.ru.nl/
     # Also works for http://e-wgd.nl
     APP_PREFIX = ""
-    admin.site.site_url = '/'
+    # admin.site.site_url = '/'
+    ADMIN_SITE_URL = "/"
 else:
     APP_PREFIX = "ewgd/"
-    admin.site.site_url = '/ewgd'
+    # admin.site.site_url = '/ewgd'
+    ADMIN_SITE_URL = "/ewgd"
 
 
 # Not the location of the wsgi.py file for "reload_wgd"
@@ -45,7 +52,7 @@ WSGI_FILE = os.path.abspath(os.path.join(BASE_DIR,"wgd/wsgi.py"))
 
 # publishing on a sub-url
 # NOTE: possibly remove this for the production environment...
-FORCE_SCRIPT_NAME = admin.site.site_url
+# FORCE_SCRIPT_NAME = admin.site.site_url
 
 
 # Quick-start development settings - unsuitable for production
@@ -55,13 +62,13 @@ FORCE_SCRIPT_NAME = admin.site.site_url
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'd82ecfa5-e588-4255-a869-e339de20457c'
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'e-wgd.science.ru.nl',
                  'e-wgd.nl', 'www.e-wgd.nl', 'ewgd.science.ru.nl', 
                  'corpus-studio-web.cttnww-meertens.surf-hosted.nl']
 
+# Handling email on exceptions
+DEFAULT_FROM_EMAIL = 'diadict@science.ru.nl'
+ADMINS = [('Erwin', 'e.komen@ru.nl')]
 
 # Application definition
 

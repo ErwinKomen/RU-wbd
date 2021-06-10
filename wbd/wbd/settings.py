@@ -15,6 +15,9 @@ import posixpath
 import socket
 from django.contrib import admin
 
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = False        # Further down DEBUG is put to True for development environment
+
 # Get the HOST by IP address
 hst = socket.gethostbyname(socket.gethostname())
 
@@ -28,6 +31,7 @@ if "RU-wbd\\writable" in WRITABLE_DIR:
     MEDIA_ROOT = os.path.abspath(os.path.join(BASE_DIR, "../../../writable/media/"))
 
 APP_PREFIX = "dd/"
+ADMIN_SITE_URL = "/"
 if "d:" in WRITABLE_DIR or "D:" in WRITABLE_DIR:
     APP_PREFIX = ""
 elif "/scratch" in WRITABLE_DIR or "131.174" in hst:
@@ -35,9 +39,11 @@ elif "/scratch" in WRITABLE_DIR or "131.174" in hst:
     # Also works for http://e-wbd.nl
     APP_PREFIX = ""
     admin.site.site_url = '/'
+    ADMIN_SITE_URL = "/"
 else:
     APP_PREFIX = "ewbd/"
-    admin.site.site_url = '/ewbd'
+    # admin.site.site_url = '/ewbd'
+    ADMIN_SITE_URL = "/ewbd"
 
 
 # Not the location of the wsgi.py file for "reload_wbd"
@@ -45,7 +51,7 @@ WSGI_FILE = os.path.abspath(os.path.join(BASE_DIR,"wbd/wsgi.py"))
 
 # publishing on a sub-url
 # NOTE: possibly remove this for the production environment...
-FORCE_SCRIPT_NAME = admin.site.site_url
+# FORCE_SCRIPT_NAME = admin.site.site_url
 
 
 # Quick-start development settings - unsuitable for production
@@ -54,12 +60,13 @@ FORCE_SCRIPT_NAME = admin.site.site_url
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = '485c409a-daf7-47d3-81af-257049728c58'
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'e-wbd.science.ru.nl',
                  'e-wbd.nl', 'www.e-wbd.nl', 'ewbd.science.ru.nl', 
                  'corpus-studio-web.cttnww-meertens.surf-hosted.nl']
+
+# Handling email on exceptions
+DEFAULT_FROM_EMAIL = 'diadict@science.ru.nl'
+ADMINS = [('Erwin', 'e.komen@ru.nl')]
 
 
 # Application definition
