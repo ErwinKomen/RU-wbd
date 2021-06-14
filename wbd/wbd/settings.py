@@ -60,7 +60,7 @@ WSGI_FILE = os.path.abspath(os.path.join(BASE_DIR,"wbd/wsgi.py"))
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = '485c409a-daf7-47d3-81af-257049728c58'
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'e-wbd.science.ru.nl',
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'e-wbd.science.ru.nl', '131.174.114.211', '192.168.0.1',
                  'e-wbd.nl', 'www.e-wbd.nl', 'ewbd.science.ru.nl', 
                  'corpus-studio-web.cttnww-meertens.surf-hosted.nl']
 

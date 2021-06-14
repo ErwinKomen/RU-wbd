@@ -62,9 +62,8 @@ WSGI_FILE = os.path.abspath(os.path.join(BASE_DIR,"wgd/wsgi.py"))
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'd82ecfa5-e588-4255-a869-e339de20457c'
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'e-wgd.science.ru.nl',
-                 'e-wgd.nl', 'www.e-wgd.nl', 'ewgd.science.ru.nl', 
-                 'corpus-studio-web.cttnww-meertens.surf-hosted.nl']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'e-wgd.science.ru.nl','131.174.114.226', '192.168.0.1' ,
+                 'e-wgd.nl', 'www.e-wgd.nl', 'ewgd.science.ru.nl']
 
 # Handling email on exceptions
 DEFAULT_FROM_EMAIL = 'diadict@science.ru.nl'
