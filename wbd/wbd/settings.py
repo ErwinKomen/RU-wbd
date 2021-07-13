@@ -49,6 +49,14 @@ else:
 # Not the location of the wsgi.py file for "reload_wbd"
 WSGI_FILE = os.path.abspath(os.path.join(BASE_DIR,"wbd/wsgi.py"))
 
+BLOCKED_IPS = ['40.77.167.57',      '161.35.188.242',
+               '46.229.168.133',    '54.202.172.244',
+               '88.198.17.136',     '34.222.29.95',
+               '157.55.39.235',     '37.9.13.199',
+               '157.55.39.199',
+               '54.36.148.',        '54.36.149.'
+               ]
+
 # publishing on a sub-url
 # NOTE: possibly remove this for the production environment...
 # FORCE_SCRIPT_NAME = admin.site.site_url
@@ -93,6 +101,7 @@ MIDDLEWARE_CLASSES = [
     'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'wbd.utils.BlockedIpMiddleware',
 ]
 
 ROOT_URLCONF = 'wbd.urls'
