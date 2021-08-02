@@ -47,7 +47,7 @@ class FieldChoice(models.Model):
         ordering = ['field','machine_value']
 
 def get_now_time():
-    return time.clock()
+    return time.process_time()
 
 def build_choice_list(field):
     """Create a list of choice-tuples"""

@@ -7,7 +7,7 @@ from django.views.generic.list import ListView, View
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import get_object_or_404, render
 from django.http import HttpRequest, HttpResponse
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.template import RequestContext, loader
 from django.template.loader import render_to_string
 from django.db import connection

@@ -38,7 +38,7 @@ elif "/scratch" in WRITABLE_DIR or "131.174" in hst:
     # Configuration for http://ewbd.science.ru.nl/
     # Also works for http://e-wbd.nl
     APP_PREFIX = ""
-    admin.site.site_url = '/'
+    # admin.site.site_url = '/'
     ADMIN_SITE_URL = "/"
 else:
     APP_PREFIX = "ewbd/"
@@ -92,13 +92,14 @@ INSTALLED_APPS = [
     'wbd.mapview',
 ]
 
-MIDDLEWARE_CLASSES = [
+MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
+    'django.middleware.locale.LocaleMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
+    # 'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'wbd.utils.BlockedIpMiddleware',
