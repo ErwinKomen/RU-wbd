@@ -4,7 +4,7 @@
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
     <Name>wgd</Name>
     <RootNamespace>wgd</RootNamespace>
-    <InterpreterId>MSBuild|{fa2f7d1e-00ed-49ea-9692-0bad8d50817d}|$(MSBuildProjectFullPath)</InterpreterId>
+    <InterpreterId>{6ef9c6ab-96b9-4f5e-8d76-5352cd18dc4a}</InterpreterId>
     <WebBrowserPort>6502</WebBrowserPort>
     <InterpreterVersion>3.5</InterpreterVersion>
   </PropertyGroup>
@@ -191,15 +191,16 @@
     <Folder Include="wgd\templates\admin\dictionary\info\" />
   </ItemGroup>
   <ItemGroup>
-    <Interpreter Include="..\..\..\..\..\env\diadict\">
-      <Id>{fa2f7d1e-00ed-49ea-9692-0bad8d50817d}</Id>
+    <Interpreter Include="..\..\..\..\..\env\ewdict\">
+      <Id>{6ef9c6ab-96b9-4f5e-8d76-5352cd18dc4a}</Id>
+      <BaseInterpreter>{9a7a9026-48c1-4688-9d5d-e5699d47d074}</BaseInterpreter>
       <Version>3.5</Version>
-      <Description>diadict (Python 3.5)</Description>
+      <Description>ewdict (Python 64-bit 3.5)</Description>
       <InterpreterPath>Scripts\python.exe</InterpreterPath>
       <WindowsInterpreterPath>Scripts\pythonw.exe</WindowsInterpreterPath>
       <LibraryPath>Lib\</LibraryPath>
       <PathEnvironmentVariable>PYTHONPATH</PathEnvironmentVariable>
-      <Architecture>X86</Architecture>
+      <Architecture>Amd64</Architecture>
     </Interpreter>
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.Django.targets" />

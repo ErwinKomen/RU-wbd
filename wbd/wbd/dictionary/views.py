@@ -950,28 +950,28 @@ class TrefwoordListView(ListView):
         if 'dialectwoord' in get and get['dialectwoord'] != '':
             val = adapt_search(get['dialectwoord'])
             # Adapt Entry filter
-            lstQ.append(Q(entry__woord__iregex=val))
+            lstQ.append(Q(trefwoord_entries__woord__iregex=val))
             bHasFilter = True
 
         # Check for lemma
         if 'lemma' in get and get['lemma'] != '':
             val = adapt_search(get['lemma'])
             # Adapt Entry filter
-            lstQ.append(Q(entry__lemma__gloss__iregex=val))
+            lstQ.append(Q(trefwoord_entries__lemma__gloss__iregex=val))
             bHasFilter = True
 
         # Check for dialect city
         if 'dialectCity' in get and get['dialectCity'] != '':
             val = adapt_search(get['dialectCity'])
             # Adapt Entry filter
-            lstQ.append(Q(entry__dialect__stad__iregex=val))
+            lstQ.append(Q(trefwoord_entries__dialect__stad__iregex=val))
             bHasFilter = True
 
         # Check for dialect code (Kloeke)
         if 'dialectCode' in get and get['dialectCode'] != '':
             val = adapt_search(get['dialectCode'])
             # Adapt Entry filter
-            lstQ.append(Q(entry__dialect__nieuw__iregex=val))
+            lstQ.append(Q(trefwoord_entries__dialect__nieuw__iregex=val))
             bHasFilter = True
 
         # Check for aflevering
@@ -981,7 +981,7 @@ class TrefwoordListView(ListView):
             if val.isdigit():
                 iVal = int(val)
                 if iVal>0:
-                    lstQ.append(Q(entry__aflevering__id=iVal))
+                    lstQ.append(Q(trefwoord_entries__aflevering__id=iVal))
                     bHasFilter = True
 
         # Check for mijn
@@ -991,7 +991,7 @@ class TrefwoordListView(ListView):
             if val.isdigit():
                 iVal = int(val)
                 if iVal>0:
-                    lstQ.append(Q(entry__mijnlijst__id=iVal))
+                    lstQ.append(Q(trefwoord_entries__mijnlijst__id=iVal))
                     bHasFilter = True
 
         # Debugging: time
@@ -2229,7 +2229,7 @@ class DialectCheckView(ListView):
                         if not d.nieuw in lCode:
                             lCode.append({'nieuw': d.nieuw,'num': qse_count})
                         # Check all the afl for this dialect
-                        qsa = Aflevering.objects.filter(entry__in=qse).distinct()
+                        qsa = Aflevering.objects.filter(aflevering_entries__in=qse).distinct()
                         for a in qsa:
                             if not a.id in lAfl: lAfl.append(a.id)
                     # Sort the list of afl
@@ -2265,7 +2265,7 @@ class DialectCheckView(ListView):
                         if not d.stad in lStad:
                             lStad.append({'stad': d.stad,'num': qse_count})
                         # Check all the afl for this dialect
-                        qsa = Aflevering.objects.filter(entry__in=qse).distinct()
+                        qsa = Aflevering.objects.filter(aflevering_entries__in=qse).distinct()
                         for a in qsa:
                             if not a.id in lAfl: lAfl.append(a.id)
                     # Sort the list of afl

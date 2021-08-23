@@ -10,7 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/1.9/ref/settings/
 """
 
-import os
+import os, sys
 import posixpath
 import socket
 from django.contrib import admin
@@ -189,3 +189,5 @@ if ("/scratch" in WRITABLE_DIR or "ewbd" in APP_PREFIX):
 # STATIC_ROOT = posixpath.join(*(BASE_DIR.split(os.path.sep) + ['static']))
 # The following should be better:
 STATIC_ROOT = os.path.abspath(os.path.join("/", posixpath.join(*(BASE_DIR.split(os.path.sep) + ['static']))))
+
+print("Static_Root = [{}]".format(STATIC_ROOT), file=sys.stderr)
