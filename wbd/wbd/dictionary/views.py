@@ -641,7 +641,7 @@ class TrefwoordListView(ListView):
     bWbdApproach = True # Filter using the WBD approach
     qEntry = None
     qs = None
-    bDoTime = True      # Measure time
+    bDoTime = False      # Measure time
     strict = True       # Use strict filtering
 
     def get_qs(self):
@@ -1037,7 +1037,7 @@ class LemmaListView(ListView):
     bUseMijnen = False      # Limburg uses mijnen, Brabant not
     bWbdApproach = True     # Filter using the WBD approach
     bOrderWrdToel = False   # Use the word order 'dialectopgave-toelichting' if True
-    bDoTime = True          # Measure time
+    bDoTime = False          # Measure time
     qEntry = None
     qs = None
     strict = True      # Use strict filtering ALWAYS
@@ -1077,7 +1077,8 @@ class LemmaListView(ListView):
             # sResp = render_to_string(self.template_name, context)
             oRendered = super(LemmaListView, self).render_to_response(context, **response_kwargs)
             # Show what the render-time was
-            print("LemmaListView render time: {:.1f}".format(get_now_time() - iStart))
+            if self.bDoTime:
+               print("LemmaListView render time: {:.1f}".format(get_now_time() - iStart))
             return oRendered
 
     def post(self, request, *args, **kwargs):
@@ -1479,9 +1480,9 @@ class LemmaListView(ListView):
                 lstQ.append(Q(gloss__iexact=val))
             bHasSearch = True
 
-            # check for possible exact numbers having been given
-            if re.match('^\d+$', val):
-                lstQ.append(Q(sn__exact=val))
+            ## check for possible exact numbers having been given
+            #if re.match('^\d+$', val):
+            #    lstQ.append(Q(sn__exact=val))
  
         # Check for dialect city
         if 'dialectCity' in get and get['dialectCity'] != '':
@@ -1602,7 +1603,7 @@ class LocationListView(ListView):
     qAll = None         # Ordered queryset of ALL
     qs = None           # Current queryset (for speeding up)
     strict = True       # Use strict filtering ALWAYS
-    bDoTime = True      # Use timing to determine what goes fastest
+    bDoTime = False      # Use timing to determine what goes fastest
 
     def get_qs(self):
         """Get the Entry elements that are selected"""
@@ -1973,7 +1974,7 @@ class DialectListView(ListView):
     paginate_by = 10
     template_name = 'dictionary/dialect_list.html'
     entrycount = 0
-    bDoTime = True
+    bDoTime = False
     bImportKloekeInfo = False
 
     def get_context_data(self, **kwargs):
