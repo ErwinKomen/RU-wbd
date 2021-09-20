@@ -82,10 +82,20 @@ class BlockedIpMiddleware(object):
 
     def process_request(self, request):
         oErr = ErrHandle()
+        remote_host = request.META['HTTP_HOST']
         remote_ip = request.META['REMOTE_ADDR']
 
         if self.bDebug:
             oErr.Status("BlockedIpMiddleware: remote addr = [{}]".format(remote_ip))
+        bHostOkay = (remote_host in settings.ALLOWED_HOSTS)
+        if bHostOkay:
+            # CUrrent debugging
+            if self.bDebug: 
+                oErr.Status("Host: [{}]".format(remote_host))
+        else:
+            # Rejecting this host
+            oErr.Status("Rejecting host: [{}]".format(remote_host))
+            return http.HttpResponseForbidden('<h1>Forbidden</h1>')
 
         if remote_ip in settings.BLOCKED_IPS:
             oErr.Status("Blocking IP: {}".format(remote_ip))
