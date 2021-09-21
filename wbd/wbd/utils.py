@@ -56,7 +56,7 @@ class ErrHandle:
 class BlockedIpMiddleware(object):
 
     bot_list = ['googlebot', 'bot.htm', 'bot.com', '/petalbot', 'crawler.com', 'robot', 'crawler',
-                'semrush', 'bingbot', 'projectdiscovery', 'hacker' ]
+                'semrush', 'bingbot' ]
     bDebug = False
 
     def __init__(self, get_response):
@@ -82,7 +82,7 @@ class BlockedIpMiddleware(object):
 
     def process_request(self, request):
         oErr = ErrHandle()
-        remote_host = request.META['HTTP_HOST']
+        remote_host = self.get_host(request)
         remote_ip = request.META['REMOTE_ADDR']
 
         if self.bDebug:
@@ -127,3 +127,30 @@ class BlockedIpMiddleware(object):
                         print(msg, file=sys.stderr)
                         return http.HttpResponseForbidden('<h1>Forbidden</h1>')
         return None
+
+    def get_host(self, request):
+        """
+        Return the HTTP host using the environment or request headers. Skip
+        allowed hosts protection, so may return an insecure host.
+        """
+        # We try three options, in order of decreasing preference.
+        if settings.USE_X_FORWARDED_HOST and (
+                'HTTP_X_FORWARDED_HOST' in self.META):
+            host = request.META['HTTP_X_FORWARDED_HOST']
+        elif 'HTTP_HOST' in request.META:
+            host = request.META['HTTP_HOST']
+        else:
+            # Reconstruct the host, taking the part before a possible colon
+            host = request.META['SERVER_NAME']
+
+        # Strip off any colon
+        host = host.split(":")[0]
+        return host
+
+    def get_port(self, request):
+        """Return the port number for the request as a string."""
+        if settings.USE_X_FORWARDED_PORT and 'HTTP_X_FORWARDED_PORT' in request.META:
+            port = request.META['HTTP_X_FORWARDED_PORT']
+        else:
+            port = request.META['SERVER_PORT']
+        return str(port)
